@@ -67,7 +67,7 @@ saveWorkerBtn.addEventListener('click', () => {
     return;
   }
 
-  fetch('https://script.google.com/macros/s/AKfycbxaV4ZfzT4y5F4u4bsvfzvQOruo2Wu6POeAwT7diiMZWDhHhNWTpak1SFTSzIhFI_n0/exec', {
+  fetch('https://script.google.com/macros/s/AKfycbymD4tbBwUPmqY0PSmy4mx0fy1osM52oVO1CfgS_cbscYsHrgAjBrzFgWjdiQyIjp57/exec', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
