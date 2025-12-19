@@ -117,7 +117,7 @@ closeWorkersModal.onclick = () => {
 };
 
 function loadWorkers() {
-  fetch('https://script.google.com/macros/s/AKfycbxm2zzRoqaE209KzJdBdfF9Urch4C76wAHm7wPPlUdS0J5Q-hOhMRoQgolQU4VXMEd8/exec')
+  fetch('https://script.google.com/macros/s/AKfycbwGWUzCCJqdqmdcRNwhUEoWQWaFa8_EC4R-hUyOHx-lZuNfJk19lyFWaOk1ShNtnj8G/exec')
     .then(res => res.json())
     .then(data => {
       workersTableBody.innerHTML = '';
