@@ -365,3 +365,22 @@ tbody td {
   background: #cbd5e1;
   border-radius: 10px;
 }
+/* LIMITA ALTURA DEL ÁREA DE TABLA */
+.modal-large .table-wrapper {
+  max-height: 420px; /* aprox 7 filas */
+  overflow-y: auto;
+}
+
+/* ESTILO DEL SCROLL */
+.modal-large .table-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-large .table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.modal-large .table-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
