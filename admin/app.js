@@ -99,3 +99,56 @@ saveWorkerBtn.addEventListener('click', () => {
   document.getElementById('addWorkerModal').classList.remove('show');
 });
 
+
+
+const workersModal = document.getElementById('workersModal');
+const openWorkersBtn = document.getElementById('menuWorkers');
+const closeWorkersModal = document.getElementById('closeWorkersModal');
+const workersTableBody = document.getElementById('workersTableBody');
+
+openWorkersBtn.onclick = () => {
+  closeMenuFn(); // cerramos menú hamburguesa
+  workersModal.style.display = 'flex';
+  loadWorkers();
+};
+
+closeWorkersModal.onclick = () => {
+  workersModal.style.display = 'none';
+};
+
+function loadWorkers() {
+  fetch('https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbxm2zzRoqaE209KzJdBdfF9Urch4C76wAHm7wPPlUdS0J5Q-hOhMRoQgolQU4VXMEd8/exec/exec')
+    .then(res => res.json())
+    .then(data => {
+      workersTableBody.innerHTML = '';
+
+      data.forEach(worker => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+          <td>${worker.id}</td>
+          <td>${worker.nombre}</td>
+          <td>${worker.pin}</td>
+          <td>${worker.activo}</td>
+          <td>${worker.fechaAlta}</td>
+          <td class="actions">
+            <button class="btn-icon btn-edit" onclick="editWorker('${worker.id}')">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn-icon btn-delete" onclick="deleteWorker('${worker.id}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        `;
+
+        workersTableBody.appendChild(tr);
+      });
+    });
+}
+
+function deleteWorker(id) {
+  if (!confirm('¿Eliminar trabajador definitivamente?')) return;
+
+  fetch('https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbxm2zzRoqaE209KzJdBdfF9Urch4C76wAHm7wPPlUdS0J5Q-hOhMRoQgolQU4VXMEd8/exec?delete=' + id)
+    .then(() => loadWorkers());
+}

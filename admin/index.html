@@ -154,6 +154,38 @@
     </div>
   </div>
 
+<!-- ===== MODAL LISTA TRABAJADORES ===== -->
+<div class="modal-overlay" id="workersModal" style="display:none;">
+  <div class="modal modal-large">
+    
+    <div class="modal-header">
+      <h3>Trabajadores registrados</h3>
+      <button class="btn-icon" id="closeWorkersModal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>PIN</th>
+            <th>Activo</th>
+            <th>Fecha Alta</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="workersTableBody">
+          <!-- dinámico -->
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
   <!-- JS -->
   <script src="../admin/app.js"></script>
 </body>
