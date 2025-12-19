@@ -49,3 +49,34 @@ const menuToggle = document.getElementById('menuToggle');
   menuToggle.onclick = openMenu;
   closeMenu.onclick = closeMenuFn;
   menuOverlay.onclick = closeMenuFn;
+
+  const saveWorkerBtn = document.getElementById('saveWorker');
+
+saveWorkerBtn.addEventListener('click', () => {
+
+  const worker = {
+    id: 'EMP-' + Date.now(), // ID único simple (luego lo mejoramos)
+    nombre: document.getElementById('workerName').value.trim(),
+    pin: document.getElementById('workerPin').value.trim(),
+    activo: document.getElementById('workerActive').value,
+    fechaAlta: document.getElementById('fechaIngreso').value
+  };
+
+  if (!worker.nombre || !worker.pin || !worker.fechaAlta) {
+    alert('Completa todos los campos');
+    return;
+  }
+
+  fetch('https://script.google.com/macros/s/AKfycbzDullJAlPQzPPytis4oUa74dIAgITEhYg2vOOelJmH11PdjJKtaixf68RLloAhV1hM/exec', {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(worker)
+  });
+
+  alert('Trabajador guardado correctamente');
+
+  document.getElementById('addWorkerModal').classList.remove('show');
+});

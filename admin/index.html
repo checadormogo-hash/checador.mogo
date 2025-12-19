@@ -139,17 +139,17 @@
 </div>
 
 
-      <input type="text" placeholder="Nombre completo">
-      <input type="number" placeholder="PIN (4 dígitos)">
+      <input type="text" placeholder="Nombre completo" id="workerName">
+      <input type="number" placeholder="PIN (4 dígitos)" id="workerPin">
 
-      <select>
+      <select id="workerActive">
         <option value="SI">Activo</option>
         <option value="NO">Inactivo</option>
       </select>
 
       <div class="modal-actions">
         <button class="btn cancel" id="closeAddModal">Cancelar</button>
-        <button class="btn primary">Guardar</button>
+        <button class="btn primary" id="saveWorker">Guardar</button>
       </div>
     </div>
   </div>
