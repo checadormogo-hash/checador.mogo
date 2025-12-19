@@ -7,6 +7,13 @@ const error = document.getElementById('loginError');
 const adminApp = document.getElementById('adminApp');
 const fab = document.getElementById('openAddModal');
 
+const pinInput = document.getElementById('workerPin');
+
+pinInput.addEventListener('input', () => {
+  pinInput.value = pinInput.value
+    .replace(/\D/g, '') // quita todo lo que no sea número
+    .slice(0, 4);       // máximo 4 dígitos
+});
 
 function tryLogin() {
   if (userInput.value === 'admin' && passInput.value === '1234') {
@@ -66,6 +73,10 @@ saveWorkerBtn.addEventListener('click', () => {
     alert('Completa todos los campos');
     return;
   }
+  if (!worker.nombre || worker.pin.length !== 4 || !worker.fechaAlta) {
+  alert('El PIN debe tener exactamente 4 dígitos');
+  return;
+  }
 
   fetch('https://script.google.com/macros/s/AKfycbwU4Q07LUsPkXgL4HxdfEp5jzPkqj8qiVONnmUM5lB1Z2oJN9LOaVUdVROifo-fTsEg/exec', {
   method: 'POST',
@@ -87,3 +98,4 @@ saveWorkerBtn.addEventListener('click', () => {
 
   document.getElementById('addWorkerModal').classList.remove('show');
 });
+
