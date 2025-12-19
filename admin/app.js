@@ -117,39 +117,38 @@ closeWorkersModal.onclick = () => {
 };
 
 function loadWorkers() {
-  fetch('https://script.google.com/macros/s/AKfycbwGWUzCCJqdqmdcRNwhUEoWQWaFa8_EC4R-hUyOHx-lZuNfJk19lyFWaOk1ShNtnj8G/exec')
-    .then(res => res.json())
-    .then(data => {
-      workersTableBody.innerHTML = '';
+  const script = document.createElement('script');
+  script.src = 'https://script.google.com/macros/s/AKfycbwsn3Ri-QAIMzOFtD8AjiTUAQw6GCodyI6FpggaM-meJl-T3P1hw4LVAx8o3LUpyggi/exec?callback=renderWorkers';
+  document.body.appendChild(script);
+}
 
-      data.forEach(worker => {
-        const tr = document.createElement('tr');
+function renderWorkers(data) {
+  workersTableBody.innerHTML = '';
 
-        tr.innerHTML = `
-          <td>${worker.id}</td>
-          <td>${worker.nombre}</td>
-          <td>${worker.pin}</td>
-          <td>${worker.activo}</td>
-          <td>${worker.fechaAlta}</td>
-          <td class="actions">
-            <button class="btn-icon btn-edit" onclick="editWorker('${worker.id}')">
-              <i class="fa-solid fa-pen"></i>
-            </button>
-            <button class="btn-icon btn-delete" onclick="deleteWorker('${worker.id}')">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </td>
-        `;
+  data.forEach(worker => {
+    const tr = document.createElement('tr');
 
-        workersTableBody.appendChild(tr);
-      });
-    });
+    tr.innerHTML = `
+      <td>${worker.id}</td>
+      <td>${worker.nombre}</td>
+      <td>${worker.pin}</td>
+      <td>${worker.activo}</td>
+      <td>${worker.fechaAlta}</td>
+      <td class="actions">
+        <button class="btn-icon btn-delete" onclick="deleteWorker('${worker.id}')">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </td>
+    `;
+
+    workersTableBody.appendChild(tr);
+  });
 }
 
 function deleteWorker(id) {
   if (!confirm('¿Eliminar trabajador definitivamente?')) return;
 
-  fetch(`https://script.google.com/macros/s/AKfycbwGWUzCCJqdqmdcRNwhUEoWQWaFa8_EC4R-hUyOHx-lZuNfJk19lyFWaOk1ShNtnj8G/exec?action=delete&id=${id}`)
+  fetch(`https://script.google.com/macros/s/AKfycbwsn3Ri-QAIMzOFtD8AjiTUAQw6GCodyI6FpggaM-meJl-T3P1hw4LVAx8o3LUpyggi/exec?action=delete&id=${id}`)
     .then(res => res.json())
     .then(data => {
       if (data.status === 'deleted') {
