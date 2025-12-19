@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checador – Administrador</title>
+
+  <!-- Tipografía -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Iconos -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ===== PANEL ADMIN ===== -->
+  <div class="app-container" id="adminApp" style="display:none;">
+
+<!-- BOTÓN HAMBURGUESA -->
+<div class="menu-toggle" id="menuToggle">
+  <i class="fa-solid fa-bars"></i>
+</div>
+<!-- OVERLAY MENÚ -->
+<div class="menu-overlay" id="menuOverlay"></div>
+
+<!-- MENÚ ADMIN -->
+<aside class="side-menu" id="sideMenu">
+  <div class="menu-header">
+    <span>Administrador</span>
+    <i class="fa-solid fa-xmark" id="closeMenu"></i>
+  </div>
+
+  <nav class="menu-items">
+    <button><i class="fa-solid fa-users"></i> Trabajadores</button>
+    <button><i class="fa-solid fa-clock"></i> Asistencias</button>
+    <button><i class="fa-solid fa-gear"></i> Configuración</button>
+  </nav>
+</aside>
+  
+    <div class="header">
+      <h1>Panel Administrador</h1>
+      <p>Gestión de asistencia y trabajadores</p>
+    </div>
+
+
+<!-- ===== FILTROS ===== -->
+<div class="filter-bar">
+  
+  <div class="filter-group">
+    <i class="fa-solid fa-user"></i>
+    <input 
+      type="text" 
+      placeholder="Buscar por nombre o ID"
+      id="filterText"
+    >
+  </div>
+
+  <div class="filter-group">
+    <i class="fa-solid fa-calendar-days"></i>
+    <input 
+      type="date"
+      id="filterDate"
+    >
+  </div>
+
+  <button class="btn-clear" id="clearFilters">
+    Limpiar
+  </button>
+</div>
+
+    <div class="card">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Trabajador</th>
+              <th>Fecha</th>
+              <th>Entrada</th>
+			  <th>Salida Comida</th>
+			  <th>Entrada Comida</th>
+              <th>Salida</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Juan Pérez</td>
+              <td>16/01/2025</td>
+              <td>08:01</td>
+			  <td>08:01</td>
+			  <td>08:01</td>
+              <td>17:02</td>
+              <td class="actions">
+                <button class="btn-icon btn-edit"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-icon btn-delete"><i class="fa-solid fa-trash"></i></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTÓN + -->
+  <div class="fab" id="openAddModal" style="display:none;">+</div>
+
+  <!-- ===== LOGIN ADMIN ===== -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-modal">
+      <h3>Acceso Administrador</h3>
+      <p>Ingrese sus credenciales</p>
+
+      <input type="text" id="adminUser" placeholder="Usuario">
+      <input type="password" id="adminPass" placeholder="Contraseña">
+
+      <div class="login-error" id="loginError">Credenciales incorrectas</div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL ALTA TRABAJADOR ===== -->
+  <div class="modal-overlay" id="addWorkerModal">
+    <div class="modal">
+      <h3>Alta de Trabajador</h3>
+
+<div class="form-group">
+  <label for="fechaIngreso">
+    Fecha de ingreso
+  </label>
+
+  <div class="input-calendar">
+    <i class="fa-solid fa-calendar-check"></i>
+    <input 
+      type="date"
+      id="fechaIngreso"
+    >
+  </div>
+</div>
+
+
+      <input type="text" placeholder="Nombre completo">
+      <input type="number" placeholder="PIN (4 dígitos)">
+
+      <select>
+        <option value="SI">Activo</option>
+        <option value="NO">Inactivo</option>
+      </select>
+
+      <div class="modal-actions">
+        <button class="btn cancel" id="closeAddModal">Cancelar</button>
+        <button class="btn primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="app.js"></script>
+</body>
+</html>
