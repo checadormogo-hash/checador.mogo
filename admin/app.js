@@ -68,14 +68,22 @@ saveWorkerBtn.addEventListener('click', () => {
   }
 
   fetch('https://script.google.com/macros/s/AKfycbymD4tbBwUPmqY0PSmy4mx0fy1osM52oVO1CfgS_cbscYsHrgAjBrzFgWjdiQyIjp57/exec', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(worker)
-  });
-
-  alert('Trabajador guardado correctamente');
+  method: 'POST',
+  body: JSON.stringify(worker)
+})
+.then(res => res.json())
+.then(data => {
+  if (data.status === 'ok') {
+    alert('Trabajador guardado correctamente');
+    addModal.style.display = 'none';
+  } else {
+    alert('Error al guardar');
+  }
+})
+.catch(err => {
+  console.error(err);
+  alert('Error de conexión con el servidor');
+});
 
   document.getElementById('addWorkerModal').classList.remove('show');
 });
