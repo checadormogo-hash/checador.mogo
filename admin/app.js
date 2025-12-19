@@ -149,6 +149,8 @@ function loadWorkers() {
 function deleteWorker(id) {
   if (!confirm('¿Eliminar trabajador definitivamente?')) return;
 
-  fetch('https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbxm2zzRoqaE209KzJdBdfF9Urch4C76wAHm7wPPlUdS0J5Q-hOhMRoQgolQU4VXMEd8/exec?delete=' + id)
+  fetch(`https://script.google.com/macros/s/AKfycbxm2zzRoqaE209KzJdBdfF9Urch4C76wAHm7wPPlUdS0J5Q-hOhMRoQgolQU4VXMEd8/exec?delete=${id}`)
+    .then(res => res.json())
     .then(() => loadWorkers());
 }
+
