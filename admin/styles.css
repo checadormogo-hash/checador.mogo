@@ -324,3 +324,44 @@ tbody td {
 .menu-items button:hover {
   background: #f1f5f9;
 }
+/* ===== MODAL GRANDE PARA TABLAS ===== */
+.modal-large {
+  width: 95%;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER DEL MODAL */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* CONTENEDOR DE TABLA */
+.table-wrapper {
+  flex: 1;
+  overflow: auto;
+  border-radius: 12px;
+}
+
+/* TABLA RESPONSIVA */
+.table-wrapper table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+/* SCROLL BONITO */
+.table-wrapper::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
