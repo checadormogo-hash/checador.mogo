@@ -148,19 +148,17 @@ function renderWorkers(data) {
 function deleteWorker(id) {
   if (!confirm('¿Eliminar trabajador definitivamente?')) return;
 
-  fetch(`https://script.google.com/macros/s/AKfycbwsn3Ri-QAIMzOFtD8AjiTUAQw6GCodyI6FpggaM-meJl-T3P1hw4LVAx8o3LUpyggi/exec?action=delete&id=${id}`)
-    .then(res => res.json())
-    .then(data => {
-      if (data.status === 'deleted') {
-        alert('Trabajador eliminado');
-        loadWorkers(); // 🔄 refresca tabla
-      } else {
-        alert('No se pudo eliminar');
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      alert('Error de conexión');
-    });
+  window.deleteCallback = function (res) {
+    if (res.status === 'deleted') {
+      alert('Trabajador eliminado');
+      loadWorkers(); // 🔄 refresca tabla
+    } else {
+      alert('No se pudo eliminar');
+    }
+  };
+
+  const script = document.createElement('script');
+  script.src = `https://script.google.com/macros/s/AKfycbwsn3Ri-QAIMzOFtD8AjiTUAQw6GCodyI6FpggaM-meJl-T3P1hw4LVAx8o3LUpyggi/exec?action=delete&id=${id}&callback=deleteCallback`;
+  document.body.appendChild(script);
 }
 
