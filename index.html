@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Checador – Administrador</title>
+  <title>Checador de Asistencia</title>
 
   <!-- Tipografía -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -11,150 +11,278 @@
   <!-- Iconos -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --secondary: #64748b;
+      --background: #f8fafc;
+      --card: #ffffff;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --text: #0f172a;
+
+      --overlay: rgba(0,0,0,0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== APP ===== */
+    .app-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+      margin: auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .header h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .header p {
+      font-size: 0.9rem;
+      color: var(--secondary);
+      margin-top: 5px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+
+    .employee-info {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .employee-info h2 {
+      font-size: 1.1rem;
+      margin: 0;
+    }
+
+    .employee-info span {
+      font-size: 0.85rem;
+      color: var(--secondary);
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .action-btn {
+      background: var(--background);
+      border-radius: 16px;
+      padding: 18px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.2s;
+      border: 2px solid transparent;
+    }
+
+    .action-btn:hover {
+      border-color: var(--primary);
+      background: #eef2ff;
+    }
+
+    .action-btn i {
+      font-size: 1.6rem;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .action-btn span {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .entrada i { color: var(--success); }
+    .salida-comida i { color: var(--warning); }
+    .entrada-comida i { color: var(--primary); }
+    .salida i { color: var(--danger); }
+
+    .footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--secondary);
+      margin-top: 20px;
+    }
+
+    /* ===== MODAL PIN ===== */
+    .pin-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--overlay);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    .pin-modal {
+      background: #fff;
+      width: 90%;
+      max-width: 340px;
+      border-radius: 16px;
+      padding: 25px 20px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+      animation: fadeIn 0.25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .pin-modal i {
+      font-size: 2.2rem;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .pin-modal h3 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .pin-modal p {
+      margin: 6px 0 18px;
+      font-size: 0.85rem;
+      color: var(--secondary);
+    }
+
+    .pin-input {
+      width: 100%;
+      font-size: 1.8rem;
+      padding: 12px 0;
+      text-align: center;
+      letter-spacing: 12px;
+      border-radius: 12px;
+      border: 2px solid #e5e7eb;
+      outline: none;
+    }
+
+    .pin-input:focus {
+      border-color: var(--primary);
+    }
+
+    .pin-error {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--danger);
+      display: none;
+    }
+
+    .pin-error.show {
+      display: block;
+    }
+  </style>
 </head>
 <body>
-  <!-- ===== PANEL ADMIN ===== -->
-  <div class="app-container" id="adminApp" style="display:none;">
 
-<!-- BOTÓN HAMBURGUESA -->
-<div class="menu-toggle" id="menuToggle">
-  <i class="fa-solid fa-bars"></i>
-</div>
-<!-- OVERLAY MENÚ -->
-<div class="menu-overlay" id="menuOverlay"></div>
-
-<!-- MENÚ ADMIN -->
-<aside class="side-menu" id="sideMenu">
-  <div class="menu-header">
-    <span>Administrador</span>
-    <i class="fa-solid fa-xmark" id="closeMenu"></i>
-  </div>
-
-  <nav class="menu-items">
-    <button><i class="fa-solid fa-users"></i> Trabajadores</button>
-    <button><i class="fa-solid fa-clock"></i> Asistencias</button>
-    <button><i class="fa-solid fa-gear"></i> Configuración</button>
-  </nav>
-</aside>
-  
+  <!-- ===== APP ===== -->
+  <div class="app-container">
     <div class="header">
-      <h1>Panel Administrador</h1>
-      <p>Gestión de asistencia y trabajadores</p>
+      <h1>MiniSuper Mogo <br>Asistencia</h1>
+      <p>Registro diario de jornada laboral</p>
     </div>
-
-
-<!-- ===== FILTROS ===== -->
-<div class="filter-bar">
-  
-  <div class="filter-group">
-    <i class="fa-solid fa-user"></i>
-    <input 
-      type="text" 
-      placeholder="Buscar por nombre o ID"
-      id="filterText"
-    >
-  </div>
-
-  <div class="filter-group">
-    <i class="fa-solid fa-calendar-days"></i>
-    <input 
-      type="date"
-      id="filterDate"
-    >
-  </div>
-
-  <button class="btn-clear" id="clearFilters">
-    Limpiar
-  </button>
-</div>
 
     <div class="card">
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Trabajador</th>
-              <th>Fecha</th>
-              <th>Entrada</th>
-			  <th>Salida Comida</th>
-			  <th>Entrada Comida</th>
-              <th>Salida</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Juan Pérez</td>
-              <td>16/01/2025</td>
-              <td>08:01</td>
-			  <td>08:01</td>
-			  <td>08:01</td>
-              <td>17:02</td>
-              <td class="actions">
-                <button class="btn-icon btn-edit"><i class="fa-solid fa-pen"></i></button>
-                <button class="btn-icon btn-delete"><i class="fa-solid fa-trash"></i></button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="employee-info">
+        <h2>Juan Pérez</h2>
+        <span>Martes 16 de Enero · 08:00 AM</span>
+      </div>
+
+      <div class="actions-grid">
+        <div class="action-btn entrada">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>Entrada</span>
+        </div>
+
+        <div class="action-btn salida-comida">
+          <i class="fa-solid fa-utensils"></i>
+          <span>Salida Comida</span>
+        </div>
+
+        <div class="action-btn entrada-comida">
+          <i class="fa-solid fa-mug-hot"></i>
+          <span>Entrada Comida</span>
+        </div>
+
+        <div class="action-btn salida">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span>Salida</span>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- BOTÓN + -->
-  <div class="fab" id="openAddModal" style="display:none;">+</div>
-
-  <!-- ===== LOGIN ADMIN ===== -->
-  <div class="login-overlay" id="loginOverlay">
-    <div class="login-modal">
-      <h3>Acceso Administrador</h3>
-      <p>Ingrese sus credenciales</p>
-
-      <input type="text" id="adminUser" placeholder="Usuario">
-      <input type="password" id="adminPass" placeholder="Contraseña">
-
-      <div class="login-error" id="loginError">Credenciales incorrectas</div>
+    <div class="footer">
+      Sistema de control de asistencia · Uso laboral
     </div>
   </div>
 
-  <!-- ===== MODAL ALTA TRABAJADOR ===== -->
-  <div class="modal-overlay" id="addWorkerModal">
-    <div class="modal">
-      <h3>Alta de Trabajador</h3>
+  <!-- ===== MODAL PIN ===== 
+  <div class="pin-overlay" id="pinOverlay">
+    <div class="pin-modal">
+      <i class="fa-solid fa-lock"></i>
+      <h3>Ingresa tu PIN</h3>
+      <p>Acceso rápido para registrar asistencia</p>
 
-<div class="form-group">
-  <label for="fechaIngreso">
-    Fecha de ingreso
-  </label>
+      <input type="password"
+             maxlength="4"
+             inputmode="numeric"
+             class="pin-input"
+             id="pinInput"
+             autofocus>
 
-  <div class="input-calendar">
-    <i class="fa-solid fa-calendar-check"></i>
-    <input 
-      type="date"
-      id="fechaIngreso"
-    >
-  </div>
-</div>
-
-
-      <input type="text" placeholder="Nombre completo">
-      <input type="number" placeholder="PIN (4 dígitos)">
-
-      <select>
-        <option value="SI">Activo</option>
-        <option value="NO">Inactivo</option>
-      </select>
-
-      <div class="modal-actions">
-        <button class="btn cancel" id="closeAddModal">Cancelar</button>
-        <button class="btn primary">Guardar</button>
+      <div class="pin-error" id="pinError">
+        Trabajador no registrado o PIN incorrecto
       </div>
     </div>
-  </div>
+  </div>-->
 
-  <!-- JS -->
-  <script src="app.js"></script>
+  <script>
+    const pinInput = document.getElementById('pinInput');
+    const pinError = document.getElementById('pinError');
+    const pinOverlay = document.getElementById('pinOverlay');
+
+    pinInput.addEventListener('input', () => {
+      pinError.classList.remove('show');
+
+      if (pinInput.value.length === 4) {
+        // Simulación (aquí va la validación real después)
+        setTimeout(() => {
+          pinError.classList.add('show');
+          pinInput.value = '';
+          pinInput.focus();
+        }, 300);
+      }
+    });
+
+    // Para probar apertura de sesión (simulación manual)
+    // pinOverlay.style.display = 'none';
+  </script>
+
 </body>
 </html>
