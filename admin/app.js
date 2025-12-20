@@ -116,12 +116,6 @@ closeWorkersModal.onclick = () => {
   workersModal.style.display = 'none';
 };
 
-function loadWorkers() {
-  const script = document.createElement('script');
-  script.src = 'https://script.google.com/macros/s/AKfycbw2gEQK8XuSwYBqIZDYezPITThIKnm9XbfNB4pHoNh7f50_6B6Om2SmBQGxOAYRSpmA/exec?callback=renderWorkers';
-  document.body.appendChild(script);
-}
-
 window.renderWorkers = function (data) {
   workersTableBody.innerHTML = '';
 
@@ -143,6 +137,12 @@ window.renderWorkers = function (data) {
 
     workersTableBody.appendChild(tr);
   });
+}
+
+function loadWorkers() {
+  const script = document.createElement('script');
+  script.src = 'https://script.google.com/macros/s/AKfycbw2gEQK8XuSwYBqIZDYezPITThIKnm9XbfNB4pHoNh7f50_6B6Om2SmBQGxOAYRSpmA/exec?callback=renderWorkers';
+  document.body.appendChild(script);
 }
 
 function deleteWorker(id) {
