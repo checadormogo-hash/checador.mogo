@@ -122,7 +122,7 @@ function loadWorkers() {
   document.body.appendChild(script);
 }
 
-function renderWorkers(data) {
+window.renderWorkers = function (data) {
   workersTableBody.innerHTML = '';
 
   data.forEach(worker => {
@@ -158,7 +158,7 @@ function deleteWorker(id) {
   };
 
   const script = document.createElement('script');
-  script.src = `https://script.google.com/macros/s/AKfycbw2gEQK8XuSwYBqIZDYezPITThIKnm9XbfNB4pHoNh7f50_6B6Om2SmBQGxOAYRSpmA/exec?action=delete&id=${id}&callback=deleteCallback`;
+  script.src = `https://script.google.com/macros/s/AKfycbwsn3Ri-QAIMzOFtD8AjiTUAQw6GCodyI6FpggaM-meJl-T3P1hw4LVAx8o3LUpyggi/exec?action=delete&id=${id}&callback=deleteCallback`;
   document.body.appendChild(script);
 }
 
