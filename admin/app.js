@@ -116,8 +116,17 @@ closeWorkersModal.onclick = () => {
   workersModal.style.display = 'none';
 };
 
-window.renderWorkers = function (data) {
+function renderWorkers(data) {
   workersTableBody.innerHTML = '';
+
+  if (data.length === 0) {
+    workersTableBody.innerHTML = `
+      <tr>
+        <td colspan="6">No hay trabajadores registrados</td>
+      </tr>
+    `;
+    return;
+  }
 
   data.forEach(worker => {
     const tr = document.createElement('tr');
@@ -130,7 +139,7 @@ window.renderWorkers = function (data) {
       <td>${worker.fechaAlta}</td>
       <td class="actions">
         <button class="btn-icon btn-delete" onclick="deleteWorker('${worker.id}')">
-          <i class="fa-solid fa-trash"></i>
+          🗑️
         </button>
       </td>
     `;
@@ -139,36 +148,26 @@ window.renderWorkers = function (data) {
   });
 }
 
-function loadWorkers() {
-  fetch('/api/workers')
-    .then(res => res.json())
-    .then(data => {
+async function loadWorkers() {
+  try {
+    const res = await fetch('/api/workers');
+    const data = await res.json();
+
+    // 🛡️ Protección clave
+    if (!Array.isArray(data)) {
+      console.error('La API no devolvió un array:', data);
       workersTableBody.innerHTML = '';
-
-      data.forEach(worker => {
-        const tr = document.createElement('tr');
-
-        tr.innerHTML = `
-          <td>${worker.id}</td>
-          <td>${worker.nombre}</td>
-          <td>${worker.pin}</td>
-          <td>${worker.activo}</td>
-          <td>${worker.fechaAlta}</td>
-          <td class="actions">
-            <button class="btn-icon btn-delete" onclick="deleteWorker('${worker.id}')">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </td>
-        `;
-
-        workersTableBody.appendChild(tr);
-      });
-    })
-    .catch(err => {
-      console.error(err);
       alert('No se pudieron cargar los trabajadores');
-    });
+      return;
+    }
+
+    renderWorkers(data);
+  } catch (err) {
+    console.error('Error cargando trabajadores:', err);
+    alert('No se pudieron cargar los trabajadores');
+  }
 }
+
 
 function deleteWorker(id) {
   if (!confirm('¿Eliminar trabajador definitivamente?')) return;
