@@ -269,15 +269,22 @@ downloadQR.addEventListener('click', () => {
   const badge = document.getElementById('badge');
 
   // ocultar botones
-  document.querySelectorAll('.no-export').forEach(el => el.style.display = 'none');
+  const controls = document.querySelectorAll('.no-print');
+  controls.forEach(el => el.style.display = 'none');
 
-  html2canvas(badge).then(canvas => {
-    const link = document.createElement('a');
-    link.download = 'gafete-trabajador.png';
-    link.href = canvas.toDataURL();
-    link.click();
+  // esperar a que la imagen QR esté completamente cargada
+  qrImage.onload = () => {
+    html2canvas(badge).then(canvas => {
+      const link = document.createElement('a');
+      link.download = 'gafete-trabajador.png';
+      link.href = canvas.toDataURL();
+      link.click();
 
-    // restaurar botones
-    document.querySelectorAll('.no-export').forEach(el => el.style.display = '');
-  });
+      // restaurar botones
+      controls.forEach(el => el.style.display = '');
+    });
+  };
+  // disparar onload si la imagen ya estaba cargada
+  if (qrImage.complete) qrImage.onload();
 });
+
