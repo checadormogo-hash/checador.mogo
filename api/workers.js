@@ -45,28 +45,33 @@ export default async function handler(req, res) {
     }
 
     // 🔹 ELIMINAR
-    if (req.method === 'DELETE') {
-      const { id } = req.query;
+if (req.method === 'DELETE') {
+  const { id } = req.query;
 
-      const files = await list();
-      const file = files.blobs.find(b => b.pathname === FILE_NAME);
+  if (!id) {
+    return res.status(400).json({ status: 'missing_id' });
+  }
 
-      if (!file) {
-        return res.status(404).json({ status: 'not_found' });
-      }
+  const files = await list();
+  const file = files.blobs.find(b => b.pathname === FILE_NAME);
 
-      const response = await fetch(file.url);
-      let workers = await response.json();
+  if (!file) {
+    return res.status(200).json({ status: 'deleted' });
+  }
 
-      const newWorkers = workers.filter(w => w.id !== id);
+  const response = await fetch(file.url);
+  const text = await response.text();
+  const workers = text ? JSON.parse(text) : [];
 
-      await put(FILE_NAME, JSON.stringify(newWorkers), {
-        access: 'public',
-        contentType: 'application/json'
-      });
+  const newWorkers = workers.filter(w => w.id !== id);
 
-      return res.status(200).json({ status: 'deleted' });
-    }
+  await put(FILE_NAME, JSON.stringify(newWorkers), {
+    access: 'public',
+    contentType: 'application/json'
+  });
+
+  return res.status(200).json({ status: 'deleted' });
+}
 
     return res.status(405).json({ error: 'Método no permitido' });
   } catch (err) {
