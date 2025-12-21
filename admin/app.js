@@ -20,7 +20,6 @@ function tryLogin() {
 userInput.addEventListener('keydown', e => e.key === 'Enter' && passInput.focus());
 passInput.addEventListener('keydown', e => e.key === 'Enter' && tryLogin());
 
-
 // ================== MENÚ ==================
 const menuToggle = document.getElementById('menuToggle');
 const sideMenu = document.getElementById('sideMenu');
@@ -41,7 +40,6 @@ menuToggle.onclick = openMenu;
 closeMenu.onclick = closeMenuFn;
 menuOverlay.onclick = closeMenuFn;
 
-
 // ================== MODAL ALTA ==================
 const addModal = document.getElementById('addWorkerModal');
 const openBtn = document.getElementById('openAddModal');
@@ -55,7 +53,6 @@ const pinInput = document.getElementById('workerPin');
 pinInput.addEventListener('input', () => {
   pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4);
 });
-
 
 // ================== MODAL LISTA ==================
 const workersModal = document.getElementById('workersModal');
@@ -73,10 +70,8 @@ closeWorkersModal.onclick = () => {
   workersModal.style.display = 'none';
 };
 
-
 // ================== CACHE ==================
 let workersCache = [];
-
 
 // ================== RENDER ==================
 function renderWorkers(data) {
@@ -93,7 +88,6 @@ function renderWorkers(data) {
 
   data.forEach(worker => {
     const tr = document.createElement('tr');
-
     tr.innerHTML = `
       <td>${worker.id}</td>
       <td>${worker.nombre}</td>
@@ -101,16 +95,12 @@ function renderWorkers(data) {
       <td>${worker.activo}</td>
       <td>${worker.fechaAlta}</td>
       <td class="actions">
-        <button class="btn-icon btn-delete" onclick="deleteWorker('${worker.id}')">
-          🗑️
-        </button>
+        <button class="btn-icon btn-delete" onclick="deleteWorker('${worker.id}')">🗑️</button>
       </td>
     `;
-
     workersTableBody.appendChild(tr);
   });
 }
-
 
 // ================== LOAD ==================
 async function loadWorkers() {
@@ -118,12 +108,10 @@ async function loadWorkers() {
     const r = await fetch('/api/workers', { cache: 'no-store' });
     const data = await r.json();
 
-    // 👇 ACEPTA ARRAY DIRECTO O { workers: [] }
     if (Array.isArray(data)) {
       workersCache = data;
-    } else if (Array.isArray(data.workers)) {
-      workersCache = data.workers;
     } else {
+      console.warn('Respuesta inesperada de API:', data);
       workersCache = [];
     }
 
@@ -154,22 +142,20 @@ saveWorkerBtn.addEventListener('click', async () => {
     return;
   }
 
-  // evitar PIN duplicado
   if (workersCache.some(w => w.pin === worker.pin)) {
     alert('Ese PIN ya existe');
     return;
   }
 
-  workersCache.push(worker);
+  const updated = [...workersCache, worker];
 
   try {
     await fetch('/api/workers', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workers: workersCache })
+      body: JSON.stringify(updated)
     });
 
-    alert('Trabajador guardado correctamente');
     addModal.style.display = 'none';
     loadWorkers();
 
@@ -179,18 +165,17 @@ saveWorkerBtn.addEventListener('click', async () => {
   }
 });
 
-
 // ================== ELIMINAR ==================
 async function deleteWorker(id) {
   if (!confirm('¿Eliminar trabajador definitivamente?')) return;
 
-  workersCache = workersCache.filter(w => w.id !== id);
+  const updated = workersCache.filter(w => w.id !== id);
 
   try {
     await fetch('/api/workers', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workers: workersCache })
+      body: JSON.stringify(updated)
     });
 
     loadWorkers();
