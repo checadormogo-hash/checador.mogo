@@ -13,7 +13,6 @@ const fab = document.getElementById('openAddModal');
 // ===== ESTADO INICIAL =====
 adminApp.style.display = 'none';
 fab.style.display = 'none';
-workersModal.style.display = 'none';
 
 function tryLogin() {
   if (userInput.value === 'admin' && passInput.value === '1234') {
@@ -54,6 +53,8 @@ const openBtn = document.getElementById('openAddModal');
 const closeBtn = document.getElementById('closeAddModal');
 const saveWorkerBtn = document.getElementById('saveWorker');
 
+addModal.style.display = 'none';
+
 openBtn.onclick = () => addModal.style.display = 'flex';
 closeBtn.onclick = () => addModal.style.display = 'none';
 
@@ -67,6 +68,8 @@ const workersModal = document.getElementById('workersModal');
 const openWorkersBtn = document.getElementById('menuWorkers');
 const closeWorkersModal = document.getElementById('closeWorkersModal');
 const workersTableBody = document.getElementById('workersTableBody');
+
+workersModal.style.display = 'none';
 
 openWorkersBtn.onclick = () => {
   closeMenuFn();
