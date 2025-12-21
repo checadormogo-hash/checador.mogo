@@ -118,7 +118,15 @@ async function loadWorkers() {
     const r = await fetch('/api/workers', { cache: 'no-store' });
     const data = await r.json();
 
-    workersCache = Array.isArray(data.workers) ? data.workers : [];
+    // 👇 ACEPTA ARRAY DIRECTO O { workers: [] }
+    if (Array.isArray(data)) {
+      workersCache = data;
+    } else if (Array.isArray(data.workers)) {
+      workersCache = data.workers;
+    } else {
+      workersCache = [];
+    }
+
     renderWorkers(workersCache);
 
   } catch (err) {
@@ -130,7 +138,6 @@ async function loadWorkers() {
     `;
   }
 }
-
 
 // ================== GUARDAR ==================
 saveWorkerBtn.addEventListener('click', async () => {
