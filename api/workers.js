@@ -1,65 +1,48 @@
-import { put } from '@vercel/blob';
+import { put, head } from '@vercel/blob';
 
-const FILE_NAME = 'workers.json';
-const FILE_URL = `https://blob.vercel-storage.com/${FILE_NAME}`;
+const KEY = 'data/workers.json';
+const token = process.env.BLOB_READ_WRITE_TOKEN;
 
 export default async function handler(req, res) {
   try {
-
     // 🔹 GET
     if (req.method === 'GET') {
       try {
-        const response = await fetch(FILE_URL);
-        const data = await response.json();
-        return res.status(200).json(data);
+        const meta = await head(KEY, { token });
+        const r = await fetch(meta.url, { cache: 'no-store' });
+        const data = await r.json();
+        const arr = Array.isArray(data) ? data : (data?.workers || []);
+        return res.status(200).json({ workers: arr });
       } catch {
-        return res.status(200).json([]);
+        return res.status(200).json({ workers: [] });
       }
     }
 
-    // 🔹 POST
-    if (req.method === 'POST') {
-      const worker = req.body;
+    // 🔹 PUT (guardar TODO)
+    if (req.method === 'PUT') {
+      let body = req.body;
+      if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch {}
+      }
 
-      let workers = [];
-      try {
-        const response = await fetch(FILE_URL);
-        workers = await response.json();
-      } catch {}
+      const arr = Array.isArray(body) ? body : (body?.workers || []);
 
-      workers.push(worker);
-
-      await put(FILE_NAME, JSON.stringify(workers), {
+      await put(KEY, JSON.stringify({ workers: arr }, null, 2), {
         access: 'public',
+        addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: 'application/json',
-        overwrite: true
+        token
       });
 
-      return res.status(200).json({ status: 'ok' });
+      return res.status(200).json({ ok: true });
     }
 
-    // 🔹 DELETE
-    if (req.method === 'DELETE') {
-      const { id } = req.query;
+    res.setHeader('Allow', 'GET, PUT');
+    res.status(405).end();
 
-      const response = await fetch(FILE_URL);
-      const workers = await response.json();
-
-      const newWorkers = workers.filter(w => w.id !== id);
-
-      await put(FILE_NAME, JSON.stringify(newWorkers), {
-        access: 'public',
-        contentType: 'application/json',
-        overwrite: true
-      });
-
-      return res.status(200).json({ status: 'deleted' });
-    }
-
-    return res.status(405).json({ error: 'Método no permitido' });
-
-  } catch (err) {
-    console.error('ERROR API:', err);
-    return res.status(500).json({ error: 'Error interno real' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
   }
 }

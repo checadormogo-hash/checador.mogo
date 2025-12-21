@@ -148,45 +148,27 @@ function renderWorkers(data) {
   });
 }
 
+let workersCache = [];
+
 async function loadWorkers() {
-  try {
-    const res = await fetch('/api/workers');
-    const data = await res.json();
-
-    // 🛡️ Protección clave
-    if (!Array.isArray(data)) {
-      console.error('La API no devolvió un array:', data);
-      workersTableBody.innerHTML = '';
-      alert('No se pudieron cargar los trabajadores');
-      return;
-    }
-
-    renderWorkers(data);
-  } catch (err) {
-    console.error('Error cargando trabajadores:', err);
-    alert('No se pudieron cargar los trabajadores');
-  }
+  const r = await fetch('/api/workers');
+  const data = await r.json();
+  workersCache = data.workers || [];
+  renderWorkers(workersCache);
 }
 
+async function deleteWorker(id) {
+  if (!confirm('¿Eliminar trabajador?')) return;
 
-function deleteWorker(id) {
-  if (!confirm('¿Eliminar trabajador definitivamente?')) return;
+  workersCache = workersCache.filter(w => w.id !== id);
 
-  fetch(`/api/workers?id=${id}`, {
-    method: 'DELETE'
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (data.status === 'deleted') {
-        alert('Trabajador eliminado');
-        loadWorkers(); // refresca tabla
-      } else {
-        alert('No se pudo eliminar');
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      alert('Error de conexión');
-    });
+  await fetch('/api/workers', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workers: workersCache })
+  });
+
+  loadWorkers();
 }
+
 
