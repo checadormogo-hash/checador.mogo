@@ -13,7 +13,6 @@ const fab = document.getElementById('openAddModal');
 // ===== ESTADO INICIAL =====
 adminApp.style.display = 'none';
 fab.style.display = 'none';
-addModal.style.display = 'none';
 workersModal.style.display = 'none';
 
 function tryLogin() {
