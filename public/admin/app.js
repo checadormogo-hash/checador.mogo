@@ -81,6 +81,20 @@ closeWorkersModal.onclick = () => {
   workersModal.style.display = 'none';
 };
 
+/* ================== MODAL QR ================== */
+const qrModal = document.getElementById('qrModal');
+const closeQrModal = document.getElementById('closeQrModal');
+const qrImage = document.getElementById('qrImage');
+const badgeName = document.getElementById('badgeName');
+const badgeId = document.getElementById('badgeId');
+const downloadQR = document.getElementById('downloadQR');
+
+qrModal.style.display = 'none';
+
+closeQrModal.onclick = () => {
+  qrModal.style.display = 'none';
+};
+
 /* ================== CACHE ================== */
 let workersCache = [];
 
@@ -202,6 +216,27 @@ saveWorkerBtn.addEventListener('click', async () => {
 
 /* ================== ELIMINAR ================== */
 workersTableBody.addEventListener('click', async (e) => {
+const qrBtn = e.target.closest('.btn-qr');
+if (qrBtn) {
+  const id = qrBtn.dataset.id;
+  const pin = qrBtn.dataset.pin;
+
+  const worker = workersCache.find(w => w.id === id);
+  if (!worker) return;
+
+  // Texto visible
+  badgeName.textContent = worker.nombre;
+  badgeId.textContent = worker.id;
+
+  // QR con ID + PIN (PIN oculto)
+  const qrValue = `${worker.id}|${worker.pin}`;
+  qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrValue)}`;
+
+  qrModal.style.display = 'flex';
+  return;
+}
+
+
   const btn = e.target.closest('.btn-delete');
   if (!btn) return;
 
@@ -216,4 +251,15 @@ workersTableBody.addEventListener('click', async (e) => {
     console.error(err);
     alert('No se pudo eliminar');
   }
+});
+
+downloadQR.addEventListener('click', () => {
+  const badge = document.getElementById('badge');
+
+  html2canvas(badge).then(canvas => {
+    const link = document.createElement('a');
+    link.download = 'gafete-trabajador.png';
+    link.href = canvas.toDataURL();
+    link.click();
+  });
 });

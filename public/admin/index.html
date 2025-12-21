@@ -186,6 +186,32 @@
   </div>
 </div>
 
+<div id="qrModal" class="modal">
+  <div class="modal-content badge" id="badge">
+    
+    <button id="closeQrModal" class="close">✕</button>
+
+    <!-- LOGO -->
+    <div class="badge-header">
+      <img src="/img/LogoMogo.jpg" alt="LogoSuperMogo" class="badge-logo">
+    </div>
+
+    <!-- INFO -->
+    <div class="badge-body">
+      <h3 id="badgeName"></h3>
+      <p class="badge-id">ID: <span id="badgeId"></span></p>
+
+      <img id="qrImage" class="badge-qr" alt="QR trabajador">
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="badge-actions no-print">
+      <button id="downloadQR">Descargar</button>
+      <button onclick="window.print()">Imprimir</button>
+    </div>
+
+  </div>
+</div>
   <div id="toastSuccess" style="
   display:none;
   position:fixed;
@@ -201,5 +227,6 @@
   z-index:9999;">✅ Trabajador guardado correctamente</div>
   <!-- JS -->
   <script src="../admin/app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </body>
 </html>
