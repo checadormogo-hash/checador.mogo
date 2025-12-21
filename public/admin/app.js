@@ -10,6 +10,12 @@ const error = document.getElementById('loginError');
 const adminApp = document.getElementById('adminApp');
 const fab = document.getElementById('openAddModal');
 
+// ===== ESTADO INICIAL =====
+adminApp.style.display = 'none';
+fab.style.display = 'none';
+addModal.style.display = 'none';
+workersModal.style.display = 'none';
+
 function tryLogin() {
   if (userInput.value === 'admin' && passInput.value === '1234') {
     overlay.style.display = 'none';
