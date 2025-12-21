@@ -136,8 +136,20 @@ function renderWorkers() {
       <td>${worker.activo}</td>
       <td>${worker.fechaAlta}</td>
       <td class="actions">
-        <button class="btn-icon btn-delete" data-id="${worker.id}">🗑️</button>
+        <button 
+          class="btn-icon btn-qr"
+          title="Generar QR"
+          data-id="${worker.id}"
+          data-pin="${worker.pin}">📎
+        </button>
+
+        <button
+          class="btn-icon btn-delete"
+          title="Eliminar"
+          data-id="${worker.id}">🗑️
+        </button>
       </td>
+
     `;
     workersTableBody.appendChild(tr);
   });
