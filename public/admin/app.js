@@ -1,4 +1,7 @@
-// ================== LOGIN ==================
+/* ================== CONFIG ================== */
+const API_WORKERS = '/api/data/workers';
+
+/* ================== LOGIN ================== */
 const overlay = document.getElementById('loginOverlay');
 const userInput = document.getElementById('adminUser');
 const passInput = document.getElementById('adminPass');
@@ -20,7 +23,7 @@ function tryLogin() {
 userInput.addEventListener('keydown', e => e.key === 'Enter' && passInput.focus());
 passInput.addEventListener('keydown', e => e.key === 'Enter' && tryLogin());
 
-// ================== MENÚ ==================
+/* ================== MENÚ ================== */
 const menuToggle = document.getElementById('menuToggle');
 const sideMenu = document.getElementById('sideMenu');
 const menuOverlay = document.getElementById('menuOverlay');
@@ -40,7 +43,7 @@ menuToggle.onclick = openMenu;
 closeMenu.onclick = closeMenuFn;
 menuOverlay.onclick = closeMenuFn;
 
-// ================== MODAL ALTA ==================
+/* ================== MODAL ALTA ================== */
 const addModal = document.getElementById('addWorkerModal');
 const openBtn = document.getElementById('openAddModal');
 const closeBtn = document.getElementById('closeAddModal');
@@ -54,7 +57,7 @@ pinInput.addEventListener('input', () => {
   pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4);
 });
 
-// ================== MODAL LISTA ==================
+/* ================== MODAL LISTA ================== */
 const workersModal = document.getElementById('workersModal');
 const openWorkersBtn = document.getElementById('menuWorkers');
 const closeWorkersModal = document.getElementById('closeWorkersModal');
@@ -70,14 +73,30 @@ closeWorkersModal.onclick = () => {
   workersModal.style.display = 'none';
 };
 
-// ================== CACHE ==================
+/* ================== CACHE ================== */
 let workersCache = [];
 
-// ================== RENDER ==================
-function renderWorkers(data) {
+/* ================== API HELPERS ================== */
+async function apiGetWorkers() {
+  const r = await fetch(API_WORKERS, { cache: 'no-store' });
+  if (!r.ok) throw new Error('GET error');
+  return r.json();
+}
+
+async function apiSaveWorkers(arr) {
+  const r = await fetch(API_WORKERS, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ workers: arr })
+  });
+  if (!r.ok) throw new Error('PUT error');
+}
+
+/* ================== RENDER ================== */
+function renderWorkers() {
   workersTableBody.innerHTML = '';
 
-  if (!Array.isArray(data) || data.length === 0) {
+  if (!workersCache.length) {
     workersTableBody.innerHTML = `
       <tr>
         <td colspan="6">No hay trabajadores registrados</td>
@@ -86,7 +105,7 @@ function renderWorkers(data) {
     return;
   }
 
-  data.forEach(worker => {
+  workersCache.forEach(worker => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${worker.id}</td>
@@ -95,28 +114,26 @@ function renderWorkers(data) {
       <td>${worker.activo}</td>
       <td>${worker.fechaAlta}</td>
       <td class="actions">
-        <button class="btn-icon btn-delete" onclick="deleteWorker('${worker.id}')">🗑️</button>
+        <button class="btn-icon btn-delete" data-id="${worker.id}">🗑️</button>
       </td>
     `;
     workersTableBody.appendChild(tr);
   });
 }
 
-// ================== LOAD ==================
+/* ================== LOAD ================== */
 async function loadWorkers() {
   try {
-    const r = await fetch('/api/workers', { cache: 'no-store' });
-    const data = await r.json();
+    const data = await apiGetWorkers();
 
-    if (Array.isArray(data)) {
-      workersCache = data;
+    if (Array.isArray(data.workers)) {
+      workersCache = data.workers;
     } else {
-      console.warn('Respuesta inesperada de API:', data);
+      console.warn('Formato inválido:', data);
       workersCache = [];
     }
 
-    renderWorkers(workersCache);
-
+    renderWorkers();
   } catch (err) {
     console.error(err);
     workersTableBody.innerHTML = `
@@ -127,7 +144,7 @@ async function loadWorkers() {
   }
 }
 
-// ================== GUARDAR ==================
+/* ================== GUARDAR ================== */
 saveWorkerBtn.addEventListener('click', async () => {
   const worker = {
     id: 'EMP-' + Date.now(),
@@ -147,41 +164,31 @@ saveWorkerBtn.addEventListener('click', async () => {
     return;
   }
 
-  const updated = [...workersCache, worker];
-
   try {
-    await fetch('/api/workers', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated)
-    });
-
+    workersCache.push(worker);
+    await apiSaveWorkers(workersCache);
     addModal.style.display = 'none';
     loadWorkers();
-
   } catch (err) {
     console.error(err);
     alert('Error al guardar trabajador');
   }
 });
 
-// ================== ELIMINAR ==================
-async function deleteWorker(id) {
+/* ================== ELIMINAR ================== */
+workersTableBody.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.btn-delete');
+  if (!btn) return;
+
+  const id = btn.dataset.id;
   if (!confirm('¿Eliminar trabajador definitivamente?')) return;
 
-  const updated = workersCache.filter(w => w.id !== id);
-
   try {
-    await fetch('/api/workers', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated)
-    });
-
-    loadWorkers();
-
+    workersCache = workersCache.filter(w => w.id !== id);
+    await apiSaveWorkers(workersCache);
+    renderWorkers();
   } catch (err) {
     console.error(err);
     alert('No se pudo eliminar');
   }
-}
+});
