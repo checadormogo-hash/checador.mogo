@@ -465,12 +465,11 @@ tbody td {
 /* ===== TOOLBAR GAFETE ===== */
 .badge-toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-end; /* o center si prefieres centrado */
   gap: 8px;
-  background: #000;
+  background: #000;  /* barra visible en pantalla */
   padding: 6px;
 }
-
 .badge-toolbar button {
   background: transparent;
   border: none;
@@ -482,6 +481,9 @@ tbody td {
 .badge-toolbar button:hover {
   opacity: 0.75;
 }
-.no-export {
-  display: none !important;
+/* NO APARECE al imprimir */
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }
