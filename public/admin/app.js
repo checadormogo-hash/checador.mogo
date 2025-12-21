@@ -152,6 +152,16 @@ async function loadWorkers() {
   }
 }
 
+/* ================== TOAST ================== */
+function showToast() {
+  const toast = document.getElementById('toastSuccess');
+  toast.style.display = 'block';
+
+  setTimeout(() => {
+    toast.style.display = 'none';
+  }, 2500);
+}
+
 /* ================== GUARDAR ================== */
 saveWorkerBtn.addEventListener('click', async () => {
   const worker = {
@@ -175,7 +185,14 @@ saveWorkerBtn.addEventListener('click', async () => {
   try {
     workersCache.push(worker);
     await apiSaveWorkers(workersCache);
-    addModal.style.display = 'none';
+
+    // 🔄 LIMPIAR CAMPOS (NO cerrar modal)
+    document.getElementById('workerName').value = '';
+    document.getElementById('workerPin').value = '';
+    document.getElementById('fechaIngreso').value = '';
+    document.getElementById('workerActive').value = 'SI';
+
+    showToast();
     loadWorkers();
   } catch (err) {
     console.error(err);
