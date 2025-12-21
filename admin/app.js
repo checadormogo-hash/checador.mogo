@@ -1,4 +1,4 @@
-// ===== LOGIN VISUAL =====
+// ================== LOGIN ==================
 const overlay = document.getElementById('loginOverlay');
 const userInput = document.getElementById('adminUser');
 const passInput = document.getElementById('adminPass');
@@ -6,14 +6,6 @@ const error = document.getElementById('loginError');
 
 const adminApp = document.getElementById('adminApp');
 const fab = document.getElementById('openAddModal');
-
-const pinInput = document.getElementById('workerPin');
-
-pinInput.addEventListener('input', () => {
-  pinInput.value = pinInput.value
-    .replace(/\D/g, '') // quita todo lo que no sea número
-    .slice(0, 4);       // máximo 4 dígitos
-});
 
 function tryLogin() {
   if (userInput.value === 'admin' && passInput.value === '1234') {
@@ -28,86 +20,51 @@ function tryLogin() {
 userInput.addEventListener('keydown', e => e.key === 'Enter' && passInput.focus());
 passInput.addEventListener('keydown', e => e.key === 'Enter' && tryLogin());
 
-// ===== MODAL ALTA TRABAJADOR =====
+
+// ================== MENÚ ==================
+const menuToggle = document.getElementById('menuToggle');
+const sideMenu = document.getElementById('sideMenu');
+const menuOverlay = document.getElementById('menuOverlay');
+const closeMenu = document.getElementById('closeMenu');
+
+function openMenu() {
+  sideMenu.classList.add('show');
+  menuOverlay.classList.add('show');
+}
+
+function closeMenuFn() {
+  sideMenu.classList.remove('show');
+  menuOverlay.classList.remove('show');
+}
+
+menuToggle.onclick = openMenu;
+closeMenu.onclick = closeMenuFn;
+menuOverlay.onclick = closeMenuFn;
+
+
+// ================== MODAL ALTA ==================
 const addModal = document.getElementById('addWorkerModal');
 const openBtn = document.getElementById('openAddModal');
 const closeBtn = document.getElementById('closeAddModal');
-
-addModal.style.display = 'none';
+const saveWorkerBtn = document.getElementById('saveWorker');
 
 openBtn.onclick = () => addModal.style.display = 'flex';
 closeBtn.onclick = () => addModal.style.display = 'none';
 
-const menuToggle = document.getElementById('menuToggle');
-  const sideMenu = document.getElementById('sideMenu');
-  const menuOverlay = document.getElementById('menuOverlay');
-  const closeMenu = document.getElementById('closeMenu');
-
-  function openMenu() {
-    sideMenu.classList.add('show');
-    menuOverlay.classList.add('show');
-  }
-
-  function closeMenuFn() {
-    sideMenu.classList.remove('show');
-    menuOverlay.classList.remove('show');
-  }
-
-  menuToggle.onclick = openMenu;
-  closeMenu.onclick = closeMenuFn;
-  menuOverlay.onclick = closeMenuFn;
-
-  const saveWorkerBtn = document.getElementById('saveWorker');
-
-saveWorkerBtn.addEventListener('click', () => {
-
-  const worker = {
-    id: 'EMP-' + Date.now(), // ID único simple (luego lo mejoramos)
-    nombre: document.getElementById('workerName').value.trim(),
-    pin: document.getElementById('workerPin').value.trim(),
-    activo: document.getElementById('workerActive').value,
-    fechaAlta: document.getElementById('fechaIngreso').value
-  };
-
-  if (!worker.nombre || !worker.pin || !worker.fechaAlta) {
-    alert('Completa todos los campos');
-    return;
-  }
-  if (!worker.nombre || worker.pin.length !== 4 || !worker.fechaAlta) {
-  alert('El PIN debe tener exactamente 4 dígitos');
-  return;
-  }
-
-  fetch('https://script.google.com/macros/s/AKfycbwU4Q07LUsPkXgL4HxdfEp5jzPkqj8qiVONnmUM5lB1Z2oJN9LOaVUdVROifo-fTsEg/exec', {
-  method: 'POST',
-  body: JSON.stringify(worker)
-})
-.then(res => res.json())
-.then(data => {
-  if (data.status === 'ok') {
-    alert('Trabajador guardado correctamente');
-    addModal.style.display = 'none';
-  } else {
-    alert('Error al guardar');
-  }
-})
-.catch(err => {
-  console.error(err);
-  alert('Error de conexión con el servidor');
-});
-
-  document.getElementById('addWorkerModal').classList.remove('show');
+const pinInput = document.getElementById('workerPin');
+pinInput.addEventListener('input', () => {
+  pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 4);
 });
 
 
-
+// ================== MODAL LISTA ==================
 const workersModal = document.getElementById('workersModal');
 const openWorkersBtn = document.getElementById('menuWorkers');
 const closeWorkersModal = document.getElementById('closeWorkersModal');
 const workersTableBody = document.getElementById('workersTableBody');
 
 openWorkersBtn.onclick = () => {
-  closeMenuFn(); // cerramos menú hamburguesa
+  closeMenuFn();
   workersModal.style.display = 'flex';
   loadWorkers();
 };
@@ -116,10 +73,16 @@ closeWorkersModal.onclick = () => {
   workersModal.style.display = 'none';
 };
 
+
+// ================== CACHE ==================
+let workersCache = [];
+
+
+// ================== RENDER ==================
 function renderWorkers(data) {
   workersTableBody.innerHTML = '';
 
-  if (data.length === 0) {
+  if (!Array.isArray(data) || data.length === 0) {
     workersTableBody.innerHTML = `
       <tr>
         <td colspan="6">No hay trabajadores registrados</td>
@@ -148,27 +111,85 @@ function renderWorkers(data) {
   });
 }
 
-let workersCache = [];
 
+// ================== LOAD ==================
 async function loadWorkers() {
-  const r = await fetch('/api/workers');
-  const data = await r.json();
-  workersCache = data.workers || [];
-  renderWorkers(workersCache);
+  try {
+    const r = await fetch('/api/workers', { cache: 'no-store' });
+    const data = await r.json();
+
+    workersCache = Array.isArray(data.workers) ? data.workers : [];
+    renderWorkers(workersCache);
+
+  } catch (err) {
+    console.error(err);
+    workersTableBody.innerHTML = `
+      <tr>
+        <td colspan="6">Error al cargar trabajadores</td>
+      </tr>
+    `;
+  }
 }
 
+
+// ================== GUARDAR ==================
+saveWorkerBtn.addEventListener('click', async () => {
+  const worker = {
+    id: 'EMP-' + Date.now(),
+    nombre: document.getElementById('workerName').value.trim(),
+    pin: document.getElementById('workerPin').value.trim(),
+    activo: document.getElementById('workerActive').value,
+    fechaAlta: document.getElementById('fechaIngreso').value
+  };
+
+  if (!worker.nombre || worker.pin.length !== 4 || !worker.fechaAlta) {
+    alert('Completa correctamente todos los campos');
+    return;
+  }
+
+  // evitar PIN duplicado
+  if (workersCache.some(w => w.pin === worker.pin)) {
+    alert('Ese PIN ya existe');
+    return;
+  }
+
+  workersCache.push(worker);
+
+  try {
+    await fetch('/api/workers', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workers: workersCache })
+    });
+
+    alert('Trabajador guardado correctamente');
+    addModal.style.display = 'none';
+    loadWorkers();
+
+  } catch (err) {
+    console.error(err);
+    alert('Error al guardar trabajador');
+  }
+});
+
+
+// ================== ELIMINAR ==================
 async function deleteWorker(id) {
-  if (!confirm('¿Eliminar trabajador?')) return;
+  if (!confirm('¿Eliminar trabajador definitivamente?')) return;
 
   workersCache = workersCache.filter(w => w.id !== id);
 
-  await fetch('/api/workers', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ workers: workersCache })
-  });
+  try {
+    await fetch('/api/workers', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workers: workersCache })
+    });
 
-  loadWorkers();
+    loadWorkers();
+
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo eliminar');
+  }
 }
-
-
