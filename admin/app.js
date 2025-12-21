@@ -140,25 +140,54 @@ window.renderWorkers = function (data) {
 }
 
 function loadWorkers() {
-  const script = document.createElement('script');
-  script.src = 'https://script.google.com/macros/s/AKfycbw2gEQK8XuSwYBqIZDYezPITThIKnm9XbfNB4pHoNh7f50_6B6Om2SmBQGxOAYRSpmA/exec?callback=renderWorkers';
-  document.body.appendChild(script);
+  fetch('/api/workers')
+    .then(res => res.json())
+    .then(data => {
+      workersTableBody.innerHTML = '';
+
+      data.forEach(worker => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+          <td>${worker.id}</td>
+          <td>${worker.nombre}</td>
+          <td>${worker.pin}</td>
+          <td>${worker.activo}</td>
+          <td>${worker.fechaAlta}</td>
+          <td class="actions">
+            <button class="btn-icon btn-delete" onclick="deleteWorker('${worker.id}')">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        `;
+
+        workersTableBody.appendChild(tr);
+      });
+    })
+    .catch(err => {
+      console.error(err);
+      alert('No se pudieron cargar los trabajadores');
+    });
 }
 
 function deleteWorker(id) {
   if (!confirm('¿Eliminar trabajador definitivamente?')) return;
 
-  window.deleteCallback = function (res) {
-    if (res.status === 'deleted') {
-      alert('Trabajador eliminado');
-      loadWorkers(); // 🔄 refresca tabla
-    } else {
-      alert('No se pudo eliminar');
-    }
-  };
-
-  const script = document.createElement('script');
-  script.src = `https://script.google.com/macros/s/AKfycbwsn3Ri-QAIMzOFtD8AjiTUAQw6GCodyI6FpggaM-meJl-T3P1hw4LVAx8o3LUpyggi/exec?action=delete&id=${id}&callback=deleteCallback`;
-  document.body.appendChild(script);
+  fetch(`/api/workers?id=${id}`, {
+    method: 'DELETE'
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'deleted') {
+        alert('Trabajador eliminado');
+        loadWorkers(); // refresca tabla
+      } else {
+        alert('No se pudo eliminar');
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Error de conexión');
+    });
 }
 
