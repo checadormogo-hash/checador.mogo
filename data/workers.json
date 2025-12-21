@@ -1,0 +1,9 @@
+[
+  {
+    "id": "EMP-TEST",
+    "nombre": "Trabajador prueba",
+    "pin": "1234",
+    "activo": "SI",
+    "fechaAlta": "2025-01-01"
+  }
+]
