@@ -268,10 +268,16 @@ if (qrBtn) {
 downloadQR.addEventListener('click', () => {
   const badge = document.getElementById('badge');
 
+  // ocultar botones
+  document.querySelectorAll('.no-export').forEach(el => el.style.display = 'none');
+
   html2canvas(badge).then(canvas => {
     const link = document.createElement('a');
     link.download = 'gafete-trabajador.png';
     link.href = canvas.toDataURL();
     link.click();
+
+    // restaurar botones
+    document.querySelectorAll('.no-export').forEach(el => el.style.display = '');
   });
 });

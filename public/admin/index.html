@@ -186,12 +186,24 @@
   </div>
 </div>
 
-<div id="qrModal" class="modal">
+<div id="qrModal">
   <div class="modal-content badge" id="badge">
-    
-    <button id="closeQrModal" class="close">✕</button>
 
-    <!-- LOGO -->
+    <!-- BARRA SUPERIOR (VENTANA) -->
+    <div class="badge-toolbar no-export no-print">
+      <button id="downloadQR" title="Descargar">
+        <i class="fa-solid fa-download"></i>
+      </button>
+
+      <button onclick="window.print()" title="Imprimir">
+        <i class="fa-solid fa-print"></i>
+      </button>
+
+      <button id="closeQrModal" title="Cerrar">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <!-- LOGO / BANNER -->
     <div class="badge-header">
       <img src="/img/LogoMogo.jpg" alt="LogoSuperMogo" class="badge-logo">
     </div>
@@ -202,12 +214,6 @@
       <p class="badge-id">ID: <span id="badgeId"></span></p>
 
       <img id="qrImage" class="badge-qr" alt="QR trabajador">
-    </div>
-
-    <!-- ACTIONS -->
-    <div class="badge-actions no-print">
-      <button id="downloadQR">Descargar</button>
-      <button onclick="window.print()">Imprimir</button>
     </div>
 
   </div>
