@@ -240,28 +240,11 @@ workersTableBody.addEventListener('click', async (e) => {
     badgeName.textContent = worker.nombre;
     badgeId.textContent = worker.id;
 
-    // Generar QR en base64 para evitar problemas de CORS
+    // QR con ID + PIN (PIN oculto)
     const qrValue = `${worker.id}|${worker.pin}`;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrValue)}`;
+    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrValue)}`;
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = qrUrl;
-
-    img.onload = () => {
-      // Convertir a base64
-      const canvasTemp = document.createElement('canvas');
-      canvasTemp.width = img.width;
-      canvasTemp.height = img.height;
-      const ctx = canvasTemp.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-
-      qrImage.src = canvasTemp.toDataURL('image/png');
-
-      // Mostrar modal solo cuando el QR ya está listo
-      qrModal.style.display = 'flex';
-    };
-
+    qrModal.style.display = 'flex';
     return;
   }
 
@@ -289,9 +272,9 @@ downloadQR.addEventListener('click', () => {
   const controls = document.querySelectorAll('.no-export');
   controls.forEach(el => el.style.display = 'none');
 
-  // esperar a que la imagen QR ya esté cargada
-  qrImage.onload = () => {
-    html2canvas(badge).then(canvas => {
+  // función para generar la imagen del gafete
+  function generarGafete() {
+    html2canvas(badge, { useCORS: true }).then(canvas => {
       const link = document.createElement('a');
       link.download = 'gafete-trabajador.png';
       link.href = canvas.toDataURL();
@@ -300,8 +283,12 @@ downloadQR.addEventListener('click', () => {
       // restaurar botones
       controls.forEach(el => el.style.display = '');
     });
-  };
+  }
 
-  // disparar onload si la imagen ya estaba cargada
-  if (qrImage.complete) qrImage.onload();
+  // generar solo si el QR ya está cargado
+  if (qrImage.complete && qrImage.naturalHeight !== 0) {
+    generarGafete();
+  } else {
+    qrImage.onload = generarGafete;
+  }
 });
