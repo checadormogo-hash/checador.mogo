@@ -1,11 +1,11 @@
-const pinInput = document.getElementById('pinInput');
+/*const pinInput = document.getElementById('pinInput');
 const pinError = document.getElementById('pinError');
 const pinOverlay = document.getElementById('pinOverlay');
 const actionButtons = document.querySelectorAll('.action-btn');
 
 /* ===============================
    PIN (solo estructura por ahora)
-================================ */
+================================ 
 pinInput.addEventListener('input', () => {
   pinError.classList.remove('show');
 
@@ -17,7 +17,7 @@ pinInput.addEventListener('input', () => {
       pinInput.focus();
     }, 300);
   }
-});
+});*/
 
 /* ===============================
    BOTONES (estructura)
