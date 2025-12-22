@@ -265,7 +265,7 @@ function closeConfirmation() {
   confirmModal.classList.add('oculto');
 
   // REGRESAR AL MODAL DE ESCANEO
-  openAutoModal(); // 🔥 función que YA EXISTE en tu sistema
+  showAutoModal();
 }
 
 // BOTON X
