@@ -203,12 +203,37 @@ function processQR(qrValue) {
 
   registerStep(employee);
 }
-function registerStep(employee) {
+
+async function registerStep(employee) {
+  const now = new Date();
+  const time = now.toTimeString().slice(0, 5);
+  const date = now.toISOString().split('T')[0];
+
+  try {
+    await fetch('/api/data/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        workerId: employee.id,
+        step: employee.step,
+        time,
+        date
+      })
+    });
+  } catch (e) {
+    showCriticalModal(
+      'Error',
+      'No se pudo guardar la checada'
+    );
+    return;
+  }
+
+  // ===== MENSAJES =====
   switch (employee.step) {
     case 0:
       showConfirmModal(
         'Entrada registrada',
-        `Hola ${employee.name}, bienvenido. Gracias por asistir.`
+        `Hola ${employee.name}, bienvenido.`
       );
       employee.step = 1;
       break;
@@ -216,7 +241,7 @@ function registerStep(employee) {
     case 1:
       showConfirmModal(
         'Salida a comida',
-        `Buen provecho ${employee.name}, anhelamos tu regreso.`
+        `Buen provecho ${employee.name}.`
       );
       employee.step = 2;
       break;
@@ -232,7 +257,7 @@ function registerStep(employee) {
     case 3:
       showConfirmModal(
         'Salida registrada',
-        `Gracias por todo tu esfuerzo ${employee.name}, descansa.`
+        `Gracias por tu esfuerzo ${employee.name}.`
       );
       employee.step = 0;
       break;
