@@ -1,4 +1,6 @@
 const actionButtons = document.querySelectorAll('.action-btn');
+const scannerInput = document.querySelector('.scanner-input');
+
 /*const pinInput = document.getElementById('pinInput');
 const pinError = document.getElementById('pinError');
 const pinOverlay = document.getElementById('pinOverlay');
@@ -105,5 +107,12 @@ autoTabs.forEach(tab => {
         tab.dataset.mode === 'camera' ? 'autoCamera' : 'autoScanner'
       )
       .classList.add('active');
+    
+      // foco automático en scanner
+      if (tab.dataset.mode === 'scanner') {
+        setTimeout(() => {
+        scannerInput.focus();
+        }, 100);
+      }      
   });
 });
