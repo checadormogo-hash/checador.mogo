@@ -1,7 +1,8 @@
+const actionButtons = document.querySelectorAll('.action-btn');
 /*const pinInput = document.getElementById('pinInput');
 const pinError = document.getElementById('pinError');
 const pinOverlay = document.getElementById('pinOverlay');
-const actionButtons = document.querySelectorAll('.action-btn');
+
 
 /* ===============================
    PIN (solo estructura por ahora)
