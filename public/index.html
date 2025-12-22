@@ -57,25 +57,57 @@
     </div>
   </div>
 
-  <!-- ===== MODAL PIN ===== -->
-  <div class="pin-overlay" id="pinOverlay">
-    <div class="pin-modal">
-      <i class="fa-solid fa-lock"></i>
-      <h3>Ingresa tu PIN</h3>
-      <p>Acceso rápido para registrar asistencia</p>
+<!-- ===== MODAL AUTOMÁTICO ESCANEO ===== -->
+<div class="auto-overlay" id="autoOverlay" style="display:none;">
+  <div class="auto-modal">
 
-      <input type="password"
-             maxlength="4"
-             inputmode="numeric"
-             class="pin-input"
-             id="pinInput"
-             autofocus>
-
-      <div class="pin-error" id="pinError">
-        Trabajador no registrado o PIN incorrecto
-      </div>
+    <!-- HEADER -->
+    <div class="auto-header">
+      <h3>Registro automático</h3>
+      <button class="auto-close" id="closeAutoModal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
     </div>
+
+    <!-- SELECTOR -->
+    <div class="auto-tabs">
+      <button class="auto-tab active" data-mode="camera">
+        <i class="fa-solid fa-camera"></i>
+        Cámara
+      </button>
+
+      <button class="auto-tab" data-mode="scanner">
+        <i class="fa-solid fa-barcode"></i>
+        Scanner
+      </button>
+    </div>
+
+    <!-- CONTENIDO -->
+    <div class="auto-content">
+
+      <!-- MODO CÁMARA -->
+      <div class="auto-panel active" id="autoCamera">
+        <div class="camera-placeholder">
+          <i class="fa-solid fa-qrcode"></i>
+          <p>Apunta la cámara al QR del gafete</p>
+        </div>
+      </div>
+
+      <!-- MODO SCANNER -->
+      <div class="auto-panel" id="autoScanner">
+        <label>ID del trabajador</label>
+        <input
+          type="text"
+          class="scanner-input"
+          placeholder="Escanea o escribe el ID"
+        >
+        <small>El scanner llenará el campo automáticamente</small>
+      </div>
+
+    </div>
+
   </div>
+</div>
 
   <!-- JS -->
   <script src="scripts.js"></script>
