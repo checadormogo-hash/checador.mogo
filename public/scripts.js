@@ -34,3 +34,47 @@ actionButtons.forEach(btn => {
    UTILIDADES (para después)
 ================================ */
 // pinOverlay.style.display = 'none';
+/* ================== MODAL AUTOMÁTICO ================== */
+const autoOverlay = document.getElementById('autoOverlay');
+const closeAutoModal = document.getElementById('closeAutoModal');
+
+let inactivityTimer = null;
+const INACTIVITY_TIME = 30000; // 30 segundos
+
+/* ===== MOSTRAR MODAL ===== */
+function showAutoModal() {
+  clearTimeout(inactivityTimer);
+  autoOverlay.style.display = 'flex';
+}
+
+/* ===== OCULTAR MODAL ===== */
+function hideAutoModal() {
+  autoOverlay.style.display = 'none';
+  startInactivityTimer();
+}
+
+/* ===== CONTADOR DE INACTIVIDAD ===== */
+function startInactivityTimer() {
+  clearTimeout(inactivityTimer);
+
+  inactivityTimer = setTimeout(() => {
+    showAutoModal();
+  }, INACTIVITY_TIME);
+}
+
+/* ===== BOTÓN CERRAR ===== */
+closeAutoModal.addEventListener('click', hideAutoModal);
+
+/* ===== DETECTAR ACTIVIDAD EN PANTALLA ===== */
+['click', 'touchstart', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (autoOverlay.style.display === 'none') {
+      startInactivityTimer();
+    }
+  });
+});
+
+/* ===== MOSTRAR AL CARGAR ===== */
+window.addEventListener('load', () => {
+  showAutoModal();
+});
