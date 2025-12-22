@@ -2,6 +2,16 @@ const actionButtons = document.querySelectorAll('.action-btn');
 const scannerInput = document.querySelector('.scanner-input');
 const currentDateEl = document.getElementById('currentDate');
 
+// ===== DATOS DE PRUEBA (luego van a backend) =====
+const employees = [
+  {
+    id: "EMP-1766349467706",
+    name: "José Francisco",
+    pin: "8592",
+    step: 0
+  }
+];
+
 /*const pinInput = document.getElementById('pinInput');
 const pinError = document.getElementById('pinError');
 const pinOverlay = document.getElementById('pinOverlay');
@@ -153,6 +163,83 @@ autoTabs.forEach(tab => {
   });
 });
 
+scannerInput.addEventListener('change', () => {
+  const value = scannerInput.value.trim();
+  scannerInput.value = "";
+
+  if (!value.includes('|')) {
+    showWarningModal('QR inválido', 'Formato incorrecto');
+    return;
+  }
+
+  processQR(value);
+});
+
+function processQR(qrValue) {
+  const [empId, pin] = qrValue.split('|');
+
+  if (!empId || !pin) {
+    showWarningModal('QR inválido', 'Formato incorrecto');
+    return;
+  }
+
+  const employee = employees.find(e => e.id === empId);
+
+  if (!employee) {
+    showCriticalModal(
+      'Usuario no registrado',
+      'El colaborador no existe en el sistema'
+    );
+    return;
+  }
+
+  if (employee.pin !== pin) {
+    showWarningModal(
+      'Datos incorrectos',
+      'Usuario o PIN incorrecto'
+    );
+    return;
+  }
+
+  registerStep(employee);
+}
+function registerStep(employee) {
+  switch (employee.step) {
+    case 0:
+      showConfirmModal(
+        'Entrada registrada',
+        `Hola ${employee.name}, bienvenido. Gracias por asistir.`
+      );
+      employee.step = 1;
+      break;
+
+    case 1:
+      showConfirmModal(
+        'Salida a comida',
+        `Buen provecho ${employee.name}, anhelamos tu regreso.`
+      );
+      employee.step = 2;
+      break;
+
+    case 2:
+      showConfirmModal(
+        'Entrada de comida',
+        `Bienvenido nuevamente ${employee.name}.`
+      );
+      employee.step = 3;
+      break;
+
+    case 3:
+      showConfirmModal(
+        'Salida registrada',
+        `Gracias por todo tu esfuerzo ${employee.name}, descansa.`
+      );
+      employee.step = 0;
+      break;
+  }
+}
+
+
 const confirmModal = document.getElementById('confirmModal');
 const confirmTitle = document.getElementById('confirmTitle');
 const confirmMessage = document.getElementById('confirmMessage');
@@ -184,6 +271,20 @@ function closeConfirmation() {
 // BOTON X
 closeConfirmModal.addEventListener('click', closeConfirmation);
 
+function showWarningModal(title, message) {
+  setConfirmStyle('#d97706');
+  showConfirmModal(title, message, 2500);
+}
+
+function showCriticalModal(title, message) {
+  setConfirmStyle('#dc2626');
+  showConfirmModal(title, message, 3000);
+}
+
+function setConfirmStyle(color) {
+  const box = document.querySelector('.confirm-box');
+  if (box) box.style.background = color;
+}
 
 updateDateTime();
 setInterval(updateDateTime, 1000);
