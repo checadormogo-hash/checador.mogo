@@ -1,5 +1,6 @@
 /* ================== CONFIG ================== */
 const API_WORKERS = '/api/data/workers';
+const API_RECORDS = '/api/data/records';
 
 /* ================== LOGIN ================== */
 const overlay = document.getElementById('loginOverlay');
@@ -19,6 +20,7 @@ function tryLogin() {
     overlay.style.display = 'none';
     adminApp.style.display = 'block';
     fab.style.display = 'flex';
+    loadRecords();
   } else {
     error.classList.add('show');
   }
@@ -112,6 +114,67 @@ async function apiSaveWorkers(arr) {
     body: JSON.stringify({ workers: arr })
   });
   if (!r.ok) throw new Error('PUT error');
+}
+
+
+async function loadRecords() {
+  const tbody = document.querySelector('table tbody');
+  tbody.innerHTML = '';
+
+  try {
+    // traer trabajadores (ya los usas)
+    if (!workersCache.length) {
+      const w = await apiGetWorkers();
+      workersCache = w.workers || [];
+    }
+
+    // traer registros
+    const r = await fetch(API_RECORDS, { cache: 'no-store' });
+    const data = await r.json();
+    const records = data.records || [];
+
+    if (!records.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7">No hay registros de asistencia</td>
+        </tr>
+      `;
+      return;
+    }
+
+    records.forEach(rec => {
+      const worker = workersCache.find(w => w.id === rec.workerId);
+
+      const nombre = worker ? worker.nombre : 'Trabajador no encontrado';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${nombre}</td>
+        <td>${rec.date}</td>
+        <td>${rec.entrada || '-'}</td>
+        <td>${rec.salidaComida || '-'}</td>
+        <td>${rec.entradaComida || '-'}</td>
+        <td>${rec.salida || '-'}</td>
+        <td class="actions">
+          <button class="btn-icon btn-edit">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          <button class="btn-icon btn-delete">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7">Error al cargar asistencias</td>
+      </tr>
+    `;
+  }
 }
 
 /* ================== RENDER ================== */
