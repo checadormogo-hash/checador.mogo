@@ -40,7 +40,7 @@ const autoOverlay = document.getElementById('autoOverlay');
 const closeAutoModal = document.getElementById('closeAutoModal');
 
 let inactivityTimer = null;
-const INACTIVITY_TIME = 30000; // 30 segundos
+const INACTIVITY_TIME = 15000; // 15 segundos
 
 /* ===== MOSTRAR MODAL ===== */
 function showAutoModal() {
@@ -78,4 +78,32 @@ closeAutoModal.addEventListener('click', hideAutoModal);
 /* ===== MOSTRAR AL CARGAR ===== */
 window.addEventListener('load', () => {
   showAutoModal();
+});
+
+/* ===== BOTÓN REGISTRO AUTOMÁTICO ===== */
+const openAutoModalBtn = document.getElementById('openAutoModal');
+
+openAutoModalBtn.addEventListener('click', () => {
+  showAutoModal();        // abre el modal
+  clearTimeout(inactivityTimer); // detiene contador
+});
+
+/* ===== CAMBIO DE MODO CÁMARA / SCANNER ===== */
+const autoTabs = document.querySelectorAll('.auto-tab');
+const autoPanels = document.querySelectorAll('.auto-panel');
+
+autoTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    // quitar activos
+    autoTabs.forEach(t => t.classList.remove('active'));
+    autoPanels.forEach(p => p.classList.remove('active'));
+
+    // activar seleccionado
+    tab.classList.add('active');
+    document
+      .getElementById(
+        tab.dataset.mode === 'camera' ? 'autoCamera' : 'autoScanner'
+      )
+      .classList.add('active');
+  });
 });
