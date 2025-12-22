@@ -153,5 +153,37 @@ autoTabs.forEach(tab => {
   });
 });
 
+const confirmModal = document.getElementById('confirmModal');
+const confirmTitle = document.getElementById('confirmTitle');
+const confirmMessage = document.getElementById('confirmMessage');
+const closeConfirmModal = document.getElementById('closeConfirmModal');
+
+let confirmTimeout = null;
+
+// ABRIR MODAL CONFIRMACION
+function showConfirmModal(title, message, duration = 2500) {
+  confirmTitle.textContent = title;
+  confirmMessage.textContent = message;
+
+  confirmModal.classList.remove('oculto');
+
+  confirmTimeout = setTimeout(() => {
+    closeConfirmation();
+  }, duration);
+}
+
+// CERRAR CONFIRMACION
+function closeConfirmation() {
+  clearTimeout(confirmTimeout);
+  confirmModal.classList.add('oculto');
+
+  // REGRESAR AL MODAL DE ESCANEO
+  openAutoModal(); // 🔥 función que YA EXISTE en tu sistema
+}
+
+// BOTON X
+closeConfirmModal.addEventListener('click', closeConfirmation);
+
+
 updateDateTime();
 setInterval(updateDateTime, 1000);
