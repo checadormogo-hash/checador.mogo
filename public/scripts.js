@@ -1,5 +1,6 @@
 const actionButtons = document.querySelectorAll('.action-btn');
 const scannerInput = document.querySelector('.scanner-input');
+const currentDateEl = document.getElementById('currentDate');
 
 /*const pinInput = document.getElementById('pinInput');
 const pinError = document.getElementById('pinError');
@@ -21,6 +22,32 @@ pinInput.addEventListener('input', () => {
     }, 300);
   }
 });*/
+
+function updateDateTime() {
+  const now = new Date();
+
+  const dateFormatter = new Intl.DateTimeFormat('es-MX', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long'
+  });
+
+  const timeFormatter = new Intl.DateTimeFormat('es-MX', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const date = dateFormatter.format(now);
+  const time = timeFormatter.format(now);
+
+  // Capitalizar primera letra
+  const formattedDate =
+    date.charAt(0).toUpperCase() + date.slice(1);
+
+  currentDateEl.textContent = `${formattedDate} · ${time}`;
+}
+
 
 /* ===============================
    BOTONES (estructura)
@@ -116,3 +143,6 @@ autoTabs.forEach(tab => {
       }      
   });
 });
+
+updateDateTime();
+setInterval(updateDateTime, 1000);
