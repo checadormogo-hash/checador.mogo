@@ -75,6 +75,15 @@ const INACTIVITY_TIME = 15000; // 15 segundos
 function showAutoModal() {
   clearTimeout(inactivityTimer);
   autoOverlay.style.display = 'flex';
+
+  // Si el modo activo es SCANNER → enfocar input
+  const activeTab = document.querySelector('.auto-tab.active');
+  if (activeTab && activeTab.dataset.mode === 'scanner') {
+    setTimeout(() => {
+      const scannerInput = document.querySelector('.scanner-input');
+      if (scannerInput) scannerInput.focus();
+    }, 100);
+  }
 }
 
 /* ===== OCULTAR MODAL ===== */
