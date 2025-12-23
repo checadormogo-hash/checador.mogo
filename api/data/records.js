@@ -5,7 +5,6 @@ const token = process.env.BLOB_READ_WRITE_TOKEN;
 
 export default async function handler(req, res) {
   try {
-    // ===== GET =====
     if (req.method === 'GET') {
       try {
         const file = await get(KEY, { token, cacheControl: 'no-store' });
@@ -16,19 +15,15 @@ export default async function handler(req, res) {
       }
     }
 
-    // ===== POST =====
     if (req.method === 'POST') {
       let body = req.body;
-
       if (typeof body === 'string') {
         try { body = JSON.parse(body); } catch {}
       }
 
-      console.log('POST RECORD BODY:', body);
-
       const { workerId, step, time, date } = body;
 
-      // 🔥 Si el archivo no existe, lo creamos
+      // Obtener registros existentes
       let data;
       try {
         const file = await get(KEY, { token, cacheControl: 'no-store' });
@@ -37,10 +32,12 @@ export default async function handler(req, res) {
         data = { records: [] };
       }
 
+      // 🔎 Buscar registro existente SOLO para ese trabajador y día
       let record = data.records.find(
         r => r.workerId === workerId && r.date === date
       );
 
+      // Crear si no existe
       if (!record) {
         record = {
           workerId,
@@ -50,16 +47,18 @@ export default async function handler(req, res) {
           entradaComida: null,
           salida: null
         };
-        data.records.push(record);
+        data.records.push(record); // Agregar al array SIN tocar otros
       }
 
-      if (step === 0) record.entrada = time;
-      if (step === 1) record.salidaComida = time;
-      if (step === 2) record.entradaComida = time;
-      if (step === 3) record.salida = time;
+      // Guardar según paso
+      switch (step) {
+        case 0: record.entrada = time; break;
+        case 1: record.salidaComida = time; break;
+        case 2: record.entradaComida = time; break;
+        case 3: record.salida = time; break;
+      }
 
-      console.log('GUARDANDO RECORD:', data);
-
+      // Guardar TODO el array, no solo el último
       await put(
         KEY,
         JSON.stringify(data, null, 2),
