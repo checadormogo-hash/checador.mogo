@@ -1,3 +1,8 @@
+// ===== BLOQUEO ANTI DOBLE CHECADA =====
+const recentScans = new Map();
+const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
+
+
 const actionButtons = document.querySelectorAll('.action-btn');
 const scannerInput = document.querySelector('.scanner-input');
 const currentDateEl = document.getElementById('currentDate');
@@ -52,6 +57,20 @@ actionButtons.forEach(btn => {
     console.log('Acción presionada:', action);
   });
 });
+
+function isBlocked(workerId) {
+  const lastTime = recentScans.get(workerId);
+  if (!lastTime) return false;
+
+  const now = Date.now();
+  if (now - lastTime < BLOCK_TIME) {
+    return true;
+  }
+
+  // Si ya pasó el tiempo, liberar
+  recentScans.delete(workerId);
+  return false;
+}
 
 // ===== MODAL AUTOMÁTICO =====
 const autoOverlay = document.getElementById('autoOverlay');
@@ -161,12 +180,22 @@ function processQR(qrValue) {
     showWarningModal('Datos incorrectos', 'Usuario o PIN incorrecto');
     return;
   }
+// 🚫 BLOQUEO POR DOBLE CHECADA
+if (isBlocked(employee.id)) {
+  showWarningModal(
+    'Checada reciente',
+    'Ya registraste tu asistencia. Espera unos minutos.'
+  );
+  return;
+}
 
   registerStep(employee);
 }
 
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
+  // ⏱️ Marcar checada reciente
+  recentScans.set(employee.id, Date.now());
   const now = new Date();
   const time = now.toTimeString().slice(0, 5);
   const date = now.toISOString().split('T')[0];
