@@ -1,58 +1,52 @@
 import { get, put } from '@vercel/blob';
 
-const KEY = 'data/records.json';
+const token = process.env.BLOB_READ_WRITE_TOKEN;
 
 export default async function handler(req, res) {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-
   try {
 
-    // ================= GET =================
+    /* =======================
+       GET (opcional futuro)
+    ======================= */
     if (req.method === 'GET') {
-      try {
-        const file = await get(KEY, {
-          token,
-          cacheControl: 'no-store'
-        });
-        const data = await file.json();
-        return res.status(200).json(data);
-      } catch {
-        return res.status(200).json({ records: [] });
-      }
+      return res.status(200).json({ ok: true });
     }
 
-    // ================= POST =================
+    /* =======================
+       POST → guardar checada
+    ======================= */
     if (req.method === 'POST') {
       let body = req.body;
-
       if (typeof body === 'string') {
-        body = JSON.parse(body);
+        try { body = JSON.parse(body); } catch {}
       }
 
       const { workerId, step, time, date } = body;
 
-      // Leer archivo actual
-      let data = { records: [] };
-
-      try {
-        const file = await get(KEY, {
-          token,
-          cacheControl: 'no-store'
-        });
-        data = await file.json();
-      } catch {
-        // si no existe, usamos el vacío
+      if (!workerId || step === undefined || !time || !date) {
+        return res.status(400).json({ error: 'Datos incompletos' });
       }
 
-      // Buscar registro por trabajador + fecha
-      let record = data.records.find(
-        r => r.workerId === workerId && r.date === date
-      );
+      const KEY = `data/records/${workerId}.json`;
 
-      // Crear nuevo si no existe
+      /* ===== LEER ARCHIVO DEL TRABAJADOR ===== */
+      let data;
+      try {
+        const file = await get(KEY, { token, cacheControl: 'no-store' });
+        data = await file.json();
+      } catch {
+        // 🔥 Si no existe, lo creamos
+        data = {
+          workerId,
+          records: []
+        };
+      }
+
+      /* ===== BUSCAR REGISTRO POR FECHA ===== */
+      let record = data.records.find(r => r.date === date);
+
       if (!record) {
         record = {
-          workerId,
           date,
           entrada: null,
           salidaComida: null,
@@ -62,28 +56,31 @@ export default async function handler(req, res) {
         data.records.push(record);
       }
 
-      // Asignar checada
-      if (step === 0) record.entrada = time;
-      if (step === 1) record.salidaComida = time;
-      if (step === 2) record.entradaComida = time;
-      if (step === 3) record.salida = time;
+      /* ===== ASIGNAR PASO ===== */
+      switch (step) {
+        case 0: record.entrada = time; break;
+        case 1: record.salidaComida = time; break;
+        case 2: record.entradaComida = time; break;
+        case 3: record.salida = time; break;
+      }
 
-      // 🔥 GUARDADO FORZADO (AQUÍ ESTABA EL PROBLEMA)
+      /* ===== GUARDAR ARCHIVO ===== */
       await put(
         KEY,
         JSON.stringify(data, null, 2),
         {
-          token,
-          contentType: 'application/json',
           access: 'public',
-          allowOverwrite: true   // 👈 ahora sí, sin ambigüedad
+          addRandomSuffix: false,
+          allowOverwrite: true,
+          contentType: 'application/json',
+          token
         }
       );
 
       return res.status(200).json({ ok: true });
     }
 
-    res.setHeader('Allow', 'GET, POST');
+    res.setHeader('Allow', 'POST');
     return res.status(405).end();
 
   } catch (err) {
