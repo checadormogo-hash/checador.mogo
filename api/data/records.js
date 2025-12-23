@@ -17,6 +17,8 @@ export default async function handler(req, res) {
     }
 
     // ===== POST =====
+    console.log('POST RECORD BODY:', body);
+
     if (req.method === 'POST') {
       let body = req.body;
       if (typeof body === 'string') {
@@ -55,6 +57,7 @@ export default async function handler(req, res) {
       if (step === 2) record.entradaComida = time;
       if (step === 3) record.salida = time;
 
+    console.log('GUARDANDO RECORD:', data);
       await put(
         KEY,
         JSON.stringify(data, null, 2),

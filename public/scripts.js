@@ -215,16 +215,28 @@ async function registerStep(employee) {
   const date = now.toISOString().split('T')[0];
 
   try {
-    await fetch('/api/data/records', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        workerId: employee.id,
-        step: employee.step,
-        time,
-        date
-      })
-    });
+   const resp = await fetch('/api/data/records', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    workerId: employee.id,
+    step: employee.step,
+    time,
+    date
+  })
+});
+
+const result = await resp.json();
+console.log('RESPUESTA RECORDS:', resp.status, result);
+
+if (!resp.ok) {
+  showCriticalModal(
+    'Error',
+    'No se pudo guardar la checada'
+  );
+  return;
+}
+
   } catch (e) {
     showCriticalModal(
       'Error',
