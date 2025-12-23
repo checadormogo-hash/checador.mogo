@@ -27,6 +27,13 @@ async function loadEmployees() {
   }
 }
 
+
+function getLocalDate() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now - offset).toISOString().split('T')[0];
+}
+
 // ===== FECHA Y HORA =====
 function updateDateTime() {
   const now = new Date();
