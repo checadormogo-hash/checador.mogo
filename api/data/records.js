@@ -35,8 +35,11 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true });
 
-  } catch (error) {
-    console.error('ERROR GUARDANDO RECORD:', error);
-    return res.status(500).json({ error: 'Error al guardar asistencia' });
-  }
+  } catch (err) {
+  console.error('API records error:', err);
+  return res.status(500).json({
+    error: 'Error al guardar asistencia',
+    details: err.message
+  });
+}
 }
