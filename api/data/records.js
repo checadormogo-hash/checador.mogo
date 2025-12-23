@@ -1,12 +1,18 @@
 import { get, put } from '@vercel/blob';
 
-const KEY = 'data/records.json';
-const token = process.env.BLOB_READ_WRITE_TOKEN;
-
 export default async function handler(req, res) {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+
   try {
     // ===== GET =====
     if (req.method === 'GET') {
+      const { date } = req.query;
+      if (!date) {
+        return res.status(400).json({ error: 'date requerida' });
+      }
+
+      const KEY = `data/records-${date}.json`;
+
       try {
         const file = await get(KEY, { token, cacheControl: 'no-store' });
         const data = await file.json();
@@ -20,12 +26,12 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       let body = req.body;
       if (typeof body === 'string') {
-        try { body = JSON.parse(body); } catch {}
+        body = JSON.parse(body);
       }
 
       const { workerId, step, time, date } = body;
+      const KEY = `data/records-${date}.json`;
 
-      // 🔥 OBTENER REGISTROS EXISTENTES
       let data;
       try {
         const file = await get(KEY, { token, cacheControl: 'no-store' });
@@ -34,12 +40,10 @@ export default async function handler(req, res) {
         data = { records: [] };
       }
 
-      // 🔎 BUSCAR SI YA HAY REGISTRO DEL TRABAJADOR PARA EL DÍA
       let record = data.records.find(
-        r => r.workerId === workerId && r.date === date
+        r => r.workerId === workerId
       );
 
-      // 🆕 CREAR SI NO EXISTE
       if (!record) {
         record = {
           workerId,
@@ -52,15 +56,11 @@ export default async function handler(req, res) {
         data.records.push(record);
       }
 
-      // ⏱ GUARDAR SEGÚN EL PASO
-      switch (step) {
-        case 0: record.entrada = time; break;
-        case 1: record.salidaComida = time; break;
-        case 2: record.entradaComida = time; break;
-        case 3: record.salida = time; break;
-      }
+      if (step === 0 && !record.entrada) record.entrada = time;
+      if (step === 1 && !record.salidaComida) record.salidaComida = time;
+      if (step === 2 && !record.entradaComida) record.entradaComida = time;
+      if (step === 3 && !record.salida) record.salida = time;
 
-      // 💾 GUARDAR TODO EL ARRAY, SIN SOBRESCRIBIR
       await put(
         KEY,
         JSON.stringify(data, null, 2),
