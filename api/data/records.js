@@ -6,53 +6,42 @@ const token = process.env.BLOB_READ_WRITE_TOKEN;
 export default async function handler(req, res) {
   try {
 
-    /* ================== GET ================== */
+    // ===== GET =====
     if (req.method === 'GET') {
       try {
         const file = await get(KEY, { token, cacheControl: 'no-store' });
         const data = await file.json();
-
-        // seguridad extra
-        if (!Array.isArray(data.records)) {
-          return res.status(200).json({ records: [] });
-        }
-
         return res.status(200).json(data);
-
       } catch {
-        // si aún no existe el archivo
         return res.status(200).json({ records: [] });
       }
     }
 
-    /* ================== POST ================== */
+    // ===== POST =====
     if (req.method === 'POST') {
-      let body = req.body;
 
+      let body = req.body;
       if (typeof body === 'string') {
-        try { body = JSON.parse(body); } catch {}
+        body = JSON.parse(body);
       }
 
       const { workerId, step, time, date } = body;
 
-      if (!workerId || step === undefined || !time || !date) {
-        return res.status(400).json({ error: 'Datos incompletos' });
-      }
-
-      let data = { records: [] };
-
+      // 1️⃣ Cargar archivo o crear estructura base
+      let data;
       try {
         const file = await get(KEY, { token, cacheControl: 'no-store' });
         data = await file.json();
       } catch {
-        // archivo no existe todavía
         data = { records: [] };
       }
 
+      // 2️⃣ Buscar registro del día
       let record = data.records.find(
         r => r.workerId === workerId && r.date === date
       );
 
+      // 3️⃣ Crear registro si no existe
       if (!record) {
         record = {
           workerId,
@@ -65,12 +54,13 @@ export default async function handler(req, res) {
         data.records.push(record);
       }
 
-      // guardar según paso
+      // 4️⃣ Guardar paso correspondiente
       if (step === 0) record.entrada = time;
       if (step === 1) record.salidaComida = time;
       if (step === 2) record.entradaComida = time;
       if (step === 3) record.salida = time;
 
+      // 5️⃣ Guardar en Blob
       await put(
         KEY,
         JSON.stringify(data, null, 2),
@@ -87,10 +77,10 @@ export default async function handler(req, res) {
     }
 
     res.setHeader('Allow', 'GET, POST');
-    return res.status(405).end();
+    res.status(405).end();
 
   } catch (err) {
     console.error('API records error:', err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 }
