@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     let currentData = { records: [] };
 
     try {
-      const blob = await get('records.json', { cacheControl: 'no-store' });
+      const blob = await get('data/records.json', { cacheControl: 'no-store' });
       const text = await blob.text();
       currentData = JSON.parse(text);
     } catch (err) {
