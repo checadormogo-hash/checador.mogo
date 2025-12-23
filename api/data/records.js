@@ -5,6 +5,7 @@ const token = process.env.BLOB_READ_WRITE_TOKEN;
 
 export default async function handler(req, res) {
   try {
+    // ===== GET =====
     if (req.method === 'GET') {
       try {
         const file = await get(KEY, { token, cacheControl: 'no-store' });
@@ -15,6 +16,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // ===== POST =====
     if (req.method === 'POST') {
       let body = req.body;
       if (typeof body === 'string') {
@@ -23,7 +25,7 @@ export default async function handler(req, res) {
 
       const { workerId, step, time, date } = body;
 
-      // Obtener registros existentes
+      // 🔥 OBTENER REGISTROS EXISTENTES
       let data;
       try {
         const file = await get(KEY, { token, cacheControl: 'no-store' });
@@ -32,12 +34,12 @@ export default async function handler(req, res) {
         data = { records: [] };
       }
 
-      // 🔎 Buscar registro existente SOLO para ese trabajador y día
+      // 🔎 BUSCAR SI YA HAY REGISTRO DEL TRABAJADOR PARA EL DÍA
       let record = data.records.find(
         r => r.workerId === workerId && r.date === date
       );
 
-      // Crear si no existe
+      // 🆕 CREAR SI NO EXISTE
       if (!record) {
         record = {
           workerId,
@@ -47,10 +49,10 @@ export default async function handler(req, res) {
           entradaComida: null,
           salida: null
         };
-        data.records.push(record); // Agregar al array SIN tocar otros
+        data.records.push(record);
       }
 
-      // Guardar según paso
+      // ⏱ GUARDAR SEGÚN EL PASO
       switch (step) {
         case 0: record.entrada = time; break;
         case 1: record.salidaComida = time; break;
@@ -58,7 +60,7 @@ export default async function handler(req, res) {
         case 3: record.salida = time; break;
       }
 
-      // Guardar TODO el array, no solo el último
+      // 💾 GUARDAR TODO EL ARRAY, SIN SOBRESCRIBIR
       await put(
         KEY,
         JSON.stringify(data, null, 2),
