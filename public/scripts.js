@@ -2,36 +2,25 @@ const actionButtons = document.querySelectorAll('.action-btn');
 const scannerInput = document.querySelector('.scanner-input');
 const currentDateEl = document.getElementById('currentDate');
 
-// ===== DATOS DE PRUEBA (luego van a backend) =====
-const employees = [
-  {
-    id: "EMP-1766349467706",
-    name: "José Francisco",
-    pin: "8592",
-    step: 0
+let employees = [];
+
+async function loadEmployees() {
+  try {
+    const r = await fetch('/api/data/workers', { cache: 'no-store' });
+    const data = await r.json();
+
+    employees = (data.workers || []).map(w => ({
+      id: w.id,
+      name: w.nombre,
+      pin: w.pin,
+      activo: w.activo,
+      step: 0
+    }));
+  } catch (e) {
+    console.error('Error cargando trabajadores', e);
   }
-];
+}
 
-/*const pinInput = document.getElementById('pinInput');
-const pinError = document.getElementById('pinError');
-const pinOverlay = document.getElementById('pinOverlay');
-
-
-/* ===============================
-   PIN (solo estructura por ahora)
-================================ 
-pinInput.addEventListener('input', () => {
-  pinError.classList.remove('show');
-
-  if (pinInput.value.length === 4) {
-    // Simulación temporal
-    setTimeout(() => {
-      pinError.classList.add('show');
-      pinInput.value = '';
-      pinInput.focus();
-    }, 300);
-  }
-});*/
 
 function updateDateTime() {
   const now = new Date();
@@ -124,9 +113,11 @@ closeAutoModal.addEventListener('click', hideAutoModal);
 });
 
 /* ===== MOSTRAR AL CARGAR ===== */
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  await loadEmployees();
   showAutoModal();
 });
+
 
 /* ===== BOTÓN REGISTRO AUTOMÁTICO ===== */
 const openAutoModalBtn = document.getElementById('openAutoModal');
@@ -183,8 +174,10 @@ function processQR(qrValue) {
     return;
   }
 
+  // 🔎 BUSCAR TRABAJADOR REAL
   const employee = employees.find(e => e.id === empId);
 
+  // ❌ NO EXISTE
   if (!employee) {
     showCriticalModal(
       'Usuario no registrado',
@@ -193,6 +186,16 @@ function processQR(qrValue) {
     return;
   }
 
+  // 🚫 DESACTIVADO ← 🔥 AQUÍ VA
+  if (employee.activo !== 'SI') {
+    showCriticalModal(
+      'Acceso denegado',
+      'El colaborador está desactivado'
+    );
+    return;
+  }
+
+  // 🔐 PIN INCORRECTO
   if (employee.pin !== pin) {
     showWarningModal(
       'Datos incorrectos',
@@ -201,8 +204,10 @@ function processQR(qrValue) {
     return;
   }
 
+  // ✅ TODO OK → REGISTRAR CHECADA
   registerStep(employee);
 }
+
 
 async function registerStep(employee) {
   const now = new Date();
