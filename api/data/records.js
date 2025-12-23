@@ -5,7 +5,6 @@ const token = process.env.BLOB_READ_WRITE_TOKEN;
 
 export default async function handler(req, res) {
   try {
-
     // ===== GET =====
     if (req.method === 'GET') {
       try {
@@ -19,15 +18,14 @@ export default async function handler(req, res) {
 
     // ===== POST =====
     if (req.method === 'POST') {
-
       let body = req.body;
       if (typeof body === 'string') {
-        body = JSON.parse(body);
+        try { body = JSON.parse(body); } catch {}
       }
 
       const { workerId, step, time, date } = body;
 
-      // 1️⃣ Cargar archivo o crear estructura base
+      // 🔥 SI NO EXISTE EL ARCHIVO, LO CREAMOS
       let data;
       try {
         const file = await get(KEY, { token, cacheControl: 'no-store' });
@@ -36,12 +34,10 @@ export default async function handler(req, res) {
         data = { records: [] };
       }
 
-      // 2️⃣ Buscar registro del día
       let record = data.records.find(
         r => r.workerId === workerId && r.date === date
       );
 
-      // 3️⃣ Crear registro si no existe
       if (!record) {
         record = {
           workerId,
@@ -54,13 +50,11 @@ export default async function handler(req, res) {
         data.records.push(record);
       }
 
-      // 4️⃣ Guardar paso correspondiente
       if (step === 0) record.entrada = time;
       if (step === 1) record.salidaComida = time;
       if (step === 2) record.entradaComida = time;
       if (step === 3) record.salida = time;
 
-      // 5️⃣ Guardar en Blob
       await put(
         KEY,
         JSON.stringify(data, null, 2),
@@ -77,10 +71,10 @@ export default async function handler(req, res) {
     }
 
     res.setHeader('Allow', 'GET, POST');
-    res.status(405).end();
+    return res.status(405).end();
 
   } catch (err) {
     console.error('API records error:', err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
