@@ -175,20 +175,40 @@ workersTableBody.addEventListener('click', async e => {
   const qrBtn = e.target.closest('.btn-qr');
   const delBtn = e.target.closest('.btn-delete');
 
+  /* ===== QR ===== */
   if (qrBtn) {
     const worker = workersCache.find(w => w.id == qrBtn.dataset.id);
+    if (!worker) return;
+
     badgeName.textContent = worker.nombre;
     badgeId.textContent = worker.id;
-    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${worker.id}|${worker.pin}`;
+
+    const qrValue = `${worker.id}|${worker.pin}`;
+    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrValue)}`;
+
     qrModal.style.display = 'flex';
+    return; // ⬅️ evita que caiga en eliminar
   }
 
+  /* ===== ELIMINAR ===== */
   if (delBtn) {
-    if (!confirm('¿Eliminar trabajador?')) return;
-    await supabase.from('workers').delete().eq('id', delBtn.dataset.id);
-    loadWorkers();
+    if (!confirm('¿Eliminar trabajador definitivamente?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('workers')
+        .delete()
+        .eq('id', delBtn.dataset.id);
+
+      if (error) throw error;
+
+      loadWorkers();
+
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo eliminar el trabajador');
+    }
   }
 });
-
 /* ================== INICIO ================== */
 loadWorkers();
