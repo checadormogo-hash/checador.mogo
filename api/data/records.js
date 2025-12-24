@@ -3,14 +3,10 @@ import { get, put } from '@vercel/blob';
 const token = process.env.BLOB_READ_WRITE_TOKEN;
 
 /* ===============================
-   UTILIDADES DE FECHA Y HORA
+   FECHA Y HORA
 ================================ */
-function getLocalDateDMY() {
-  const d = new Date();
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}-${month}-${year}`;
+function getISODate() {
+  return new Date().toISOString().slice(0, 10); // yyyy-mm-dd
 }
 
 function getLocalTime12h() {
@@ -22,90 +18,92 @@ function getLocalTime12h() {
 }
 
 /* ===============================
-   API HANDLER
+   NORMALIZAR FECHA ANTIGUA
+================================ */
+function normalizeDate(dateStr) {
+  // yyyy-mm-dd → ok
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+  // dd-mm-yyyy → convertir
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+    const [d, m, y] = dateStr.split('-');
+    return `${y}-${m}-${d}`;
+  }
+
+  return dateStr;
+}
+
+/* ===============================
+   API
 ================================ */
 export default async function handler(req, res) {
   try {
-    /* ===== POST → REGISTRAR CHECADA ===== */
-    if (req.method === 'POST') {
-      let body = req.body;
-
-      if (typeof body === 'string') {
-        try { body = JSON.parse(body); } catch {}
-      }
-
-      const { workerId, step } = body;
-
-      if (!workerId && workerId !== '') {
-        return res.status(400).json({ error: 'workerId requerido' });
-      }
-
-      const KEY = `data/records/${workerId}.json`;
-      const today = getLocalDateDMY();
-      const time = getLocalTime12h();
-
-      // ===== CARGAR ARCHIVO DEL TRABAJADOR =====
-      let data;
-      try {
-        const file = await get(KEY, { token, cacheControl: 'no-store' });
-        data = await file.json();
-      } catch {
-        data = { records: [] };
-      }
-
-      // ===== BUSCAR REGISTRO DEL DÍA =====
-      let dayRecord = data.records.find(r => r.date === today);
-
-      // SI NO EXISTE EL DÍA → CREARLO
-      if (!dayRecord) {
-        dayRecord = {
-          date: today,
-          entrada: null,
-          salidaComida: null,
-          entradaComida: null,
-          salida: null
-        };
-        data.records.push(dayRecord);
-      }
-
-      // ===== EDITAR SOLO EL CAMPO CORRESPONDIENTE =====
-      switch (step) {
-        case 0:
-          if (!dayRecord.entrada) dayRecord.entrada = time;
-          break;
-        case 1:
-          if (!dayRecord.salidaComida) dayRecord.salidaComida = time;
-          break;
-        case 2:
-          if (!dayRecord.entradaComida) dayRecord.entradaComida = time;
-          break;
-        case 3:
-          if (!dayRecord.salida) dayRecord.salida = time;
-          break;
-      }
-
-      // ===== GUARDAR ARCHIVO COMPLETO (SIN PERDER DATOS) =====
-      await put(
-        KEY,
-        JSON.stringify(data, null, 2),
-        {
-          access: 'public',
-          addRandomSuffix: false,
-          allowOverwrite: true,
-          contentType: 'application/json',
-          token
-        }
-      );
-
-      return res.status(200).json({ ok: true });
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'POST');
+      return res.status(405).json({ error: 'Método no permitido' });
     }
 
-    /* ===== MÉTODO NO PERMITIDO ===== */
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Método no permitido' });
+    let body = req.body;
+    if (typeof body === 'string') body = JSON.parse(body);
+
+    const { workerId, step } = body;
+    if (!workerId) {
+      return res.status(400).json({ error: 'workerId requerido' });
+    }
+
+    const KEY = `data/records/${workerId}.json`;
+    const today = getISODate();
+    const time = getLocalTime12h();
+
+    // ===== CARGAR ARCHIVO =====
+    let data;
+    try {
+      const file = await get(KEY, { token, cacheControl: 'no-store' });
+      data = await file.json();
+    } catch {
+      data = { records: [] };
+    }
+
+    // ===== NORMALIZAR FECHAS EXISTENTES =====
+    data.records.forEach(r => {
+      r.date = normalizeDate(r.date);
+    });
+
+    // ===== BUSCAR REGISTRO DEL DÍA =====
+    let dayRecord = data.records.find(r => r.date === today);
+
+    if (!dayRecord) {
+      dayRecord = {
+        date: today,
+        entrada: null,
+        salidaComida: null,
+        entradaComida: null,
+        salida: null
+      };
+      data.records.push(dayRecord);
+    }
+
+    // ===== ACTUALIZAR SOLO EL CAMPO =====
+    const fields = ['entrada', 'salidaComida', 'entradaComida', 'salida'];
+    const field = fields[step];
+
+    if (field && !dayRecord[field]) {
+      dayRecord[field] = time;
+    }
+
+    // ===== GUARDAR =====
+    await put(KEY, JSON.stringify(data, null, 2), {
+      access: 'public',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: 'application/json',
+      token
+    });
+
+    return res.status(200).json({ ok: true });
 
   } catch (err) {
-    console.error('API records error:', err);
+    console.error(err);
     return res.status(500).json({
       error: 'Error al guardar asistencia',
       details: err.message
