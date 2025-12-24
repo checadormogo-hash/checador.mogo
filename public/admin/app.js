@@ -95,7 +95,7 @@ async function apiGetWorkers() {
     id: w.id,
     nombre: w.nombre,
     pin: w.pin,
-    activo: w.activo == 'SI',
+    activo: w.activo,
     fechaAlta: w.created_at
   }));
 
@@ -144,7 +144,7 @@ saveWorkerBtn.addEventListener('click', async () => {
   try {
     const nombre = document.getElementById('workerName').value.trim();
     const pin = document.getElementById('workerPin').value.trim();
-    const activo = document.getElementById('workerActive').value;
+    const activo = document.getElementById('workerActive').value === 'SI';
     const fecha = document.getElementById('fechaIngreso').value;
 
     if (!nombre || pin.length !== 4 || !fecha) {
@@ -155,7 +155,7 @@ saveWorkerBtn.addEventListener('click', async () => {
     const { error } = await supabase.from('workers').insert([{
       nombre,
       pin,
-      activo == 'SI',
+      activo,
       created_at: fecha
     }]);
 
