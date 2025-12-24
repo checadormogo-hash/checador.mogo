@@ -199,7 +199,7 @@ workersTableBody.addEventListener('click', async e => {
         .from('workers')
         .delete()
         .eq('id', delBtn.dataset.id);
-
+        mostrarToast('🗑️ Trabajador eliminado correctamente');
       if (error) throw error;
 
       loadWorkers();
@@ -210,5 +210,15 @@ workersTableBody.addEventListener('click', async e => {
     }
   }
 });
+function mostrarToast(mensaje) {
+  const toast = document.getElementById('toastSuccess');
+  toast.textContent = mensaje;
+  toast.style.display = 'block';
+
+  setTimeout(() => {
+    toast.style.display = 'none';
+  }, 2500);
+}
+
 /* ================== INICIO ================== */
 loadWorkers();
