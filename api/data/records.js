@@ -3,70 +3,64 @@ import path from 'path';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).end();
+    return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  const { workerId, date, time } = req.body;
+  try {
+    const { workerId, date, time } = req.body;
 
-  if (!workerId || !date || !time) {
-    return res.status(400).json({ error: 'Datos incompletos' });
-  }
+    if (!workerId || !date || !time) {
+      return res.status(400).json({ error: 'Datos incompletos' });
+    }
 
-  const baseDir = path.join(process.cwd(), 'data', 'records', workerId);
-  const filePath = path.join(baseDir, `${date}.json`);
+    const basePath = path.join(process.cwd(), 'public/data/records');
+    if (!fs.existsSync(basePath)) fs.mkdirSync(basePath, { recursive: true });
 
-  // 1️⃣ Crear carpeta si no existe
-  if (!fs.existsSync(baseDir)) {
-    fs.mkdirSync(baseDir, { recursive: true });
-  }
+    const filePath = path.join(basePath, `${workerId}.json`);
 
-  let record = {
-    entradaTrabajo: null,
-    salidaComida: null,
-    entradaComida: null,
-    salidaTrabajo: null
-  };
+    let data = { records: [] };
 
-  // 2️⃣ Si existe archivo, leerlo
-  if (fs.existsSync(filePath)) {
-    record = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  }
+    if (fs.existsSync(filePath)) {
+      data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
 
-  // 3️⃣ Decidir qué campo toca
-  const field = getNextCheckField(record);
+    // 🔍 Buscar fecha
+    let dayRecord = data.records.find(r => r.date === date);
 
-  // ❌ Ya checó todo
-  if (!field) {
-    return res.status(409).json({
-      error: 'Jornada ya finalizada'
+    if (!dayRecord) {
+      dayRecord = {
+        date,
+        entradaTrabajo: null,
+        salidaComida: null,
+        entradaComida: null,
+        salidaTrabajo: null
+      };
+      data.records.push(dayRecord);
+    }
+
+    // 🧠 Decidir campo
+    let field = null;
+
+    if (!dayRecord.entradaTrabajo) field = 'entradaTrabajo';
+    else if (!dayRecord.salidaComida) field = 'salidaComida';
+    else if (!dayRecord.entradaComida) field = 'entradaComida';
+    else if (!dayRecord.salidaTrabajo) field = 'salidaTrabajo';
+    else {
+      return res.status(409).json({ error: 'Checadas completas' });
+    }
+
+    // ✍️ Guardar SOLO ese campo
+    dayRecord[field] = time;
+
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+
+    return res.status(200).json({
+      success: true,
+      fieldRegistered: field
     });
+
+  } catch (err) {
+    console.error('ERROR RECORDS:', err);
+    return res.status(500).json({ error: 'Error interno del servidor' });
   }
-
-  // ❌ Bloqueo: no permitir doble checada
-  if (record[field]) {
-    return res.status(409).json({
-      error: 'Checada duplicada'
-    });
-  }
-
-  // 4️⃣ Registrar SOLO el campo correcto
-  record[field] = time;
-
-  // 5️⃣ Guardar
-  fs.writeFileSync(filePath, JSON.stringify(record, null, 2));
-
-  return res.status(200).json({
-    success: true,
-    fieldRegistered: field,
-    record
-  });
-}
-
-// ===== LÓGICA CENTRAL =====
-function getNextCheckField(record) {
-  if (!record.entradaTrabajo) return 'entradaTrabajo';
-  if (!record.salidaComida) return 'salidaComida';
-  if (!record.entradaComida) return 'entradaComida';
-  if (!record.salidaTrabajo) return 'salidaTrabajo';
-  return null;
 }
