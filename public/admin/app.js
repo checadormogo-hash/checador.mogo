@@ -6,7 +6,7 @@ const supabaseKey = "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 
-/* ================== LOGIN ================== */
+/* ================== LOGIN ================== 
 const overlay = document.getElementById('loginOverlay');
 const userInput = document.getElementById('adminUser');
 const passInput = document.getElementById('adminPass');
@@ -16,7 +16,16 @@ const adminApp = document.getElementById('adminApp');
 const fab = document.getElementById('openAddModal');
 const loginBtn = document.getElementById('loginBtn');
 
-loginBtn.addEventListener('click', tryLogin);
+loginBtn.addEventListener('click', tryLogin);*/
+
+// ===== DESACTIVAR LOGIN TEMPORALMENTE =====
+overlay.style.display = 'none';
+adminApp.style.display = 'block';
+fab.style.display = 'flex';
+
+// carga inicial
+loadWorkers();
+loadRecords();
 
 // ===== ESTADO INICIAL =====
 adminApp.style.display = 'none';
