@@ -95,7 +95,7 @@ async function apiGetWorkers() {
     id: w.id,
     nombre: w.nombre,
     pin: w.pin,
-    activo: w.activo === 'SI',
+    activo: w.activo == 'SI',
     fechaAlta: w.created_at
   }));
 
@@ -155,7 +155,7 @@ saveWorkerBtn.addEventListener('click', async () => {
     const { error } = await supabase.from('workers').insert([{
       nombre,
       pin,
-      activo === 'SI',
+      activo == 'SI',
       created_at: fecha
     }]);
 
