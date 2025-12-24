@@ -317,11 +317,7 @@ saveWorkerBtn.addEventListener('click', async () => {
 
   showToast();
   loadWorkers();
-} catch (err) {
-  console.error(err);
-  alert('Error al guardar trabajador');
-}
- catch (err) {
+}catch (err) {
     console.error(err);
     alert('Error al guardar trabajador');
   }
