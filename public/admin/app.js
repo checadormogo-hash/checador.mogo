@@ -14,6 +14,9 @@ const error = document.getElementById('loginError');
 
 const adminApp = document.getElementById('adminApp');
 const fab = document.getElementById('openAddModal');
+const loginBtn = document.getElementById('loginBtn');
+
+loginBtn.addEventListener('click', tryLogin);
 
 // ===== ESTADO INICIAL =====
 adminApp.style.display = 'none';
