@@ -1,112 +1,72 @@
-import { get, put } from '@vercel/blob';
+import fs from 'fs';
+import path from 'path';
 
-const token = process.env.BLOB_READ_WRITE_TOKEN;
-
-/* ===============================
-   FECHA Y HORA
-================================ */
-function getISODate() {
-  return new Date().toISOString().slice(0, 10); // yyyy-mm-dd
-}
-
-function getLocalTime12h() {
-  return new Date().toLocaleTimeString('es-MX', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  }).toLowerCase();
-}
-
-/* ===============================
-   NORMALIZAR FECHA ANTIGUA
-================================ */
-function normalizeDate(dateStr) {
-  // yyyy-mm-dd → ok
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-
-  // dd-mm-yyyy → convertir
-  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-    const [d, m, y] = dateStr.split('-');
-    return `${y}-${m}-${d}`;
-  }
-
-  return dateStr;
-}
-
-/* ===============================
-   API
-================================ */
 export default async function handler(req, res) {
-  try {
-    if (req.method !== 'POST') {
-      res.setHeader('Allow', 'POST');
-      return res.status(405).json({ error: 'Método no permitido' });
-    }
+  if (req.method !== 'POST') {
+    return res.status(405).end();
+  }
 
-    let body = req.body;
-    if (typeof body === 'string') body = JSON.parse(body);
+  const { workerId, date, time } = req.body;
 
-    const { workerId, step } = body;
-    if (!workerId) {
-      return res.status(400).json({ error: 'workerId requerido' });
-    }
+  if (!workerId || !date || !time) {
+    return res.status(400).json({ error: 'Datos incompletos' });
+  }
 
-    const KEY = `data/records/${workerId}.json`;
-    const today = getISODate();
-    const time = getLocalTime12h();
+  const baseDir = path.join(process.cwd(), 'data', 'records', workerId);
+  const filePath = path.join(baseDir, `${date}.json`);
 
-    // ===== CARGAR ARCHIVO =====
-    let data;
-    try {
-      const file = await get(KEY, { token, cacheControl: 'no-store' });
-      data = await file.json();
-    } catch {
-      data = { records: [] };
-    }
+  // 1️⃣ Crear carpeta si no existe
+  if (!fs.existsSync(baseDir)) {
+    fs.mkdirSync(baseDir, { recursive: true });
+  }
 
-    // ===== NORMALIZAR FECHAS EXISTENTES =====
-    data.records.forEach(r => {
-      r.date = normalizeDate(r.date);
-    });
+  let record = {
+    entradaTrabajo: null,
+    salidaComida: null,
+    entradaComida: null,
+    salidaTrabajo: null
+  };
 
-    // ===== BUSCAR REGISTRO DEL DÍA =====
-    let dayRecord = data.records.find(r => r.date === today);
+  // 2️⃣ Si existe archivo, leerlo
+  if (fs.existsSync(filePath)) {
+    record = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  }
 
-    if (!dayRecord) {
-      dayRecord = {
-        date: today,
-        entrada: null,
-        salidaComida: null,
-        entradaComida: null,
-        salida: null
-      };
-      data.records.push(dayRecord);
-    }
+  // 3️⃣ Decidir qué campo toca
+  const field = getNextCheckField(record);
 
-    // ===== ACTUALIZAR SOLO EL CAMPO =====
-    const fields = ['entrada', 'salidaComida', 'entradaComida', 'salida'];
-    const field = fields[step];
-
-    if (field && !dayRecord[field]) {
-      dayRecord[field] = time;
-    }
-
-    // ===== GUARDAR =====
-    await put(KEY, JSON.stringify(data, null, 2), {
-      access: 'public',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: 'application/json',
-      token
-    });
-
-    return res.status(200).json({ ok: true });
-
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      error: 'Error al guardar asistencia',
-      details: err.message
+  // ❌ Ya checó todo
+  if (!field) {
+    return res.status(409).json({
+      error: 'Jornada ya finalizada'
     });
   }
+
+  // ❌ Bloqueo: no permitir doble checada
+  if (record[field]) {
+    return res.status(409).json({
+      error: 'Checada duplicada'
+    });
+  }
+
+  // 4️⃣ Registrar SOLO el campo correcto
+  record[field] = time;
+
+  // 5️⃣ Guardar
+  fs.writeFileSync(filePath, JSON.stringify(record, null, 2));
+
+  return res.status(200).json({
+    success: true,
+    fieldRegistered: field,
+    record
+  });
+}
+
+// ===== LÓGICA CENTRAL =====
+function getNextCheckField(record) {
+  if (!record.entradaTrabajo) return 'entradaTrabajo';
+  if (!record.salidaComida) return 'salidaComida';
+  if (!record.entradaComida) return 'entradaComida';
+  if (!record.salidaTrabajo) return 'salidaTrabajo';
+  return null;
 }

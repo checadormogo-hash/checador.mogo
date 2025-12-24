@@ -18,25 +18,24 @@ async function loadEmployees() {
       id: w.id,
       name: w.nombre,
       pin: w.pin,
-      activo: w.activo,
-      step: 0 // 👈 SOLO PARA UI
+      activo: w.activo
+      // step SE IGNORA (backend manda)
     }));
   } catch (e) {
     console.error('Error cargando trabajadores', e);
   }
 }
 
-// ===== FECHA Y HORA MX =====
+// ===== FECHA dd-mm-aaaa =====
 function getLocalDateDMY() {
   const d = new Date();
-  return d.toLocaleDateString('es-MX', {
-    timeZone: 'America/Monterrey',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  }).replace(/\//g, '-');
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
 }
 
+// ===== HORA MX 12h =====
 function time12hMX() {
   return new Date().toLocaleTimeString('es-MX', {
     timeZone: 'America/Monterrey',
@@ -46,27 +45,34 @@ function time12hMX() {
   });
 }
 
-// ===== FECHA Y HORA HEADER =====
+// ===== FECHA Y HORA UI =====
 function updateDateTime() {
   const now = new Date();
 
   const dateFormatter = new Intl.DateTimeFormat('es-MX', {
     weekday: 'long',
     day: '2-digit',
-    month: 'long',
-    timeZone: 'America/Monterrey'
+    month: 'long'
   });
 
-  const time = time12hMX();
+  const timeFormatter = new Intl.DateTimeFormat('es-MX', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
   const date = dateFormatter.format(now);
-  currentDateEl.textContent =
-    date.charAt(0).toUpperCase() + date.slice(1) + ' · ' + time;
+  const time = timeFormatter.format(now);
+
+  const formattedDate = date.charAt(0).toUpperCase() + date.slice(1);
+  currentDateEl.textContent = `${formattedDate} · ${time}`;
 }
 
 // ===== BOTONES ACCIÓN =====
 actionButtons.forEach(btn => {
   btn.addEventListener('click', () => {
-    console.log('Acción presionada:', btn.dataset.action);
+    const action = btn.dataset.action;
+    console.log('Acción presionada:', action);
   });
 });
 
@@ -74,7 +80,12 @@ actionButtons.forEach(btn => {
 function isBlocked(workerId) {
   const lastTime = recentScans.get(workerId);
   if (!lastTime) return false;
-  if (Date.now() - lastTime < BLOCK_TIME) return true;
+
+  const now = Date.now();
+  if (now - lastTime < BLOCK_TIME) {
+    return true;
+  }
+
   recentScans.delete(workerId);
   return false;
 }
@@ -88,7 +99,11 @@ const INACTIVITY_TIME = 15000;
 function showAutoModal() {
   clearTimeout(inactivityTimer);
   autoOverlay.style.display = 'flex';
-  setTimeout(() => scannerInput?.focus(), 100);
+
+  const activeTab = document.querySelector('.auto-tab.active');
+  if (activeTab && activeTab.dataset.mode === 'scanner') {
+    setTimeout(() => scannerInput?.focus(), 100);
+  }
 }
 
 function hideAutoModal() {
@@ -103,86 +118,124 @@ function startInactivityTimer() {
 
 closeAutoModal.addEventListener('click', hideAutoModal);
 
-// ===== INIT =====
+['click', 'touchstart', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (autoOverlay.style.display === 'none') startInactivityTimer();
+  });
+});
+
+// ===== AL CARGAR =====
 window.addEventListener('load', async () => {
   await loadEmployees();
   showAutoModal();
-  updateDateTime();
-  setInterval(updateDateTime, 1000);
+});
+
+// ===== BOTÓN MANUAL =====
+document.getElementById('openAutoModal')
+  .addEventListener('click', () => {
+    showAutoModal();
+    clearTimeout(inactivityTimer);
+  });
+
+// ===== TABS =====
+const autoTabs = document.querySelectorAll('.auto-tab');
+const autoPanels = document.querySelectorAll('.auto-panel');
+
+autoTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    autoTabs.forEach(t => t.classList.remove('active'));
+    autoPanels.forEach(p => p.classList.remove('active'));
+
+    tab.classList.add('active');
+    document
+      .getElementById(tab.dataset.mode === 'camera' ? 'autoCamera' : 'autoScanner')
+      .classList.add('active');
+
+    if (tab.dataset.mode === 'scanner') {
+      setTimeout(() => scannerInput.focus(), 100);
+    }
+  });
 });
 
 // ===== ESCANEAR QR =====
 scannerInput.addEventListener('change', () => {
   const value = scannerInput.value.trim();
-  scannerInput.value = '';
+  scannerInput.value = "";
+
   if (!value.includes('|')) {
     showWarningModal('QR inválido', 'Formato incorrecto');
     return;
   }
+
   processQR(value);
 });
 
 function processQR(qrValue) {
   const [empId, pin] = qrValue.split('|');
+
   const employee = employees.find(e => e.id === empId);
 
   if (!employee) {
-    showCriticalModal('Usuario no registrado', 'No existe en el sistema');
-    return;
-  }
-  if (employee.activo !== 'SI') {
-    showCriticalModal('Acceso denegado', 'Colaborador inactivo');
-    return;
-  }
-  if (employee.pin !== pin) {
-    showWarningModal('PIN incorrecto', 'Datos incorrectos');
-    return;
-  }
-  if (isBlocked(employee.id)) {
-    showWarningModal('Checada reciente', 'Espera unos minutos');
+    showCriticalModal('Usuario no registrado', 'El colaborador no existe');
     return;
   }
 
-  registerStep(employee);
+  if (employee.activo !== 'SI') {
+    showCriticalModal('Acceso denegado', 'Colaborador desactivado');
+    return;
+  }
+
+  if (employee.pin !== pin) {
+    showWarningModal('Datos incorrectos', 'PIN incorrecto');
+    return;
+  }
+
+  // 🚫 BLOQUEO REAL (NO ENVÍA)
+  if (isBlocked(employee.id)) {
+    showWarningModal(
+      'Checada reciente',
+      'Ya registraste una checada. Espera unos minutos.'
+    );
+    return;
+  }
+
+  registerCheck(employee);
 }
 
-// ===== REGISTRAR CHECADA (CORREGIDO) =====
-async function registerStep(employee) {
+// ===== REGISTRAR CHECADA (BACKEND DECIDE TODO) =====
+async function registerCheck(employee) {
   recentScans.set(employee.id, Date.now());
+
+  const payload = {
+    workerId: employee.id,
+    date: getLocalDateDMY(),
+    time: time12hMX()
+  };
 
   try {
     const resp = await fetch('/api/data/records', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        workerId: employee.id,
-        date: getLocalDateDMY(),
-        time: time12hMX()
-      })
+      body: JSON.stringify(payload)
     });
 
     const result = await resp.json();
-    if (!resp.ok) throw new Error();
 
-    // 👇 UI SE MANTIENE IGUAL
-    switch (employee.step) {
-      case 0:
-        showConfirmModal('Entrada registrada', `Hola ${employee.name}, bienvenido.`);
-        employee.step = 1;
-        break;
-      case 1:
-        showConfirmModal('Salida a comida', `Buen provecho ${employee.name}.`);
-        employee.step = 2;
-        break;
-      case 2:
-        showConfirmModal('Entrada de comida', `Bienvenido nuevamente ${employee.name}.`);
-        employee.step = 3;
-        break;
-      case 3:
-        showConfirmModal('Salida registrada', `Gracias por tu esfuerzo ${employee.name}.`);
-        employee.step = 0;
-        break;
+    if (!resp.ok) {
+      showCriticalModal('Error', result.error || 'No se pudo guardar');
+      return;
     }
+
+    const messages = {
+      entradaTrabajo: ['Entrada registrada', `Hola ${employee.name}`],
+      salidaComida: ['Salida a comida', `Buen provecho ${employee.name}`],
+      entradaComida: ['Entrada de comida', `Bienvenido ${employee.name}`],
+      salidaTrabajo: ['Salida registrada', `Gracias ${employee.name}`]
+    };
+
+    const [title, msg] = messages[result.fieldRegistered];
+    showConfirmModal(title, msg);
+
   } catch {
     showCriticalModal('Error', 'No se pudo guardar la checada');
   }
@@ -199,6 +252,7 @@ function showConfirmModal(title, message, duration = 2500) {
   confirmTitle.textContent = title;
   confirmMessage.textContent = message;
   confirmModal.classList.remove('oculto');
+
   confirmTimeout = setTimeout(closeConfirmation, duration);
 }
 
@@ -212,7 +266,7 @@ closeConfirmModal.addEventListener('click', closeConfirmation);
 
 function showWarningModal(title, message) {
   setConfirmStyle('#d97706');
-  showConfirmModal(title, message);
+  showConfirmModal(title, message, 2500);
 }
 
 function showCriticalModal(title, message) {
@@ -221,5 +275,10 @@ function showCriticalModal(title, message) {
 }
 
 function setConfirmStyle(color) {
-  document.querySelector('.confirm-box')?.style.background = color;
+  const box = document.querySelector('.confirm-box');
+  if (box) box.style.background = color;
 }
+
+// ===== INICIAR RELOJ =====
+updateDateTime();
+setInterval(updateDateTime, 1000);
