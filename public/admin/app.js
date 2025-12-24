@@ -96,7 +96,7 @@ async function apiGetWorkers() {
     nombre: w.nombre,
     pin: w.pin,
     activo: w.activo,
-    fechaAlta: w.fecha_ingreso
+    fechaAlta: w.created_at
   }));
 
   renderWorkers();
@@ -156,7 +156,7 @@ saveWorkerBtn.addEventListener('click', async () => {
       nombre,
       pin,
       activo,
-      fecha_ingreso: fecha
+      created_at: fecha
     }]);
 
     if (error) throw error;
