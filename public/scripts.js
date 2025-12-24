@@ -2,6 +2,7 @@
 const recentScans = new Map();
 const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
 
+
 const actionButtons = document.querySelectorAll('.action-btn');
 const scannerInput = document.querySelector('.scanner-input');
 const currentDateEl = document.getElementById('currentDate');
@@ -18,15 +19,14 @@ async function loadEmployees() {
       id: w.id,
       name: w.nombre,
       pin: w.pin,
-      activo: w.activo
-      // step SE IGNORA (backend manda)
+      activo: w.activo,
+      step: 0
     }));
   } catch (e) {
     console.error('Error cargando trabajadores', e);
   }
 }
 
-// ===== FECHA dd-mm-aaaa =====
 function getLocalDateDMY() {
   const d = new Date();
   const day = String(d.getDate()).padStart(2, '0');
@@ -34,18 +34,16 @@ function getLocalDateDMY() {
   const year = d.getFullYear();
   return `${day}-${month}-${year}`;
 }
-
-// ===== HORA MX 12h =====
 function time12hMX() {
   return new Date().toLocaleTimeString('es-MX', {
-    timeZone: 'America/Monterrey',
+    timeZone: 'America/Monterrey', // 👈 CLAVE
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
   });
 }
 
-// ===== FECHA Y HORA UI =====
+// ===== FECHA Y HORA =====
 function updateDateTime() {
   const now = new Date();
 
@@ -76,7 +74,6 @@ actionButtons.forEach(btn => {
   });
 });
 
-// ===== BLOQUEO =====
 function isBlocked(workerId) {
   const lastTime = recentScans.get(workerId);
   if (!lastTime) return false;
@@ -86,6 +83,7 @@ function isBlocked(workerId) {
     return true;
   }
 
+  // Si ya pasó el tiempo, liberar
   recentScans.delete(workerId);
   return false;
 }
@@ -102,7 +100,9 @@ function showAutoModal() {
 
   const activeTab = document.querySelector('.auto-tab.active');
   if (activeTab && activeTab.dataset.mode === 'scanner') {
-    setTimeout(() => scannerInput?.focus(), 100);
+    setTimeout(() => {
+      if (scannerInput) scannerInput.focus();
+    }, 100);
   }
 }
 
@@ -113,7 +113,9 @@ function hideAutoModal() {
 
 function startInactivityTimer() {
   clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(showAutoModal, INACTIVITY_TIME);
+  inactivityTimer = setTimeout(() => {
+    showAutoModal();
+  }, INACTIVITY_TIME);
 }
 
 closeAutoModal.addEventListener('click', hideAutoModal);
@@ -131,13 +133,13 @@ window.addEventListener('load', async () => {
 });
 
 // ===== BOTÓN MANUAL =====
-document.getElementById('openAutoModal')
-  .addEventListener('click', () => {
-    showAutoModal();
-    clearTimeout(inactivityTimer);
-  });
+const openAutoModalBtn = document.getElementById('openAutoModal');
+openAutoModalBtn.addEventListener('click', () => {
+  showAutoModal();
+  clearTimeout(inactivityTimer);
+});
 
-// ===== TABS =====
+// ===== CAMBIO DE TAB CAMERA / SCANNER =====
 const autoTabs = document.querySelectorAll('.auto-tab');
 const autoPanels = document.querySelectorAll('.auto-panel');
 
@@ -152,7 +154,7 @@ autoTabs.forEach(tab => {
       .classList.add('active');
 
     if (tab.dataset.mode === 'scanner') {
-      setTimeout(() => scannerInput.focus(), 100);
+      setTimeout(() => { scannerInput.focus(); }, 100);
     }
   });
 });
@@ -173,71 +175,88 @@ scannerInput.addEventListener('change', () => {
 function processQR(qrValue) {
   const [empId, pin] = qrValue.split('|');
 
+  if (!empId || !pin) {
+    showWarningModal('QR inválido', 'Formato incorrecto');
+    return;
+  }
+
   const employee = employees.find(e => e.id === empId);
 
   if (!employee) {
-    showCriticalModal('Usuario no registrado', 'El colaborador no existe');
+    showCriticalModal('Usuario no registrado', 'El colaborador no existe en el sistema');
     return;
   }
 
   if (employee.activo !== 'SI') {
-    showCriticalModal('Acceso denegado', 'Colaborador desactivado');
+    showCriticalModal('Acceso denegado', 'El colaborador está desactivado');
     return;
   }
 
   if (employee.pin !== pin) {
-    showWarningModal('Datos incorrectos', 'PIN incorrecto');
+    showWarningModal('Datos incorrectos', 'Usuario o PIN incorrecto');
     return;
   }
-
-  // 🚫 BLOQUEO REAL (NO ENVÍA)
-  if (isBlocked(employee.id)) {
-    showWarningModal(
-      'Checada reciente',
-      'Ya registraste una checada. Espera unos minutos.'
-    );
-    return;
-  }
-
-  registerCheck(employee);
+// 🚫 BLOQUEO POR DOBLE CHECADA
+if (isBlocked(employee.id)) {
+  showWarningModal(
+    'Checada reciente',
+    'Ya registraste tu asistencia. Espera unos minutos.'
+  );
+  return;
 }
 
-// ===== REGISTRAR CHECADA (BACKEND DECIDE TODO) =====
-async function registerCheck(employee) {
-  recentScans.set(employee.id, Date.now());
+  registerStep(employee);
+}
 
-  const payload = {
-    workerId: employee.id,
-    date: getLocalDateDMY(),
-    time: time12hMX()
-  };
+// ===== REGISTRAR CHECADA =====
+async function registerStep(employee) {
+  // ⏱️ Marcar checada reciente
+  recentScans.set(employee.id, Date.now());
+  const now = new Date();
+  const time = now.toTimeString().slice(0, 5);
+  const date = now.toISOString().split('T')[0];
 
   try {
     const resp = await fetch('/api/data/records', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        workerId: employee.id,
+        step: employee.step,
+        time,
+        date
+      })
     });
 
     const result = await resp.json();
+    console.log('RESPUESTA RECORDS:', resp.status, result);
 
     if (!resp.ok) {
-      showCriticalModal('Error', result.error || 'No se pudo guardar');
+      showCriticalModal('Error', 'No se pudo guardar la checada');
       return;
     }
-
-    const messages = {
-      entradaTrabajo: ['Entrada registrada', `Hola ${employee.name}`],
-      salidaComida: ['Salida a comida', `Buen provecho ${employee.name}`],
-      entradaComida: ['Entrada de comida', `Bienvenido ${employee.name}`],
-      salidaTrabajo: ['Salida registrada', `Gracias ${employee.name}`]
-    };
-
-    const [title, msg] = messages[result.fieldRegistered];
-    showConfirmModal(title, msg);
-
   } catch {
     showCriticalModal('Error', 'No se pudo guardar la checada');
+    return;
+  }
+
+  switch (employee.step) {
+    case 0:
+      showConfirmModal('Entrada registrada', `Hola ${employee.name}, bienvenido.`);
+      employee.step = 1;
+      break;
+    case 1:
+      showConfirmModal('Salida a comida', `Buen provecho ${employee.name}.`);
+      employee.step = 2;
+      break;
+    case 2:
+      showConfirmModal('Entrada de comida', `Bienvenido nuevamente ${employee.name}.`);
+      employee.step = 3;
+      break;
+    case 3:
+      showConfirmModal('Salida registrada', `Gracias por tu esfuerzo ${employee.name}.`);
+      employee.step = 0;
+      break;
   }
 }
 
@@ -253,7 +272,7 @@ function showConfirmModal(title, message, duration = 2500) {
   confirmMessage.textContent = message;
   confirmModal.classList.remove('oculto');
 
-  confirmTimeout = setTimeout(closeConfirmation, duration);
+  confirmTimeout = setTimeout(() => { closeConfirmation(); }, duration);
 }
 
 function closeConfirmation() {

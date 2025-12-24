@@ -1,6 +1,10 @@
 /* ================== CONFIG ================== */
-const API_WORKERS = '/api/data/workers';
-const API_RECORDS = '/api/data/records';
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const supabaseUrl = "https://akgbqsfkehqlpxtrjsnw.supabase.co";
+const supabaseKey = "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 
 /* ================== LOGIN ================== */
 const overlay = document.getElementById('loginOverlay');
@@ -102,10 +106,24 @@ let workersCache = [];
 
 /* ================== API HELPERS ================== */
 async function apiGetWorkers() {
-  const r = await fetch(API_WORKERS, { cache: 'no-store' });
-  if (!r.ok) throw new Error('GET error');
-  return r.json();
+  const { data, error } = await supabase
+    .from('workers')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  return {
+    workers: data.map(w => ({
+      id: w.id,
+      nombre: w.nombre,
+      pin: w.pin,
+      activo: w.activo,
+      fechaAlta: w.fecha_ingreso
+    }))
+  };
 }
+
 
 async function apiSaveWorkers(arr) {
   const r = await fetch(API_WORKERS, {
@@ -270,20 +288,28 @@ saveWorkerBtn.addEventListener('click', async () => {
     alert('Ese PIN ya existe');
     return;
   }
-
   try {
-    workersCache.push(worker);
-    await apiSaveWorkers(workersCache);
+  const { error } = await supabase.from('workers').insert([{
+    nombre: worker.nombre,
+    pin: worker.pin,
+    activo: worker.activo,
+    fecha_ingreso: worker.fechaAlta
+  }]);
 
-    // 🔄 LIMPIAR CAMPOS (NO cerrar modal)
-    document.getElementById('workerName').value = '';
-    document.getElementById('workerPin').value = '';
-    document.getElementById('fechaIngreso').value = '';
-    document.getElementById('workerActive').value = 'SI';
+  if (error) throw error;
 
-    showToast();
-    loadWorkers();
-  } catch (err) {
+  document.getElementById('workerName').value = '';
+  document.getElementById('workerPin').value = '';
+  document.getElementById('fechaIngreso').value = '';
+  document.getElementById('workerActive').value = 'SI';
+
+  showToast();
+  loadWorkers();
+} catch (err) {
+  console.error(err);
+  alert('Error al guardar trabajador');
+}
+ catch (err) {
     console.error(err);
     alert('Error al guardar trabajador');
   }
@@ -318,9 +344,8 @@ workersTableBody.addEventListener('click', async (e) => {
   if (!confirm('¿Eliminar trabajador definitivamente?')) return;
 
   try {
-    workersCache = workersCache.filter(w => w.id !== id);
-    await apiSaveWorkers(workersCache);
-    renderWorkers();
+    await supabase.from('workers').delete().eq('id', id);
+    loadWorkers();
   } catch (err) {
     console.error(err);
     alert('No se pudo eliminar');
