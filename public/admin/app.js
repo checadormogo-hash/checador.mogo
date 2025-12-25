@@ -194,23 +194,27 @@ workersTableBody.addEventListener('click', async e => {
   }
 
   /* ===== EDITAR ===== */
-  if (editBtn) {
-    const worker = workersCache.find(w => w.id == editBtn.dataset.id);
-    if (!worker) return;
+/* ===== EDITAR ===== */
+if (editBtn) {
+  const worker = workersCache.find(w => w.id == editBtn.dataset.id);
+  if (!worker) return;
 
-    document.getElementById('editWorkerId').value = worker.id;
-    document.getElementById('editNombre').value   = worker.nombre;
-    document.getElementById('editPin').value      = worker.pin;
-    if (worker.fechaIngreso) {
-      const [day, month, year] = worker.fechaIngreso.split('/');
-      document.getElementById('editFecha').value = `${year}-${month}-${day}`;
-    }
-    document.getElementById('editActivo').checked = worker.activo;
+  document.getElementById('editWorkerId').value = worker.id;
+  document.getElementById('editNombre').value  = worker.nombre;
+  document.getElementById('editPin').value     = worker.pin;
+  document.getElementById('editActivo').checked = worker.activo;
 
-    document.getElementById('editWorkerModal').style.display = 'flex';
-    return; // ⬅️ evita que caiga en eliminar
+  // ✅ FECHA SEGURA PARA INPUT DATE
+  if (worker.fechaIngreso) {
+    document.getElementById('editFecha').value =
+      worker.fechaIngreso.substring(0, 10); // YYYY-MM-DD
+  } else {
+    document.getElementById('editFecha').value = '';
   }
 
+  document.getElementById('editWorkerModal').style.display = 'flex';
+  return;
+}
   /* ===== ELIMINAR ===== */
   if (delBtn) {
     if (!confirm('¿Eliminar trabajador definitivamente?')) return;
@@ -246,10 +250,6 @@ document.getElementById('saveEditWorker').addEventListener('click', async () => 
     return;
   }
 
-  // YYYY-MM-DD → DD/MM/YYYY
-  const [year, month, day] = fechaInput.split('-');
-  const fechaFormateada = `${day}/${month}/${year}`;
-
   try {
     const { error } = await supabase
       .from('workers')
@@ -257,7 +257,7 @@ document.getElementById('saveEditWorker').addEventListener('click', async () => 
         nombre,
         pin,
         activo,
-        fecha_ingreso: fechaFormateada
+        fecha_ingreso: fechaInput // ✅ DATE puro
       })
       .eq('id', id);
 
