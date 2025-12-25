@@ -184,10 +184,10 @@ workersTableBody.addEventListener('click', async e => {
 
   /* ===== QR ===== */
   if (qrBtn) {
-    currentQRWorkerId = worker.id;
     const worker = workersCache.find(w => w.id == qrBtn.dataset.id);
     if (!worker) return;
 
+    currentQRWorkerId = worker.id;
     badgeName.textContent = worker.nombre;
     badgeId.textContent   = worker.id;
 
@@ -198,7 +198,6 @@ workersTableBody.addEventListener('click', async e => {
     return; // ⬅️ evita que caiga en editar o eliminar
   }
 
-  /* ===== EDITAR ===== */
 /* ===== EDITAR ===== */
 if (editBtn) {
   const worker = workersCache.find(w => w.id == editBtn.dataset.id);
