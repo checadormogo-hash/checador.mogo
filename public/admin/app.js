@@ -123,6 +123,7 @@ function renderWorkers() {
       <td>${worker.fechaAlta}</td>
       <td class="actions">
         <button class="btn-icon btn-qr" data-id="${worker.id}">📎</button>
+        <button class="btn-edit" data-id="${worker.id}">✏️</button>
         <button class="btn-icon btn-delete" data-id="${worker.id}">🗑️</button>
       </td>
     `;
@@ -170,10 +171,12 @@ saveWorkerBtn.addEventListener('click', async () => {
   }
 });
 
-/* ================== ELIMINAR / QR ================== */
+/* ================== QR / EDITAR / ELIMINAR ================== */
 workersTableBody.addEventListener('click', async e => {
-  const qrBtn = e.target.closest('.btn-qr');
-  const delBtn = e.target.closest('.btn-delete');
+
+  const qrBtn   = e.target.closest('.btn-qr');
+  const delBtn  = e.target.closest('.btn-delete');
+  const editBtn = e.target.closest('.btn-edit');
 
   /* ===== QR ===== */
   if (qrBtn) {
@@ -181,12 +184,27 @@ workersTableBody.addEventListener('click', async e => {
     if (!worker) return;
 
     badgeName.textContent = worker.nombre;
-    badgeId.textContent = worker.id;
+    badgeId.textContent   = worker.id;
 
     const qrValue = `${worker.id}|${worker.pin}`;
     qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrValue)}`;
 
     qrModal.style.display = 'flex';
+    return; // ⬅️ evita que caiga en editar o eliminar
+  }
+
+  /* ===== EDITAR ===== */
+  if (editBtn) {
+    const worker = workersCache.find(w => w.id == editBtn.dataset.id);
+    if (!worker) return;
+
+    document.getElementById('editWorkerId').value = worker.id;
+    document.getElementById('editNombre').value   = worker.nombre;
+    document.getElementById('editPin').value      = worker.pin;
+    document.getElementById('editFecha').value    = worker.fecha_ingreso;
+    document.getElementById('editActivo').checked = worker.activo;
+
+    document.getElementById('editWorkerModal').style.display = 'flex';
     return; // ⬅️ evita que caiga en eliminar
   }
 
@@ -199,9 +217,10 @@ workersTableBody.addEventListener('click', async e => {
         .from('workers')
         .delete()
         .eq('id', delBtn.dataset.id);
-        mostrarToast('🗑️ Trabajador eliminado correctamente');
+
       if (error) throw error;
 
+      mostrarToast('🗑️ Trabajador eliminado correctamente');
       loadWorkers();
 
     } catch (err) {
@@ -209,7 +228,32 @@ workersTableBody.addEventListener('click', async e => {
       alert('No se pudo eliminar el trabajador');
     }
   }
+
 });
+document.getElementById('saveEditWorker').addEventListener('click', () => {
+
+  const id = document.getElementById('editWorkerId').value;
+  const trabajadores = JSON.parse(localStorage.getItem('trabajadores')) || [];
+
+  const index = trabajadores.findIndex(t => t.id === id);
+  if (index === -1) return;
+
+  trabajadores[index].nombre = document.getElementById('editNombre').value.trim();
+  trabajadores[index].pin = document.getElementById('editPin').value.trim();
+  trabajadores[index].fechaIngreso = document.getElementById('editFecha').value;
+  trabajadores[index].activo = document.getElementById('editActivo').checked;
+
+  localStorage.setItem('trabajadores', JSON.stringify(trabajadores));
+
+  renderWorkers(); // tu función actual
+  document.getElementById('editWorkerModal').style.display = 'none';
+
+  mostrarToast('✏️ Trabajador actualizado correctamente');
+});
+document.getElementById('closeEditWorker').onclick = () => {
+  document.getElementById('editWorkerModal').style.display = 'none';
+};
+
 function mostrarToast(mensaje) {
   const toast = document.getElementById('toastSuccess');
   toast.textContent = mensaje;
