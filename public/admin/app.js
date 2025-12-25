@@ -96,7 +96,7 @@ async function apiGetWorkers() {
     nombre: w.nombre,
     pin: w.pin,
     activo: w.activo,
-    fechaAlta: w.created_at
+    fechaIngreso: w.fecha_ingreso
   }));
 
   renderWorkers();
@@ -120,7 +120,7 @@ function renderWorkers() {
       <td>${worker.nombre}</td>
       <td>${worker.pin}</td>
       <td>${worker.activo}</td>
-      <td>${worker.fechaAlta}</td>
+      <td>${worker.fechaIngreso || ''}</td>
       <td class="actions">
         <button class="btn-icon btn-qr" data-id="${worker.id}">📎</button>
         <button class="btn-edit" data-id="${worker.id}">✏️</button>
@@ -233,35 +233,44 @@ workersTableBody.addEventListener('click', async e => {
   }
 
 });
-document.getElementById('saveEditWorker').addEventListener('click', () => {
+document.getElementById('saveEditWorker').addEventListener('click', async () => {
 
   const id = document.getElementById('editWorkerId').value;
-  const trabajadores = JSON.parse(localStorage.getItem('trabajadores')) || [];
-
-  const index = trabajadores.findIndex(t => t.id === id);
-  if (index === -1) return;
-
-  // ===== FORMATEAR FECHA =====
+  const nombre = document.getElementById('editNombre').value.trim();
+  const pin = document.getElementById('editPin').value.trim();
+  const activo = document.getElementById('editActivo').checked;
   const fechaInput = document.getElementById('editFecha').value; // YYYY-MM-DD
-  let fechaFormateada = '';
 
-  if (fechaInput) {
-    const [year, month, day] = fechaInput.split('-');
-    fechaFormateada = `${day}/${month}/${year}`; // DD/MM/YYYY
+  if (!nombre || pin.length !== 4 || !fechaInput) {
+    alert('Completa todos los campos');
+    return;
   }
 
-  // ===== GUARDAR CAMBIOS =====
-  trabajadores[index].nombre = document.getElementById('editNombre').value.trim();
-  trabajadores[index].pin = document.getElementById('editPin').value.trim();
-  trabajadores[index].fechaIngreso = fechaFormateada;
-  trabajadores[index].activo = document.getElementById('editActivo').checked;
+  // YYYY-MM-DD → DD/MM/YYYY
+  const [year, month, day] = fechaInput.split('-');
+  const fechaFormateada = `${day}/${month}/${year}`;
 
-  localStorage.setItem('trabajadores', JSON.stringify(trabajadores));
+  try {
+    const { error } = await supabase
+      .from('workers')
+      .update({
+        nombre,
+        pin,
+        activo,
+        fecha_ingreso: fechaFormateada
+      })
+      .eq('id', id);
 
-  renderWorkers(); // tu función actual
-  document.getElementById('editWorkerModal').style.display = 'none';
+    if (error) throw error;
 
-  mostrarToast('✏️ Trabajador actualizado correctamente');
+    document.getElementById('editWorkerModal').style.display = 'none';
+    mostrarToast('✏️ Trabajador actualizado correctamente');
+    loadWorkers();
+
+  } catch (err) {
+    console.error(err);
+    alert('Error al actualizar trabajador');
+  }
 });
 
 document.getElementById('closeEditWorker').onclick = () => {
