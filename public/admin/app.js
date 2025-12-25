@@ -86,8 +86,8 @@ let workersCache = [];
 async function apiGetWorkers() {
   const { data, error } = await supabase
     .from('workers')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('id, nombre, pin, activo, fecha_ingreso')
+    .order('fecha_ingreso', { ascending: false });
 
   if (error) throw error;
 
