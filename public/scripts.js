@@ -11,20 +11,20 @@ let employees = [];
 
 // ===== CARGAR TRABAJADORES =====
 async function loadEmployees() {
-  try {
-    const r = await fetch('/api/data/workers', { cache: 'no-store' });
-    const data = await r.json();
-
-    employees = (data.workers || []).map(w => ({
-      id: w.id,
-      name: w.nombre,
-      pin: w.pin,
-      activo: w.activo,
-      step: 0
-    }));
-  } catch (e) {
-    console.error('Error cargando trabajadores', e);
+  const { data, error } = await supabase
+    .from('workers')
+    .select('id, nombre, activo, qr_token');
+  if (error) {
+    console.error(error);
+    return;
   }
+  employees = data.map(w => ({
+    id: w.id,
+    name: w.nombre,
+    activo: w.activo ? 'SI' : 'NO',
+    token: w.qr_token,
+    step: 0
+  }));
 }
 
 function getLocalDateDMY() {
@@ -161,105 +161,82 @@ autoTabs.forEach(tab => {
 
 // ===== ESCANEAR QR =====
 scannerInput.addEventListener('change', () => {
-  const value = scannerInput.value.trim();
-  scannerInput.value = "";
-
-  if (!value.includes('|')) {
-    showWarningModal('QR inválido', 'Formato incorrecto');
+  const token = scannerInput.value.trim();
+  scannerInput.value = '';
+  if (!token) {
+    showWarningModal('QR inválido', 'Código no reconocido');
     return;
   }
-
-  processQR(value);
+  processQR(token);
 });
 
-function processQR(qrValue) {
-  const [empId, pin] = qrValue.split('|');
+function processQR(token) {
 
-  if (!empId || !pin) {
-    showWarningModal('QR inválido', 'Formato incorrecto');
-    return;
-  }
-
-  const employee = employees.find(e => e.id === empId);
+  const employee = employees.find(e => e.token === token);
 
   if (!employee) {
-    showCriticalModal('Usuario no registrado', 'El colaborador no existe en el sistema');
+    showCriticalModal(
+      'QR no válido',
+      'Este código no pertenece a ningún trabajador'
+    );
     return;
   }
 
   if (employee.activo !== 'SI') {
-    showCriticalModal('Acceso denegado', 'El colaborador está desactivado');
+    showCriticalModal(
+      'Acceso denegado',
+      'El trabajador está desactivado'
+    );
     return;
   }
 
-  if (employee.pin !== pin) {
-    showWarningModal('Datos incorrectos', 'Usuario o PIN incorrecto');
+  // 🚫 bloqueo anti doble checada
+  if (isBlocked(employee.id)) {
+    showWarningModal(
+      'Checada reciente',
+      'Ya registraste una checada hace unos momentos'
+    );
     return;
   }
-// 🚫 BLOQUEO POR DOBLE CHECADA
-if (isBlocked(employee.id)) {
-  showWarningModal(
-    'Checada reciente',
-    'Ya registraste tu asistencia. Espera unos minutos.'
-  );
-  return;
-}
 
   registerStep(employee);
 }
-
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
-  // ⏱️ Marcar checada reciente
   recentScans.set(employee.id, Date.now());
-  const now = new Date();
-  const time = now.toTimeString().slice(0, 5);
-  const date = now.toISOString().split('T')[0];
 
   try {
-    const resp = await fetch('/api/data/records', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        workerId: employee.id,
-        step: employee.step,
-        time,
-        date
-      })
-    });
-
-    const result = await resp.json();
-    console.log('RESPUESTA RECORDS:', resp.status, result);
-
-    if (!resp.ok) {
-      showCriticalModal('Error', 'No se pudo guardar la checada');
-      return;
-    }
+    await supabase
+      .from('records')
+      .insert([{
+        worker_id: employee.id,
+        step: employee.step
+      }]);
   } catch {
     showCriticalModal('Error', 'No se pudo guardar la checada');
     return;
   }
 
+  // 👇 tu switch EXISTENTE
   switch (employee.step) {
     case 0:
-      showConfirmModal('Entrada registrada', `Hola ${employee.name}, bienvenido.`);
+      showConfirmModal('Entrada registrada', `Hola ${employee.name}`);
       employee.step = 1;
       break;
     case 1:
-      showConfirmModal('Salida a comida', `Buen provecho ${employee.name}.`);
+      showConfirmModal('Salida a comida', `Buen provecho ${employee.name}`);
       employee.step = 2;
       break;
     case 2:
-      showConfirmModal('Entrada de comida', `Bienvenido nuevamente ${employee.name}.`);
+      showConfirmModal('Entrada de comida', `Bienvenido ${employee.name}`);
       employee.step = 3;
       break;
     case 3:
-      showConfirmModal('Salida registrada', `Gracias por tu esfuerzo ${employee.name}.`);
+      showConfirmModal('Salida registrada', `Gracias ${employee.name}`);
       employee.step = 0;
       break;
   }
 }
-
 // ===== MODALES =====
 const confirmModal = document.getElementById('confirmModal');
 const confirmTitle = document.getElementById('confirmTitle');

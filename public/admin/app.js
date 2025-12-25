@@ -75,6 +75,8 @@ const qrImage = document.getElementById('qrImage');
 const badgeName = document.getElementById('badgeName');
 const badgeId = document.getElementById('badgeId');
 const downloadQR = document.getElementById('downloadQR');
+const regenQR = document.getElementById('regenQR');
+let currentQRWorkerId = null;
 
 qrModal.style.display = 'none';
 closeQrModal.onclick = () => qrModal.style.display = 'none';
@@ -86,7 +88,7 @@ let workersCache = [];
 async function apiGetWorkers() {
   const { data, error } = await supabase
     .from('workers')
-    .select('id, nombre, pin, activo, fecha_ingreso')
+    .select('id, nombre, pin, activo, fecha_ingreso, qr_token')
     .order('fecha_ingreso', { ascending: false });
 
   if (error) throw error;
@@ -96,7 +98,8 @@ async function apiGetWorkers() {
     nombre: w.nombre,
     pin: w.pin,
     activo: w.activo,
-    fechaIngreso: w.fecha_ingreso
+    fechaIngreso: w.fecha_ingreso,
+    qr_token: w.qr_token
   }));
 
   renderWorkers();
@@ -157,7 +160,8 @@ saveWorkerBtn.addEventListener('click', async () => {
       nombre,
       pin,
       activo,
-      fecha_ingreso: fecha
+      fecha_ingreso: fecha,
+      qr_token: crypto.randomUUID()
     }]);
 
     if (error) throw error;
@@ -180,13 +184,14 @@ workersTableBody.addEventListener('click', async e => {
 
   /* ===== QR ===== */
   if (qrBtn) {
+    currentQRWorkerId = worker.id;
     const worker = workersCache.find(w => w.id == qrBtn.dataset.id);
     if (!worker) return;
 
     badgeName.textContent = worker.nombre;
     badgeId.textContent   = worker.id;
 
-    const qrValue = `${worker.id}|${worker.pin}`;
+    const qrValue = worker.qr_token;
     qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrValue)}`;
 
     qrModal.style.display = 'flex';
@@ -286,6 +291,40 @@ function mostrarToast(mensaje) {
     toast.style.display = 'none';
   }, 2500);
 }
+
+regenQR.addEventListener('click', async () => {
+  if (!currentQRWorkerId) return;
+
+  const ok = confirm(
+    'Esto invalidará el QR anterior.\n¿Deseas generar uno nuevo?'
+  );
+  if (!ok) return;
+
+  const newToken = crypto.randomUUID();
+
+  try {
+    const { error } = await supabase
+      .from('workers')
+      .update({ qr_token: newToken })
+      .eq('id', currentQRWorkerId);
+
+    if (error) throw error;
+
+    // actualizar cache
+    const worker = workersCache.find(w => w.id === currentQRWorkerId);
+    if (worker) worker.qr_token = newToken;
+
+    // refrescar QR en pantalla
+    qrImage.src =
+      `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(newToken)}`;
+
+    mostrarToast('🔄 QR regenerado correctamente');
+
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo regenerar el QR');
+  }
+});
 
 /* ================== INICIO ================== */
 loadWorkers();
