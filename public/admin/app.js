@@ -251,21 +251,17 @@ document.getElementById('saveEditWorker').addEventListener('click', async () => 
   }
 
   try {
-    const { data, error } = await supabase
-  .from('workers')
-  .update({
-    nombre,
-    pin,
-    activo,
-    fecha_ingreso: fechaInput
-  })
-  .eq('id', id)
-  .select(); // 👈 ESTO ES LA CLAVE
-  if (error) throw error;
-  if (!data || data.length === 0) {
-  alert('No se realizaron cambios');
-  return;
-}
+    const { error } = await supabase
+      .from('workers')
+      .update({
+        nombre,
+        pin,
+        activo,
+        fecha_ingreso: fechaInput
+      })
+      .eq('id', id);
+
+    if (error) throw error;
 
     document.getElementById('editWorkerModal').style.display = 'none';
     mostrarToast('✏️ Trabajador actualizado correctamente');
