@@ -187,32 +187,41 @@
   </div>
 </div>
 
-<div id="editWorkerModal" class="modal">
-  <div class="modal-content">
+<div id="editWorkerModal" class="modal-overlay" style="display:none;">
+  <div class="modal">
 
     <button id="closeEditWorker" class="close">✕</button>
     <h3>Editar trabajador</h3>
 
     <input type="hidden" id="editWorkerId">
 
-    <label>Nombre</label>
-    <input type="text" id="editNombre">
+    <div class="form-group">
+      <label>Nombre</label>
+      <input type="text" id="editNombre">
+    </div>
 
-    <label>PIN</label>
-    <input type="number" id="editPin">
+    <div class="form-group">
+      <label>PIN</label>
+      <input type="number" id="editPin">
+    </div>
 
-    <label>Fecha de ingreso</label>
-    <input type="date" id="editFecha">
+    <div class="form-group">
+      <label>Fecha de ingreso</label>
+      <input type="date" id="editFecha">
+    </div>
 
     <label>
       <input type="checkbox" id="editActivo">
       Trabajador activo
     </label>
 
-    <button id="saveEditWorker">Guardar cambios</button>
+    <div class="modal-actions">
+      <button class="btn cancel" id="cancelEditWorker">Cancelar</button>
+      <button class="btn primary" id="saveEditWorker">Guardar</button>
+    </div>
+
   </div>
 </div>
-
 
 <div id="qrModal" class="modal-overlay" style="display:none;">
   <div class="modal-content badge" id="badge">
