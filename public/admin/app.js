@@ -201,7 +201,10 @@ workersTableBody.addEventListener('click', async e => {
     document.getElementById('editWorkerId').value = worker.id;
     document.getElementById('editNombre').value   = worker.nombre;
     document.getElementById('editPin').value      = worker.pin;
-    document.getElementById('editFecha').value    = worker.fecha_ingreso;
+    if (worker.fechaIngreso) {
+      const [day, month, year] = worker.fechaIngreso.split('/');
+      document.getElementById('editFecha').value = `${year}-${month}-${day}`;
+    }
     document.getElementById('editActivo').checked = worker.activo;
 
     document.getElementById('editWorkerModal').style.display = 'flex';
@@ -238,9 +241,19 @@ document.getElementById('saveEditWorker').addEventListener('click', () => {
   const index = trabajadores.findIndex(t => t.id === id);
   if (index === -1) return;
 
+  // ===== FORMATEAR FECHA =====
+  const fechaInput = document.getElementById('editFecha').value; // YYYY-MM-DD
+  let fechaFormateada = '';
+
+  if (fechaInput) {
+    const [year, month, day] = fechaInput.split('-');
+    fechaFormateada = `${day}/${month}/${year}`; // DD/MM/YYYY
+  }
+
+  // ===== GUARDAR CAMBIOS =====
   trabajadores[index].nombre = document.getElementById('editNombre').value.trim();
   trabajadores[index].pin = document.getElementById('editPin').value.trim();
-  trabajadores[index].fechaIngreso = document.getElementById('editFecha').value;
+  trabajadores[index].fechaIngreso = fechaFormateada;
   trabajadores[index].activo = document.getElementById('editActivo').checked;
 
   localStorage.setItem('trabajadores', JSON.stringify(trabajadores));
@@ -250,6 +263,7 @@ document.getElementById('saveEditWorker').addEventListener('click', () => {
 
   mostrarToast('✏️ Trabajador actualizado correctamente');
 });
+
 document.getElementById('closeEditWorker').onclick = () => {
   document.getElementById('editWorkerModal').style.display = 'none';
 };
