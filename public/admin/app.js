@@ -157,7 +157,7 @@ saveWorkerBtn.addEventListener('click', async () => {
       nombre,
       pin,
       activo,
-      created_at: fecha
+      fecha_ingreso: fecha
     }]);
 
     if (error) throw error;
