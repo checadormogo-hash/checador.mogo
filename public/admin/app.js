@@ -183,18 +183,24 @@ workersTableBody.addEventListener('click', async e => {
   const editBtn = e.target.closest('.btn-edit');
 
   /* ===== QR ===== */
-  if (qrBtn) {
-    const worker = workersCache.find(w => w.id == qrBtn.dataset.id);
-    if (!worker) return;
+if (qrBtn) {
+  const worker = workersCache.find(w => w.id == qrBtn.dataset.id);
+  if (!worker) return;
 
-    currentQRWorkerId = worker.id;
+  currentQRWorkerId = worker.id;
 
-    const qrValue = worker.qr_token;
-    qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrValue)}`;
+  qrImage.innerHTML = '';
 
-    qrModal.style.display = 'flex';
-    return; // ⬅️ evita que caiga en editar o eliminar
-  }
+  new QRCode(qrImage, {
+    text: worker.qr_token,
+    width: 300,
+    height: 300,
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  qrModal.style.display = 'flex';
+  return;
+}
 
 /* ===== EDITAR ===== */
 if (editBtn) {
@@ -312,8 +318,15 @@ regenQR.addEventListener('click', async () => {
     if (worker) worker.qr_token = newToken;
 
     // refrescar QR en pantalla
-    qrImage.src =
-      `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(newToken)}`;
+    qrImage.innerHTML = ''; // limpiar QR anterior
+
+new QRCode(qrImage, {
+  text: worker.qr_token,
+  width: 300,
+  height: 300,
+  correctLevel: QRCode.CorrectLevel.H
+});
+
 
     mostrarToast('🔄 QR regenerado correctamente');
 
@@ -321,6 +334,15 @@ regenQR.addEventListener('click', async () => {
     console.error(err);
     alert('No se pudo regenerar el QR');
   }
+});
+downloadQR.addEventListener('click', () => {
+  const canvas = qrImage.querySelector('canvas');
+  if (!canvas) return;
+
+  const link = document.createElement('a');
+  link.download = `gafete_qr_${currentQRWorkerId}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 });
 
 /* ================== INICIO ================== */
