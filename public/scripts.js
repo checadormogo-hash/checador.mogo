@@ -297,3 +297,9 @@ function setConfirmStyle(color) {
 // ===== INICIAR RELOJ =====
 updateDateTime();
 setInterval(updateDateTime, 1000);
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadEmployees();
+  showAutoModal(); // 👈 esto lo vemos en el punto 2
+});
