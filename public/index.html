@@ -131,25 +131,6 @@
 <!-- 1️⃣ Cargar Supabase -->
 <!-- Supabase CDN -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js" 
-        onload="initSupabaseAndLoad()" defer></script>
-<script>
-  function initSupabaseAndLoad() {
-    // ✅ La librería ya cargó, ahora sí podemos inicializar
-    window.supabaseClient = supabase.createClient(
-      "https://akgbqsfkehqlpxtrjsnw.supabase.co",
-      "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
-    );
-
-    // Cargar empleados y mostrar modal
-    if (typeof loadEmployees === 'function') {
-      loadEmployees().then(() => {
-        if (typeof showAutoModal === 'function') showAutoModal();
-      });
-    }
-  }
-</script>
-<!-- 4️⃣ Luego tu JS -->
 <script src="scripts.js" defer></script>
 </body>
 </html>
