@@ -134,10 +134,12 @@ window.addEventListener('load', async () => {
 
 // ===== BOTÓN MANUAL =====
 const openAutoModalBtn = document.getElementById('openAutoModal');
-openAutoModalBtn.addEventListener('click', () => {
-  showAutoModal();
-  clearTimeout(inactivityTimer);
-});
+if (openAutoModalBtn) {
+  openAutoModalBtn.addEventListener('click', () => {
+    showAutoModal();
+    clearTimeout(inactivityTimer);
+  });
+}
 
 // ===== CAMBIO DE TAB CAMERA / SCANNER =====
 const autoTabs = document.querySelectorAll('.auto-tab');
@@ -160,15 +162,19 @@ autoTabs.forEach(tab => {
 });
 
 // ===== ESCANEAR QR =====
-scannerInput.addEventListener('change', () => {
-  const token = scannerInput.value.trim();
-  scannerInput.value = '';
-  if (!token) {
-    showWarningModal('QR inválido', 'Código no reconocido');
-    return;
-  }
-  processQR(token);
-});
+if (scannerInput) {
+  scannerInput.addEventListener('change', () => {
+    const token = scannerInput.value.trim();
+    scannerInput.value = '';
+
+    if (!token) {
+      showWarningModal('QR inválido', 'Código no reconocido');
+      return;
+    }
+
+    processQR(token);
+  });
+}
 
 function processQR(token) {
 
