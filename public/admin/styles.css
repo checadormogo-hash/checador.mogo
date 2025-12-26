@@ -428,12 +428,11 @@ tbody td {
   width: 100% !important;
   height: 100% !important;
 }
-/*.badge-actions {
+.badge-actions {
   display: flex;
   gap: 6px;
-  justify-content: center;
   margin-top: 8px;
-}*/
+}
 
 /* ===== IMPRESIÓN ===== */
 @media print {
