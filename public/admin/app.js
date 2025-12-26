@@ -335,9 +335,19 @@ new QRCode(qrImage, {
     alert('No se pudo regenerar el QR');
   }
 });
-downloadQR.addEventListener('click', () => {
-  const canvas = qrImage.querySelector('canvas');
-  if (!canvas) return;
+downloadQR.addEventListener('click', async () => {
+  const badge = document.getElementById('badge');
+
+  // ocultar botones (no-print / no-export)
+  badge.classList.add('exporting');
+
+  const canvas = await html2canvas(badge, {
+    scale: 3,           // alta calidad
+    useCORS: true,
+    backgroundColor: '#ffffff'
+  });
+
+  badge.classList.remove('exporting');
 
   const link = document.createElement('a');
   link.download = `gafete_qr_${currentQRWorkerId}.png`;

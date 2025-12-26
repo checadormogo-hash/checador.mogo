@@ -393,6 +393,9 @@ tbody td {
   overflow: hidden;             /* 🔥 CLAVE para banner */
   text-align: center;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .badge-header {
@@ -417,10 +420,14 @@ tbody td {
 }
 
 .badge-qr {
-  width: 160px;
-  height: 160px;
+  width: 180px;
+  height: 180px;
+  margin: 12px auto;
 }
-
+.badge-qr canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
 .badge-actions {
   display: flex;
   gap: 6px;
@@ -487,4 +494,12 @@ tbody td {
   .no-print {
     display: none !important;
   }
+}
+/* ===== EXPORTAR IMAGEN ===== */
+.exporting .no-export {
+  display: none !important;
+}
+
+.exporting #badge {
+  background: #fff;
 }
