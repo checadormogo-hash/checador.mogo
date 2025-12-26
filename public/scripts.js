@@ -1,3 +1,26 @@
+let employeesReady = false;
+async function loadEmployees() {
+  const { data, error } = await window.supabaseClient
+    .from('workers')
+    .select('id, nombre, activo, qr_token');
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  employees = data.map(w => ({
+    id: w.id,
+    name: w.nombre,
+    activo: w.activo ? 'SI' : 'NO',
+    token: w.qr_token,
+    step: 0
+  }));
+
+  employeesReady = true;
+  console.log('Trabajadores cargados:', employees);
+}
+
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
 const recentScans = new Map();
 const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
@@ -126,12 +149,6 @@ closeAutoModal.addEventListener('click', hideAutoModal);
   });
 });
 
-// ===== AL CARGAR =====
-document.addEventListener('DOMContentLoaded', async () => {
- // await loadEmployees(); // ahora usa window.supabaseClient
-  showAutoModal();       // el modal se muestra al inicio
-});
-
 // ===== BOTÓN MANUAL =====
 const openAutoModalBtn = document.getElementById('openAutoModal');
 if (openAutoModalBtn) {
@@ -177,11 +194,23 @@ if (scannerInput) {
 }
 
 function processQR(token) {
-  console.log('Employees actuales:', employees);
-  console.log('Token escaneado:', token);
-  
-  const tokenNormalized = token.trim(); // limpia espacios del input
-  const employee = employees.find(e => e.token?.trim() === tokenNormalized);
+
+  if (!employeesReady) {
+    showWarningModal(
+      'Sistema iniciando',
+      'Espera un momento e intenta nuevamente'
+    );
+    return;
+  }
+
+  const tokenNormalized = token
+    .trim()
+    .replace(/['"]/g, '-') // scanners raros
+    .toLowerCase();
+
+  const employee = employees.find(e =>
+    e.token?.trim().toLowerCase() === tokenNormalized
+  );
 
   if (!employee) {
     showCriticalModal(
@@ -199,7 +228,6 @@ function processQR(token) {
     return;
   }
 
-  // 🚫 bloqueo anti doble checada
   if (isBlocked(employee.id)) {
     showWarningModal(
       'Checada reciente',
@@ -210,6 +238,7 @@ function processQR(token) {
 
   registerStep(employee);
 }
+
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
   recentScans.set(employee.id, Date.now());
