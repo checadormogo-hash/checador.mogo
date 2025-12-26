@@ -193,8 +193,8 @@ if (qrBtn) {
 
   new QRCode(qrImage, {
     text: worker.qr_token,
-    width: 300,
-    height: 300,
+    width: 180,
+    height: 180,
     correctLevel: QRCode.CorrectLevel.H
   });
 
@@ -322,8 +322,8 @@ regenQR.addEventListener('click', async () => {
 
 new QRCode(qrImage, {
   text: worker.qr_token,
-  width: 300,
-  height: 300,
+  width: 180,
+  height: 180,
   correctLevel: QRCode.CorrectLevel.H
 });
 
