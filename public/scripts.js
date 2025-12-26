@@ -14,15 +14,6 @@ async function loadEmployees() {
     console.error(error);
     return;
   }
-
-  employees = data.map(w => ({
-    id: w.id,
-    name: w.nombre,
-    activo: w.activo ? 'SI' : 'NO',
-    token: w.qr_token,
-    step: 0
-  }));
-
   employeesReady = true;
   console.log('Trabajadores cargados:', employees);
 }
@@ -35,22 +26,6 @@ const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
 const actionButtons = document.querySelectorAll('.action-btn');
 const scannerInput = document.querySelector('.scanner-input');
 const currentDateEl = document.getElementById('currentDate');
-
-function getLocalDateDMY() {
-  const d = new Date();
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}-${month}-${year}`;
-}
-function time12hMX() {
-  return new Date().toLocaleTimeString('es-MX', {
-    timeZone: 'America/Monterrey', // 👈 CLAVE
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  });
-}
 
 // ===== FECHA Y HORA =====
 function getTodayISO() {
@@ -231,36 +206,61 @@ function processQR(token) {
   registerStep(employee);
 }
 
+function getStepFromRecord(record) {
+  if (!record) return 0;
+  if (!record.entrada) return 0;
+  if (!record.salida_comida) return 1;
+  if (!record.entrada_comida) return 2;
+  if (!record.salida) return 3;
+  return 4; // día completo
+}
+
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
   recentScans.set(employee.id, Date.now());
-  const today = getTodayISO();
-  // Fecha YYYY-MM-DD (MX)
 
-  // Hora HH:MM:SS (MX)
+  const today = getTodayISO();
+
   const nowTime = new Date().toLocaleTimeString('es-MX', {
     hour12: false,
     timeZone: 'America/Monterrey'
   });
 
-  // 🔎 Buscar si ya existe registro del día
+  // 🔎 Buscar registro del día
   const { data: todayRecord, error: findError } = await supabaseClient
     .from('records')
-    .select('id')
+    .select('id, entrada, salida_comida, entrada_comida, salida')
     .eq('worker_id', employee.id)
     .eq('fecha', today)
     .maybeSingle();
 
-  if (findError && findError.code !== 'PGRST116' && findError.code !== '406') {
+  if (findError && findError.code !== 'PGRST116') {
     console.error('ERROR BUSCANDO RECORD:', findError);
     showCriticalModal('Error', 'No se pudo validar la checada');
     return;
   }
 
-  // Objeto a guardar
+  // 🧠 STEP REAL DESDE BD
+  const step = getStepFromRecord(todayRecord);
+  if (!todayRecord && step !== 0) {
+    showCriticalModal(
+      'Error de secuencia',
+      'El registro del día no es válido'
+    );
+    return;
+  }
+  // 🛑 Día ya completo
+  if (step === 4) {
+    showWarningModal(
+      'Jornada finalizada',
+      'Ya registraste todas tus checadas del día'
+    );
+    return;
+  }
+
   const recordData = {};
 
-  switch (employee.step) {
+  switch (step) {
     case 0:
       recordData.entrada = nowTime;
       break;
@@ -275,16 +275,8 @@ async function registerStep(employee) {
       break;
   }
 
-  // 🆕 PRIMERA CHECADA DEL DÍA → INSERT
+  // 🆕 INSERT (solo entrada)
   if (!todayRecord) {
-    if (employee.step !== 0) {
-      showCriticalModal(
-        'Checada inválida',
-        'Debes iniciar con entrada'
-      );
-      return;
-    }
-
     const { error: insertError } = await supabaseClient
       .from('records')
       .insert([{
@@ -294,43 +286,38 @@ async function registerStep(employee) {
       }]);
 
     if (insertError) {
-      console.error('ERROR INSERT records:', insertError);
+      console.error('ERROR INSERT:', insertError);
       showCriticalModal('Error', 'No se pudo guardar la entrada');
       return;
     }
-  }
-
-  // 🔁 CHECADAS SIGUIENTES → UPDATE
-  if (todayRecord) {
+  } 
+  // 🔁 UPDATE
+  else {
     const { error: updateError } = await supabaseClient
       .from('records')
       .update(recordData)
       .eq('id', todayRecord.id);
 
     if (updateError) {
-      console.error('ERROR UPDATE records:', updateError);
+      console.error('ERROR UPDATE:', updateError);
       showCriticalModal('Error', 'No se pudo guardar la checada');
       return;
     }
   }
 
-  // ✅ Mensajes y avance de step (ESTO YA ERA TUYO)
-  switch (employee.step) {
+  // ✅ MODALES CORRECTOS
+  switch (step) {
     case 0:
       showConfirmModal('Entrada registrada', `Hola ${employee.name}`);
-      employee.step = 1;
       break;
     case 1:
       showConfirmModal('Salida a comida', `Buen provecho ${employee.name}`);
-      employee.step = 2;
       break;
     case 2:
       showConfirmModal('Entrada de comida', `Bienvenido ${employee.name}`);
-      employee.step = 3;
       break;
     case 3:
       showConfirmModal('Salida registrada', `Gracias ${employee.name}`);
-      employee.step = 0;
       break;
   }
 }
