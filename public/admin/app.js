@@ -188,8 +188,6 @@ workersTableBody.addEventListener('click', async e => {
     if (!worker) return;
 
     currentQRWorkerId = worker.id;
-    badgeName.textContent = worker.nombre;
-    badgeId.textContent   = worker.id;
 
     const qrValue = worker.qr_token;
     qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrValue)}`;
