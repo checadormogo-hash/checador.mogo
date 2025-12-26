@@ -53,6 +53,12 @@ function time12hMX() {
 }
 
 // ===== FECHA Y HORA =====
+function getTodayISO() {
+  return new Date()
+    .toLocaleDateString('en-CA', { timeZone: 'America/Monterrey' });
+}
+// devuelve: 2025-12-26
+
 function updateDateTime() {
   const now = new Date();
 
@@ -228,11 +234,8 @@ function processQR(token) {
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
   recentScans.set(employee.id, Date.now());
-
+  const today = getTodayISO();
   // Fecha YYYY-MM-DD (MX)
-  const today = new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/Monterrey'
-  });
 
   // Hora HH:MM:SS (MX)
   const nowTime = new Date().toLocaleTimeString('es-MX', {
@@ -246,16 +249,16 @@ async function registerStep(employee) {
     .select('id')
     .eq('worker_id', employee.id)
     .eq('fecha', today)
-    .single();
+    .maybeSingle();
 
-  if (findError && findError.code !== 'PGRST116') {
+  if (findError && findError.code !== 'PGRST116' && findError.code !== '406') {
     console.error('ERROR BUSCANDO RECORD:', findError);
     showCriticalModal('Error', 'No se pudo validar la checada');
     return;
   }
 
   // Objeto a guardar
-  const recordData = { step: employee.step };
+  const recordData = {};
 
   switch (employee.step) {
     case 0:
