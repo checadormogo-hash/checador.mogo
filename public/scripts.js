@@ -177,6 +177,9 @@ if (scannerInput) {
 }
 
 function processQR(token) {
+  console.log('Employees actuales:', employees);
+  console.log('Token escaneado:', token);
+  
   const tokenNormalized = token.trim(); // limpia espacios del input
   const employee = employees.find(e => e.token?.trim() === tokenNormalized);
 
