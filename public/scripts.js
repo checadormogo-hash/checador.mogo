@@ -177,8 +177,8 @@ if (scannerInput) {
 }
 
 function processQR(token) {
-
-  const employee = employees.find(e => e.token === token);
+  const tokenNormalized = token.trim(); // limpia espacios del input
+  const employee = employees.find(e => e.token?.trim() === tokenNormalized);
 
   if (!employee) {
     showCriticalModal(
