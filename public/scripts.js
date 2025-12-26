@@ -320,16 +320,16 @@ switch (step) {
   // ✅ MODALES CORRECTOS
   switch (step) {
     case 0:
-      showConfirmModal('Entrada registrada', `Hola ${employee.name}`);
+      showConfirmModal('Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`);
       break;
     case 1:
-      showConfirmModal('Salida a comida', `Buen provecho ${employee.name}`);
+      showConfirmModal('Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>.`);
       break;
     case 2:
-      showConfirmModal('Entrada de comida', `Bienvenido ${employee.name}`);
+      showConfirmModal('Entrada de comida', `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`);
       break;
     case 3:
-      showConfirmModal('Salida registrada', `Gracias ${employee.name}`);
+      showConfirmModal('Salida registrada', `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo, nos vemos pronto...`);
       break;
   }
 }
@@ -342,8 +342,9 @@ const closeConfirmModal = document.getElementById('closeConfirmModal');
 let confirmTimeout = null;
 
 function showConfirmModal(title, message, duration = 2500) {
+  setConfirmStyle('#16a34a'); // 🟢 verde por defecto
   confirmTitle.textContent = title;
-  confirmMessage.textContent = message;
+  confirmMessage.innerHTML = message;
   confirmModal.classList.remove('oculto');
 
   confirmTimeout = setTimeout(() => { closeConfirmation(); }, duration);
