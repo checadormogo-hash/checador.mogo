@@ -15,7 +15,7 @@ async function loadEmployees() {
     console.error('Supabase no está definido aún');
     return;
   }
-  const { data, error } = await supabase
+  const { data, error } = await window.supabaseClient
     .from('workers')
     .select('id, nombre, activo, qr_token');
   if (error) {
@@ -132,12 +132,8 @@ closeAutoModal.addEventListener('click', hideAutoModal);
 
 // ===== AL CARGAR =====
 document.addEventListener('DOMContentLoaded', async () => {
-  if (typeof supabase === 'undefined') {
-    console.error('Supabase aún no está definido');
-    return;
-  }
-  await loadEmployees();
-  showAutoModal();
+  await loadEmployees(); // ahora usa window.supabaseClient
+  showAutoModal();       // el modal se muestra al inicio
 });
 
 // ===== BOTÓN MANUAL =====
@@ -220,7 +216,7 @@ async function registerStep(employee) {
   recentScans.set(employee.id, Date.now());
 
   try {
-    await supabase
+    await window.supabaseClient
       .from('records')
       .insert([{
         worker_id: employee.id,

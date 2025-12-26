@@ -130,9 +130,9 @@
   <!-- JS -->
 <!-- Supabase CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
-<!-- Inicialización -->
+<!-- Inicialización global -->
 <script>
-  const supabase = supabase.createClient(
+  window.supabaseClient = supabase.createClient(
     "https://akgbqsfkehqlpxtrjsnw.supabase.co",
     "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
   );
