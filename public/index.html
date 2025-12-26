@@ -129,33 +129,25 @@
 
   <!-- JS -->
 <!-- 1️⃣ Cargar Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
-<!-- 2️⃣ Inicializar solo cuando DOM y supabase estén listos -->
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js" 
+        onload="initSupabaseAndLoad()"></script>
 <script>
   function initSupabaseAndLoad() {
-    if (typeof supabase === 'undefined') {
-      console.error('Supabase aún no está definido');
-      return;
-    }
-
-    // Inicializamos el cliente
+    // ✅ La librería ya cargó, ahora sí podemos inicializar
     window.supabaseClient = supabase.createClient(
       "https://akgbqsfkehqlpxtrjsnw.supabase.co",
       "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
     );
 
-    // Ahora sí cargamos empleados
+    // Cargar empleados y mostrar modal
     if (typeof loadEmployees === 'function') {
       loadEmployees().then(() => {
         if (typeof showAutoModal === 'function') showAutoModal();
       });
     }
   }
-
-  // Esperar que DOM y librería estén listos
-  document.addEventListener('DOMContentLoaded', initSupabaseAndLoad);
 </script>
-
 <!-- 4️⃣ Luego tu JS -->
 <script src="scripts.js" defer></script>
 </body>
