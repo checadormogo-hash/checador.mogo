@@ -1,4 +1,4 @@
-const supabase = window.supabase.createClient(
+const supabaseClient = window.supabase.createClient(
   "https://akgbqsfkehqlpxtrjsnw.supabase.co",
   "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
 );
@@ -6,7 +6,7 @@ const supabase = window.supabase.createClient(
 let employees = [];
 let employeesReady = false;
 async function loadEmployees() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('workers')
     .select('id, nombre, activo, qr_token');
 
@@ -230,7 +230,7 @@ async function registerStep(employee) {
   recentScans.set(employee.id, Date.now());
 
   try {
-    await supabase
+    await supabaseClient
       .from('records')
       .insert([{
         worker_id: employee.id,
