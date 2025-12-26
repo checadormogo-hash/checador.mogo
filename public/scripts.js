@@ -1,3 +1,4 @@
+let employees = [];
 let employeesReady = false;
 async function loadEmployees() {
   const { data, error } = await window.supabaseClient
@@ -29,26 +30,6 @@ const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
 const actionButtons = document.querySelectorAll('.action-btn');
 const scannerInput = document.querySelector('.scanner-input');
 const currentDateEl = document.getElementById('currentDate');
-
-let employees = [];
-
-// ===== CARGAR TRABAJADORES =====
-async function loadEmployees() {
-  const { data, error } = await window.supabaseClient
-    .from('workers')
-    .select('id, nombre, activo, qr_token');
-  if (error) {
-    console.error(error);
-    return;
-  }
-  employees = data.map(w => ({
-    id: w.id,
-    name: w.nombre,
-    activo: w.activo ? 'SI' : 'NO',
-    token: w.qr_token,
-    step: 0
-  }));
-}
 
 function getLocalDateDMY() {
   const d = new Date();
