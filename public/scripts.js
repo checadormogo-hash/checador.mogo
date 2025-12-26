@@ -287,7 +287,7 @@ switch (step) {
     break;
   case 3:
     recordData.salida = nowTime;
-    recordData.step = 4; // día completo
+    recordData.step = 3; // día completo
     break;
 }
 
