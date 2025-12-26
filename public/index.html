@@ -128,6 +128,16 @@
 </div>
 
   <!-- JS -->
+   <!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+<!-- Tu inicialización -->
+<script>
+  const supabase = window.supabase.createClient(
+    "https://akgbqsfkehqlpxtrjsnw.supabase.co",
+    "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
+  );
+</script>
+<!-- Luego tu scripts.js -->
   <script src="scripts.js"></script>
 </body>
 </html>

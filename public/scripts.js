@@ -11,6 +11,10 @@ let employees = [];
 
 // ===== CARGAR TRABAJADORES =====
 async function loadEmployees() {
+  if (typeof supabase === 'undefined') {
+    console.error('Supabase no está definido aún');
+    return;
+  }
   const { data, error } = await supabase
     .from('workers')
     .select('id, nombre, activo, qr_token');
