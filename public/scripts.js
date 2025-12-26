@@ -229,19 +229,23 @@ function processQR(token) {
 async function registerStep(employee) {
   recentScans.set(employee.id, Date.now());
 
-  try {
-    await supabaseClient
-      .from('records')
-      .insert([{
-        worker_id: employee.id,
-        step: employee.step
-      }]);
-  } catch {
-    showCriticalModal('Error', 'No se pudo guardar la checada');
+  const { error } = await supabaseClient
+    .from('records')
+    .insert([{
+      worker_id: employee.id,
+      step: employee.step
+    }]);
+
+  if (error) {
+    console.error('ERROR INSERT records:', error);
+    showCriticalModal(
+      'Error al guardar',
+      error.message
+    );
     return;
   }
 
-  // 👇 tu switch EXISTENTE
+  // 👇 tu switch EXISTENTE (NO se toca)
   switch (employee.step) {
     case 0:
       showConfirmModal('Entrada registrada', `Hola ${employee.name}`);
@@ -261,6 +265,7 @@ async function registerStep(employee) {
       break;
   }
 }
+
 // ===== MODALES =====
 const confirmModal = document.getElementById('confirmModal');
 const confirmTitle = document.getElementById('confirmTitle');
