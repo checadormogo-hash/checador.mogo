@@ -131,7 +131,11 @@ closeAutoModal.addEventListener('click', hideAutoModal);
 });
 
 // ===== AL CARGAR =====
-window.addEventListener('load', async () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (typeof supabase === 'undefined') {
+    console.error('Supabase aún no está definido');
+    return;
+  }
   await loadEmployees();
   showAutoModal();
 });
