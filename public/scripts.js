@@ -222,6 +222,11 @@ function getStepFromRecord(record) {
   return 4; // día completo
 }
 
+function showSuccessModal(title, message) {
+  setConfirmStyle('#16a34a'); // 🟢 verde
+  showConfirmModal(title, message, 2500);
+}
+
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
   recentScans.set(employee.id, Date.now());
@@ -293,7 +298,6 @@ switch (step) {
       .insert([{
         worker_id: employee.id,
         fecha: today,
-        step: 1,
         ...recordData
       }]);
 
@@ -320,16 +324,24 @@ switch (step) {
   // ✅ MODALES CORRECTOS
   switch (step) {
     case 0:
-      showConfirmModal('Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`);
+      showSuccessModal(
+        'Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`
+      );
       break;
     case 1:
-      showConfirmModal('Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>.`);
+      showSuccessModal(
+        'Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>.`
+      );
       break;
     case 2:
-      showConfirmModal('Entrada de comida', `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`);
+      showSuccessModal(
+        'Entrada de comida', `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`
+      );
       break;
     case 3:
-      showConfirmModal('Salida registrada', `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo, nos vemos pronto...`);
+      showSuccessModal(
+        'Salida registrada', `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo, nos vemos pronto...`
+      );
       break;
   }
 }
@@ -342,7 +354,6 @@ const closeConfirmModal = document.getElementById('closeConfirmModal');
 let confirmTimeout = null;
 
 function showConfirmModal(title, message, duration = 2500) {
-  setConfirmStyle('#16a34a'); // 🟢 verde por defecto
   confirmTitle.textContent = title;
   confirmMessage.innerHTML = message;
   confirmModal.classList.remove('oculto');
