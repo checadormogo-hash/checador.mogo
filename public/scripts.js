@@ -11,13 +11,20 @@ async function loadEmployees() {
     .select('id, nombre, activo, qr_token');
 
   if (error) {
-    console.error(error);
+    console.error('ERROR CARGANDO TRABAJADORES:', error);
     return;
   }
+
+  employees = data.map(w => ({
+    id: w.id,
+    name: w.nombre,
+    activo: w.activo ? 'SI' : 'NO',
+    token: w.qr_token
+  }));
+
   employeesReady = true;
   console.log('Trabajadores cargados:', employees);
 }
-
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
 const recentScans = new Map();
 const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
