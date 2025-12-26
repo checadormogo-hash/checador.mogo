@@ -128,16 +128,19 @@
 </div>
 
   <!-- JS -->
-<!-- Supabase CDN -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
-<!-- Inicialización global -->
-<script>
-  window.supabaseClient = supabase.createClient(
-    "https://akgbqsfkehqlpxtrjsnw.supabase.co",
-    "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
-  );
+<!-- Supabase CDN con defer -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js" defer></script>
+<!-- Inicialización de supabase solo cuando la librería ya cargó -->
+<script defer>
+  document.addEventListener('DOMContentLoaded', () => {
+    window.supabaseClient = supabase.createClient(
+      "https://akgbqsfkehqlpxtrjsnw.supabase.co",
+      "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
+    );
+  });
 </script>
 <!-- Tu JS -->
-<script src="scripts.js"></script>
+<script src="scripts.js" defer></script>
+
 </body>
 </html>
