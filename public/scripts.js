@@ -128,7 +128,7 @@ closeAutoModal.addEventListener('click', hideAutoModal);
 
 // ===== AL CARGAR =====
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadEmployees(); // ahora usa window.supabaseClient
+ // await loadEmployees(); // ahora usa window.supabaseClient
   showAutoModal();       // el modal se muestra al inicio
 });
 
