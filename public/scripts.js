@@ -267,20 +267,24 @@ async function registerStep(employee) {
 
   const recordData = {};
 
-  switch (step) {
-    case 0:
-      recordData.entrada = nowTime;
-      break;
-    case 1:
-      recordData.salida_comida = nowTime;
-      break;
-    case 2:
-      recordData.entrada_comida = nowTime;
-      break;
-    case 3:
-      recordData.salida = nowTime;
-      break;
-  }
+switch (step) {
+  case 0:
+    recordData.entrada = nowTime;
+    recordData.step = 1;
+    break;
+  case 1:
+    recordData.salida_comida = nowTime;
+    recordData.step = 2;
+    break;
+  case 2:
+    recordData.entrada_comida = nowTime;
+    recordData.step = 3;
+    break;
+  case 3:
+    recordData.salida = nowTime;
+    recordData.step = 4; // día completo
+    break;
+}
 
   // 🆕 INSERT (solo entrada)
   if (!todayRecord) {
@@ -289,6 +293,7 @@ async function registerStep(employee) {
       .insert([{
         worker_id: employee.id,
         fecha: today,
+        step: 1,
         ...recordData
       }]);
 
