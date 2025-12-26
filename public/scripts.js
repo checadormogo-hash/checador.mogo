@@ -229,23 +229,89 @@ function processQR(token) {
 async function registerStep(employee) {
   recentScans.set(employee.id, Date.now());
 
-  const { error } = await supabaseClient
-    .from('records')
-    .insert([{
-      worker_id: employee.id,
-      step: employee.step
-    }]);
+  // Fecha YYYY-MM-DD (MX)
+  const today = new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/Monterrey'
+  });
 
-  if (error) {
-    console.error('ERROR INSERT records:', error);
-    showCriticalModal(
-      'Error al guardar',
-      error.message
-    );
+  // Hora HH:MM:SS (MX)
+  const nowTime = new Date().toLocaleTimeString('es-MX', {
+    hour12: false,
+    timeZone: 'America/Monterrey'
+  });
+
+  // 🔎 Buscar si ya existe registro del día
+  const { data: todayRecord, error: findError } = await supabaseClient
+    .from('records')
+    .select('id')
+    .eq('worker_id', employee.id)
+    .eq('fecha', today)
+    .single();
+
+  if (findError && findError.code !== 'PGRST116') {
+    console.error('ERROR BUSCANDO RECORD:', findError);
+    showCriticalModal('Error', 'No se pudo validar la checada');
     return;
   }
 
-  // 👇 tu switch EXISTENTE (NO se toca)
+  // Objeto a guardar
+  const recordData = { step: employee.step };
+
+  switch (employee.step) {
+    case 0:
+      recordData.entrada = nowTime;
+      break;
+    case 1:
+      recordData.salida_comida = nowTime;
+      break;
+    case 2:
+      recordData.entrada_comida = nowTime;
+      break;
+    case 3:
+      recordData.salida = nowTime;
+      break;
+  }
+
+  // 🆕 PRIMERA CHECADA DEL DÍA → INSERT
+  if (!todayRecord) {
+    if (employee.step !== 0) {
+      showCriticalModal(
+        'Checada inválida',
+        'Debes iniciar con entrada'
+      );
+      return;
+    }
+
+    const { error: insertError } = await supabaseClient
+      .from('records')
+      .insert([{
+        worker_id: employee.id,
+        fecha: today,
+        ...recordData
+      }]);
+
+    if (insertError) {
+      console.error('ERROR INSERT records:', insertError);
+      showCriticalModal('Error', 'No se pudo guardar la entrada');
+      return;
+    }
+  }
+
+  // 🔁 CHECADAS SIGUIENTES → UPDATE
+  if (todayRecord) {
+    const { error: updateError } = await supabaseClient
+      .from('records')
+      .update(recordData)
+      .eq('id', todayRecord.id);
+
+    if (updateError) {
+      console.error('ERROR UPDATE records:', updateError);
+      showCriticalModal('Error', 'No se pudo guardar la checada');
+      return;
+    }
+  }
+
+  // ✅ Mensajes y avance de step (ESTO YA ERA TUYO)
   switch (employee.step) {
     case 0:
       showConfirmModal('Entrada registrada', `Hola ${employee.name}`);
