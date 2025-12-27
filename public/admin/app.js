@@ -87,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       recordsCache = data.map(r => ({
         id: r.id,
+        worker_id: r.worker_id, // <- importante
         trabajador: r.trabajador,
         fecha: r.fecha.substring(0, 10),
         entrada: r.entrada,
