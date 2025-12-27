@@ -1,7 +1,9 @@
 /* ================== APP.JS COMPLETO ================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-
+  const filterText = document.getElementById('filterText');
+  const filterDate = document.getElementById('filterDate');
+  const clearFiltersBtn = document.getElementById('clearFilters');
   /* ================== CONFIG ================== */
   // Supabase CDN (SIN import)
   const supabase = window.supabase.createClient(
@@ -42,17 +44,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ================== RENDER REGISTROS ================== */
-  function renderRecords() {
+  function renderRecords(data = recordsCache) {
     const tbody = document.getElementById('recordsTableBody');
     if (!tbody) return; // evitar null
     tbody.innerHTML = '';
 
-    if (!recordsCache.length) {
+    if (!data.length) {
       tbody.innerHTML = `<tr><td colspan="7">No hay registros</td></tr>`;
       return;
     }
 
-    recordsCache.forEach(record => {
+    data.forEach(record => {
       const trabajador = workersCache.find(w => w.id == record.worker_id);
       const nombre = trabajador ? trabajador.nombre : 'Desconocido';
 
@@ -74,6 +76,42 @@ document.addEventListener('DOMContentLoaded', () => {
       tbody.appendChild(tr);
     });
   }
+
+  function applyRecordFilters() {
+  const text = filterText.value.toLowerCase().trim();
+  const date = filterDate.value;
+
+  const filtered = recordsCache.filter(record => {
+    const worker = workersCache.find(w => w.id == record.worker_id);
+    const nombre = worker ? worker.nombre.toLowerCase() : '';
+
+    const matchText =
+      !text ||
+      nombre.includes(text) ||
+      String(record.worker_id).includes(text);
+
+    const matchDate =
+      !date || record.fecha === date;
+
+    return matchText && matchDate;
+  });
+
+  renderRecords(filtered);
+}
+if (filterText) {
+  filterText.addEventListener('input', applyRecordFilters);
+}
+
+if (filterDate) {
+  filterDate.addEventListener('change', applyRecordFilters);
+}
+if (clearFiltersBtn) {
+  clearFiltersBtn.addEventListener('click', () => {
+    filterText.value = '';
+    filterDate.value = '';
+    renderRecords();
+  });
+}
 
   /* ================== CARGAR REGISTROS ================== */
   async function loadRecords() {
