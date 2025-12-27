@@ -19,125 +19,6 @@ async function sha256(text) {
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 }
-const menuAuthPins = document.getElementById('menuAuthPins');
-const authPinsModal = document.getElementById('authPinsModal');
-const closeAuthPins = document.getElementById('closeAuthPins');
-const authPinsTableBody = document.getElementById('authPinsTableBody');
-
-if (menuAuthPins) {
-  menuAuthPins.onclick = async () => {
-  closeMenuFn();
-  authPinsModal.style.display = 'flex';
-  // 👇 aseguras que existan trabajadores
-  if (!workersCache.length) {
-    await loadWorkers();
-  }
-
-  loadAuthPinsToday();
-};
-}
-
-if (closeAuthPins) {
-  closeAuthPins.onclick = () => {
-    authPinsModal.style.display = 'none';
-  };
-}
-async function loadAuthPinsToday() {
-  authPinsTableBody.innerHTML = '';
-
-  const today = new Date().toISOString().substring(0, 10);
-
-  const { data, error } = await supabase
-    .from('records')
-    .select('id, worker_id, entrada')
-    .eq('fecha', today)
-    .not('entrada', 'is', null)
-    .is('salida', null);
-
-  if (error) {
-    console.error(error);
-    return;
-  }
-
-  if (!data.length) {
-    authPinsTableBody.innerHTML = `
-      <tr><td colspan="4">No hay trabajadores con entrada activa</td></tr>
-    `;
-    return;
-  }
-
-  data.forEach(rec => {
-    const worker = workersCache.find(w => w.id == rec.worker_id);
-    if (!worker) return;
-
-    const tr = document.createElement('tr');
-
-    tr.innerHTML = `
-      <td>${worker.nombre}</td>
-      <td>${rec.entrada}</td>
-      <td class="pin-cell">—</td>
-      <td>
-        <button class="btn primary btn-gen-pin" data-worker="${worker.id}">
-          Generar PIN
-        </button>
-      </td>
-    `;
-
-    authPinsTableBody.appendChild(tr);
-  });
-}
-if (authPinsTableBody) {
-authPinsTableBody.addEventListener('click', async e => {
-  const btn = e.target.closest('.btn-gen-pin');
-  if (!btn) return;
-
-  const workerId = btn.dataset.worker;
-  const pin = Math.floor(1000 + Math.random() * 9000).toString();
-
-  const { error } = await supabase.from('auth_pins').insert([{
-    worker_id: workerId,
-    pin,
-    tipo: 'salida_temprana'
-  }]);
-
-  if (error) {
-    alert('No se pudo generar el PIN');
-    return;
-  }
-
-  const tdPin = btn.closest('tr').querySelector('.pin-cell');
-  tdPin.innerHTML = `<strong>${pin}</strong>`;
-
-  btn.outerHTML = `
-    <button class="btn-icon copy-pin" title="Copiar PIN">📋</button>
-    <button class="btn-icon share-pin" title="WhatsApp">🟢</button>
-  `;
-
-  tdPin.dataset.pin = pin;
-});}
-
-authPinsTableBody.addEventListener('click', e => {
-
-  // COPIAR
-  if (e.target.closest('.copy-pin')) {
-    const pin = e.target.closest('tr').querySelector('.pin-cell').dataset.pin;
-    navigator.clipboard.writeText(pin);
-    mostrarToast('📋 PIN copiado');
-  }
-
-  // WHATSAPP
-  if (e.target.closest('.share-pin')) {
-    const tr = e.target.closest('tr');
-    const nombre = tr.children[0].textContent;
-    const pin = tr.querySelector('.pin-cell').dataset.pin;
-
-    const msg = `🔐 Autorización de salida\n\nTrabajador: ${nombre}\nPIN: ${pin}\n\nUso único.`;
-    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-
-    window.open(url, '_blank');
-  }
-});
-
   /* ================== CACHE ================== */
   let recordsCache = [];
   let workersCache = [];
@@ -420,6 +301,127 @@ if (logoutBtn) {
   if (closeMenu) closeMenu.onclick = closeMenuFn;
   if (menuOverlay) menuOverlay.onclick = closeMenuFn;
 
+
+/* ================== Aurizaciones ================== */
+const menuAuthPins = document.getElementById('menuAuthPins');
+const authPinsModal = document.getElementById('authPinsModal');
+const closeAuthPins = document.getElementById('closeAuthPins');
+const authPinsTableBody = document.getElementById('authPinsTableBody');
+
+if (menuAuthPins) {
+  menuAuthPins.onclick = async () => {
+  closeMenuFn();
+  authPinsModal.style.display = 'flex';
+  // 👇 aseguras que existan trabajadores
+  if (!workersCache.length) {
+    await loadWorkers();
+  }
+
+  loadAuthPinsToday();
+};
+}
+
+if (closeAuthPins) {
+  closeAuthPins.onclick = () => {
+    authPinsModal.style.display = 'none';
+  };
+}
+async function loadAuthPinsToday() {
+  authPinsTableBody.innerHTML = '';
+
+  const today = new Date().toISOString().substring(0, 10);
+
+  const { data, error } = await supabase
+    .from('records')
+    .select('id, worker_id, entrada')
+    .eq('fecha', today)
+    .not('entrada', 'is', null)
+    .is('salida', null);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  if (!data.length) {
+    authPinsTableBody.innerHTML = `
+      <tr><td colspan="4">No hay trabajadores con entrada activa</td></tr>
+    `;
+    return;
+  }
+
+  data.forEach(rec => {
+    const worker = workersCache.find(w => w.id == rec.worker_id);
+    if (!worker) return;
+
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td>${worker.nombre}</td>
+      <td>${rec.entrada}</td>
+      <td class="pin-cell">—</td>
+      <td>
+        <button class="btn primary btn-gen-pin" data-worker="${worker.id}">
+          Generar PIN
+        </button>
+      </td>
+    `;
+
+    authPinsTableBody.appendChild(tr);
+  });
+}
+if (authPinsTableBody) {
+  authPinsTableBody.addEventListener('click', async e => {
+
+    // GENERAR PIN
+    const genBtn = e.target.closest('.btn-gen-pin');
+    if (genBtn) {
+      const workerId = genBtn.dataset.worker;
+      const pin = Math.floor(1000 + Math.random() * 9000).toString();
+
+      const { error } = await supabase.from('auth_pins').insert([{
+        worker_id: workerId,
+        pin,
+        tipo: 'salida_temprana'
+      }]);
+
+      if (error) {
+        alert('No se pudo generar el PIN');
+        return;
+      }
+
+      const tr = genBtn.closest('tr');
+      const tdPin = tr.querySelector('.pin-cell');
+
+      tdPin.innerHTML = `<strong>${pin}</strong>`;
+      tdPin.dataset.pin = pin;
+
+      genBtn.outerHTML = `
+        <button class="btn-icon copy-pin" title="Copiar PIN">📋</button>
+        <button class="btn-icon share-pin" title="WhatsApp">🟢</button>
+      `;
+      return;
+    }
+
+    // COPIAR
+    if (e.target.closest('.copy-pin')) {
+      const pin = e.target.closest('tr').querySelector('.pin-cell').dataset.pin;
+      navigator.clipboard.writeText(pin);
+      mostrarToast('📋 PIN copiado');
+      return;
+    }
+
+    // WHATSAPP
+    if (e.target.closest('.share-pin')) {
+      const tr = e.target.closest('tr');
+      const nombre = tr.children[0].textContent;
+      const pin = tr.querySelector('.pin-cell').dataset.pin;
+
+      const msg = `🔐 Autorización de salida\n\nTrabajador: ${nombre}\nPIN: ${pin}\n\nUso único.`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+  });
+}
   /* ================== MODAL ALTA ================== */
   const addModal = document.getElementById('addWorkerModal');
   const openBtn = document.getElementById('openAddModal');
@@ -729,10 +731,6 @@ if (logoutBtn) {
       link.click();
     });
   }
-
-  /* ================== INICIO ================== */
-  loadRecords();
-  loadWorkers();
 
   /* ================== SERVICE WORKER ================== */
 if ('serviceWorker' in navigator) {
