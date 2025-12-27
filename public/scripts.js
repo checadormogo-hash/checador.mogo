@@ -299,7 +299,11 @@ function showAutoModal() {
     delete autoOverlay.dataset.manualAction;
   }
 
-  // Forzar que sea modo automático (scanner activo)
+  // 🔹 Resetear título del header al modo automático
+  const headerTitle = autoOverlay.querySelector('.auto-header h3');
+  if (headerTitle) headerTitle.textContent = 'Registro de checadas';
+
+  // 🔹 Forzar que sea modo automático (scanner activo)
   autoTabs.forEach(tab => tab.classList.remove('active'));
   autoPanels.forEach(panel => panel.classList.remove('active'));
 
