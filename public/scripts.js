@@ -301,7 +301,7 @@ function showAutoModal() {
 
   // 🔹 Resetear título del header al modo automático
   const headerTitle = autoOverlay.querySelector('.auto-header h3');
-  if (headerTitle) headerTitle.textContent = 'Registro de checadas';
+  if (headerTitle) headerTitle.textContent = 'Checador Automático';
 
   // 🔹 Forzar que sea modo automático (scanner activo)
   autoTabs.forEach(tab => tab.classList.remove('active'));
