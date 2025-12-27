@@ -11,6 +11,15 @@ document.addEventListener('DOMContentLoaded', () => {
     "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
   );
 
+/* ================== HASH PASSWORD ================== */
+async function sha256(text) {
+  const data = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
   /* ================== CACHE ================== */
   let recordsCache = [];
   let workersCache = [];
@@ -214,14 +223,66 @@ init();
     });
   }
 
-  /* ================== MOSTRAR ADMIN (SIN LOGIN) ================== */
-  const overlay = document.getElementById('loginOverlay');
-  const adminApp = document.getElementById('adminApp');
-  const fab = document.getElementById('openAddModal');
+/* ================== LOGIN ADMIN (SUPABASE) ================== */
+const loginOverlay = document.getElementById('loginOverlay');
+const adminApp = document.getElementById('adminApp');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
 
-  if (overlay) overlay.style.display = 'none';
-  if (adminApp) adminApp.style.display = 'block';
-  if (fab) fab.style.display = 'flex';
+function showAdmin() {
+  loginOverlay.style.display = 'none';
+  adminApp.style.display = 'block';
+}
+
+function showLogin() {
+  loginOverlay.style.display = 'flex';
+  adminApp.style.display = 'none';
+}
+
+// Sesión persistente
+if (localStorage.getItem('adminSession')) {
+  showAdmin();
+} else {
+  showLogin();
+}
+
+if (loginBtn) {
+  loginBtn.addEventListener('click', async () => {
+    const user = document.getElementById('adminUser').value.trim();
+    const pass = document.getElementById('adminPass').value.trim();
+
+    if (!user || !pass) return;
+
+    const hash = await sha256(pass);
+
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('id, username, role')
+      .eq('username', user)
+      .eq('password_hash', hash)
+      .eq('activo', true)
+      .single();
+
+    if (error || !data) {
+      loginError.style.display = 'block';
+      return;
+    }
+
+    localStorage.setItem('adminSession', JSON.stringify(data));
+    loginError.style.display = 'none';
+    showAdmin();
+  });
+}
+/* ================== LOGOUT ================== */
+const logoutBtn = document.getElementById('logoutAdmin');
+
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('adminSession');
+    location.reload();
+  });
+}
+
 
   /* ================== MENÚ ================== */
   const menuToggle = document.getElementById('menuToggle');
