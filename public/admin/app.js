@@ -26,7 +26,7 @@ const authPinsTableBody = document.getElementById('authPinsTableBody');
 
 if (menuAuthPins) {
   menuAuthPins.onclick = () => {
-    closeMenuFn();
+    //closeMenuFn();
     authPinsModal.style.display = 'flex';
     loadAuthPinsToday();
   };
@@ -81,6 +81,7 @@ async function loadAuthPinsToday() {
     authPinsTableBody.appendChild(tr);
   });
 }
+if (authPinsTableBody) {
 authPinsTableBody.addEventListener('click', async e => {
   const btn = e.target.closest('.btn-gen-pin');
   if (!btn) return;
@@ -108,7 +109,8 @@ authPinsTableBody.addEventListener('click', async e => {
   `;
 
   tdPin.dataset.pin = pin;
-});
+});}
+
 authPinsTableBody.addEventListener('click', e => {
 
   // COPIAR
