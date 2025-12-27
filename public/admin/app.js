@@ -122,7 +122,8 @@ init();
         if (inputsExist) {
           const updated = {};
           tr.querySelectorAll('td.editable').forEach((td, i) => {
-            updated[['entrada', 'salida_comida', 'entrada_comida', 'salida'][i]] = td.querySelector('input').value;
+            const val = td.querySelector('input').value;
+            updated[['entrada', 'salida_comida', 'entrada_comida', 'salida'][i]] = val !== '' ? val : null;
           });
 
           try {
