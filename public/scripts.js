@@ -23,7 +23,6 @@ async function loadEmployees() {
   }));
 
   employeesReady = true;
-  console.log('Trabajadores cargados:', employees);
 }
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
 const recentScans = new Map();
@@ -63,13 +62,179 @@ function updateDateTime() {
   currentDateEl.textContent = `${formattedDate} · ${time}`;
 }
 
-// ===== BOTONES ACCIÓN =====
+// ===== MODO MANUAL =====
 actionButtons.forEach(btn => {
+  const action = btn.dataset.action;
+  if (!action || action === 'abrirscanner') return; // ignorar el botón de automático
+
   btn.addEventListener('click', () => {
-    const action = btn.dataset.action;
-    console.log('Acción presionada:', action);
+    openManualModal(action);
   });
 });
+
+// Abrir modal manual con acción específica
+function openManualModal(action) {
+  clearTimeout(inactivityTimer); // pausa el auto-modal
+  autoOverlay.style.display = 'flex';
+
+  // Cambiar título dinámicamente
+  const headerTitle = autoOverlay.querySelector('.auto-header h3');
+  headerTitle.textContent = `Manual | ${formatActionTitle(action)}`;
+
+  // Activar scanner por defecto
+  switchToScannerTab();
+
+  // Flag de acción manual actual
+  autoOverlay.dataset.manualAction = action;
+
+  setTimeout(() => {
+    if (scannerInput) scannerInput.focus();
+  }, 100);
+}
+
+// Formatear título bonito
+function formatActionTitle(action) {
+  switch (action) {
+    case 'entrada': return 'Entrada';
+    case 'salida-comida': return 'Salida Comida';
+    case 'entrada-comida': return 'Entrada Comida';
+    case 'salida': return 'Salida';
+    default: return '';
+  }
+}
+
+// Reutilizar processQR para modo manual
+const originalProcessQR = processQR; // guardamos referencia
+
+processQR = function(token) {
+  const manualAction = autoOverlay.dataset.manualAction || null;
+
+  if (manualAction) {
+    // Override temporal del paso según acción manual
+    processManualQR(token, manualAction);
+    delete autoOverlay.dataset.manualAction;
+    return;
+  }
+
+  // Si no es manual, sigue la lógica automática
+  originalProcessQR(token);
+}
+
+// Procesar QR en modo manual
+async function processManualQR(token, action) {
+  if (!employeesReady) {
+    showWarningModal('Sistema iniciando', 'Espera un momento e intenta nuevamente');
+    return;
+  }
+
+  const tokenNormalized = token.trim().replace(/['"]/g, '-').toLowerCase();
+  const employee = employees.find(e => e.token?.trim().toLowerCase() === tokenNormalized);
+
+  if (!employee) {
+    showCriticalModal('QR no válido', 'Este código no pertenece a ningún trabajador');
+    closeAutoModal();
+    return;
+  }
+
+  if (employee.activo !== 'SI') {
+    showCriticalModal('Acceso denegado', 'El trabajador está desactivado');
+    closeAutoModal();
+    return;
+  }
+
+  if (isBlocked(employee.id)) {
+    showWarningModal('Checada reciente', 'Ya registraste una checada hace unos momentos');
+    closeAutoModal();
+    return;
+  }
+
+  // Validar secuencia de pasos según acción manual
+  const today = getTodayISO();
+  const { data: todayRecord } = await supabaseClient
+    .from('records')
+    .select('id, entrada, salida_comida, entrada_comida, salida')
+    .eq('worker_id', employee.id)
+    .eq('fecha', today)
+    .maybeSingle();
+
+  const step = getStepFromRecord(todayRecord);
+
+  // Reglas de secuencia manual
+  if (action === 'salida-comida' && !todayRecord?.entrada) {
+    showWarningModal('Secuencia inválida', 'No puedes registrar salida a comida antes de entrada');
+    closeAutoModal();
+    return;
+  }
+  if (action === 'entrada-comida' && !todayRecord?.salida_comida) {
+    showWarningModal('Secuencia inválida', 'No puedes registrar entrada de comida antes de salir a comida');
+    closeAutoModal();
+    return;
+  }
+  if (action === 'salida' && !todayRecord?.entrada) {
+    showWarningModal('Secuencia inválida', 'No puedes registrar salida antes de entrada');
+    closeAutoModal();
+    return;
+  }
+
+  // Registrar el paso según acción
+  await registerStepManual(employee, action, todayRecord);
+
+  // Cerrar modal manual al finalizar
+  closeAutoModal();
+}
+
+// Registrar paso manual (reutilizando registerStep)
+async function registerStepManual(employee, action, todayRecord) {
+  recentScans.set(employee.id, Date.now());
+
+  const nowTime = new Date().toLocaleTimeString('es-MX', {
+    hour12: false,
+    timeZone: 'America/Monterrey'
+  });
+
+  const recordData = {};
+
+  switch (action) {
+    case 'entrada':
+      recordData.entrada = nowTime; break;
+    case 'salida-comida':
+      recordData.salida_comida = nowTime; break;
+    case 'entrada-comida':
+      recordData.entrada_comida = nowTime; break;
+    case 'salida':
+      recordData.salida = nowTime; break;
+  }
+
+  if (!todayRecord) {
+    // Insertar nuevo registro si no existe
+    const { error: insertError } = await supabaseClient
+      .from('records')
+      .insert([{ worker_id: employee.id, fecha: getTodayISO(), ...recordData }]);
+
+    if (insertError) {
+      showCriticalModal('Error', 'No se pudo guardar la entrada');
+      return;
+    }
+  } else {
+    // Actualizar registro existente
+    const { error: updateError } = await supabaseClient
+      .from('records')
+      .update(recordData)
+      .eq('id', todayRecord.id);
+
+    if (updateError) {
+      showCriticalModal('Error', 'No se pudo guardar la checada');
+      return;
+    }
+  }
+
+  // Mensaje de éxito
+  showSuccessModal(
+    `${formatActionTitle(action)} registrada`,
+    `Hola <span class="employee-name">${employee.name}</span>, ${action.includes('salida') ? '¡Hasta luego!' : 'registro exitoso'}`
+  );
+}
+
 
 function isBlocked(workerId) {
   const lastTime = recentScans.get(workerId);
@@ -217,7 +382,6 @@ function startCameraScanner() {
 
     cameraActive = true;
   }).catch(err => {
-    console.error('ERROR CÁMARA:', err);
     showCriticalModal('Error de cámara', 'No se pudo acceder a la cámara');
   });
   resetCameraInactivity();
@@ -327,7 +491,6 @@ async function registerStep(employee) {
     .maybeSingle();
 
   if (findError && findError.code !== 'PGRST116') {
-    console.error('ERROR BUSCANDO RECORD:', findError);
     showCriticalModal('Error', 'No se pudo validar la checada');
     return;
   }
@@ -382,7 +545,6 @@ switch (step) {
       }]);
 
     if (insertError) {
-      console.error('ERROR INSERT:', insertError);
       showCriticalModal('Error', 'No se pudo guardar la entrada');
       return;
     }
@@ -395,7 +557,6 @@ switch (step) {
       .eq('id', todayRecord.id);
 
     if (updateError) {
-      console.error('ERROR UPDATE:', updateError);
       showCriticalModal('Error', 'No se pudo guardar la checada');
       return;
     }
