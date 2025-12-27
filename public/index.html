@@ -124,12 +124,18 @@
 
   </div>
 </div>
-
-  <!-- JS -->
-<!-- 1️⃣ Cargar Supabase -->
-<!-- Supabase CDN -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="scripts.js" defer></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(reg => console.log('✅ SW registrado (Trabajador)', reg.scope))
+      .catch(err => console.error('❌ Error SW (Trabajador)', err));
+  });
+}
+</script>
+
 </body>
 </html>
