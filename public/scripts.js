@@ -290,14 +290,30 @@ const INACTIVITY_TIME = 15000;
 
 function showAutoModal() {
   clearTimeout(inactivityTimer);
+
+  // Mostrar overlay
   autoOverlay.style.display = 'flex';
 
-  const activeTab = document.querySelector('.auto-tab.active');
-  if (activeTab && activeTab.dataset.mode === 'scanner') {
-    setTimeout(() => {
-      if (scannerInput) scannerInput.focus();
-    }, 100);
-  }
+  // Forzar que sea modo automático (scanner activo)
+  autoTabs.forEach(tab => tab.classList.remove('active'));
+  autoPanels.forEach(panel => panel.classList.remove('active'));
+
+  const scannerTab = document.querySelector('.auto-tab[data-mode="scanner"]');
+  const scannerPanel = document.getElementById('autoScanner');
+
+  scannerTab.classList.add('active');
+  scannerPanel.classList.add('active');
+
+  // Limpiar input del scanner
+  if (scannerInput) scannerInput.value = '';
+  
+  // Foco en el input
+  setTimeout(() => { 
+    if (scannerInput) scannerInput.focus(); 
+  }, 100);
+
+  // Reiniciar temporizador
+  startInactivityTimer();
 }
 
 function hideAutoModal() {
