@@ -55,8 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
     recordsCache.forEach(record => {
       const tr = document.createElement('tr');
       tr.dataset.id = record.id;
+
+      const trabajador = workersCache.find(w => w.id == record.worker_id);
+      const nombre = trabajador ? trabajador.nombre : 'Desconocido';
+
       tr.innerHTML = `
-        <td>${record.trabajador}</td>
+        <td>${nombre}</td>
         <td>${record.fecha}</td>
         <td class="editable">${record.entrada || ''}</td>
         <td class="editable">${record.salida_comida || ''}</td>
