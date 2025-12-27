@@ -4,15 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Checador de Asistencia</title>
-
-  <!-- Tipografía -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-  <!-- Iconos -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-
-  <!-- CSS -->
   <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="/manifest.json">
 </head>
 <body>
 
@@ -51,6 +46,10 @@
         <div class="action-btn abrirscanner" id="openAutoModal">
           <i class="fa-solid fa-qrcode"></i>
           <span>Registro automático</span>
+        </div>
+        <div class="action-btn instalar-app" id="installAppBtn" style="display:none;">
+          <i class="fa-solid fa-download"></i>
+          <span>Instalar aplicación</span>
         </div>
       </div>
     </div>

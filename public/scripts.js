@@ -696,3 +696,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   showAutoModal();
   switchToScannerTab();
 });
+
+let deferredPrompt;
+const installBtn = document.getElementById('installAppBtn');
+
+// Si ya está instalada → nunca mostrar
+if (window.matchMedia('(display-mode: standalone)').matches) {
+  installBtn.style.display = 'none';
+}
+
+// Detectar posibilidad de instalación
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // Mostrar solo si NO está instalada
+  if (!window.matchMedia('(display-mode: standalone)').matches) {
+    installBtn.style.display = 'flex';
+  }
+});
+
+// Click instalar
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+
+  deferredPrompt = null;
+  installBtn.style.display = 'none';
+});
