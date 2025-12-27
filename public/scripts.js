@@ -319,6 +319,10 @@ function showAutoModal() {
 function hideAutoModal() {
   stopCameraScanner();
   autoOverlay.style.display = 'none';
+    // 🔹 Limpiar flag de acción manual al cerrar
+  if (autoOverlay.dataset.manualAction) {
+    delete autoOverlay.dataset.manualAction;
+  }
   startInactivityTimer();
 }
 function startInactivityTimer() {
