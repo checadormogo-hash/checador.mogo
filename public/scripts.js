@@ -132,6 +132,20 @@ if (openAutoModalBtn) {
   });
 }
 
+
+function switchToScannerTab() {
+  autoTabs.forEach(t => t.classList.remove('active'));
+  autoPanels.forEach(p => p.classList.remove('active'));
+
+  const scannerTab = document.querySelector('.auto-tab[data-mode="scanner"]');
+  const scannerPanel = document.getElementById('autoScanner');
+
+  scannerTab.classList.add('active');
+  scannerPanel.classList.add('active');
+
+  setTimeout(() => scannerInput.focus(), 100);
+}
+
 // ===== CAMBIO DE TAB CAMERA / SCANNER =====
 const autoTabs = document.querySelectorAll('.auto-tab');
 const autoPanels = document.querySelectorAll('.auto-panel');
@@ -159,6 +173,16 @@ autoTabs.forEach(tab => {
 // ===== QR POR CÁMARA =====
 let html5QrCode = null;
 let cameraActive = false;
+let cameraInactivityTimer = null;
+const CAMERA_INACTIVITY_TIME = 15000; // 15 segundos
+function resetCameraInactivity() {
+  clearTimeout(cameraInactivityTimer);
+
+  cameraInactivityTimer = setTimeout(() => {
+    stopCameraScanner();
+    switchToScannerTab();
+  }, CAMERA_INACTIVITY_TIME);
+}
 
 function startCameraScanner() {
   if (cameraActive) return;
@@ -186,8 +210,8 @@ function startCameraScanner() {
       cameraId,
       { fps: 10, qrbox: 250 },
       (decodedText) => {
-        stopCameraScanner();
         processQR(decodedText);
+        resetCameraInactivity();
       }
     );
 
@@ -196,6 +220,7 @@ function startCameraScanner() {
     console.error('ERROR CÁMARA:', err);
     showCriticalModal('Error de cámara', 'No se pudo acceder a la cámara');
   });
+  resetCameraInactivity();
 }
 
 function stopCameraScanner() {
