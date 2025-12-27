@@ -53,11 +53,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     recordsCache.forEach(record => {
-      const tr = document.createElement('tr');
-      tr.dataset.id = record.id;
-
       const trabajador = workersCache.find(w => w.id == record.worker_id);
       const nombre = trabajador ? trabajador.nombre : 'Desconocido';
+
+      const tr = document.createElement('tr');
+      tr.dataset.id = record.id;
 
       tr.innerHTML = `
         <td>${nombre}</td>
@@ -101,7 +101,12 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Error al cargar registros');
     }
   }
-
+/* ================== INICIO: CARGAR TRABAJADORES + REGISTROS ================== */
+async function init() {
+  await loadWorkers(); // primero cargamos trabajadores
+  await loadRecords(); // luego registros
+}
+init();
   /* ================== EVENT LISTENER REGISTROS ================== */
   const recordsTableBody = document.getElementById('recordsTableBody');
   if (recordsTableBody) {
