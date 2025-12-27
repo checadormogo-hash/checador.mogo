@@ -25,11 +25,16 @@ const closeAuthPins = document.getElementById('closeAuthPins');
 const authPinsTableBody = document.getElementById('authPinsTableBody');
 
 if (menuAuthPins) {
-  menuAuthPins.onclick = () => {
-    //closeMenuFn();
-    authPinsModal.style.display = 'flex';
-    loadAuthPinsToday();
-  };
+  menuAuthPins.onclick = async () => {
+  closeMenuFn();
+  authPinsModal.style.display = 'flex';
+  // 👇 aseguras que existan trabajadores
+  if (!workersCache.length) {
+    await loadWorkers();
+  }
+
+  loadAuthPinsToday();
+};
 }
 
 if (closeAuthPins) {
