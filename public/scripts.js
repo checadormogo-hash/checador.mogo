@@ -132,19 +132,19 @@ async function processManualQR(token, action) {
 
   if (!employee) {
     showCriticalModal('QR no válido', 'Este código no pertenece a ningún trabajador');
-    closeAutoModal();
+    hideAutoModal();
     return;
   }
 
   if (employee.activo !== 'SI') {
     showCriticalModal('Acceso denegado', 'El trabajador está desactivado');
-    closeAutoModal();
+    hideAutoModal();
     return;
   }
 
   if (isBlocked(employee.id)) {
     showWarningModal('Checada reciente', 'Ya registraste una checada hace unos momentos');
-    closeAutoModal();
+    hideAutoModal();
     return;
   }
 
@@ -157,22 +157,54 @@ async function processManualQR(token, action) {
     .eq('fecha', today)
     .maybeSingle();
 
-  const step = getStepFromRecord(todayRecord);
+  // Validar si la acción ya fue registrada
+  if (todayRecord) {
+    switch (action) {
+      case 'entrada':
+        if (todayRecord.entrada) {
+          showWarningModal('Entrada ya registrada', 'Ya habías checado entrada');
+          hideAutoModal();
+          return;
+        }
+        break;
+      case 'salida-comida':
+        if (todayRecord.salida_comida) {
+          showWarningModal('Salida comida ya registrada', 'Ya habías checado salida comida');
+          hideAutoModal();
+          return;
+        }
+        break;
+      case 'entrada-comida':
+        if (todayRecord.entrada_comida) {
+          showWarningModal('Entrada comida ya registrada', 'Ya habías checado entrada comida');
+          hideAutoModal();
+          return;
+        }
+        break;
+      case 'salida':
+        if (todayRecord.salida) {
+          showWarningModal('Salida ya registrada', 'Ya habías checado salida');
+          hideAutoModal();
+          return;
+        }
+        break;
+    }
+  }
 
   // Reglas de secuencia manual
   if (action === 'salida-comida' && !todayRecord?.entrada) {
     showWarningModal('Secuencia inválida', 'No puedes registrar salida a comida antes de entrada');
-    closeAutoModal();
+    hideAutoModal();
     return;
   }
   if (action === 'entrada-comida' && !todayRecord?.salida_comida) {
     showWarningModal('Secuencia inválida', 'No puedes registrar entrada de comida antes de salir a comida');
-    closeAutoModal();
+    hideAutoModal();
     return;
   }
   if (action === 'salida' && !todayRecord?.entrada) {
     showWarningModal('Secuencia inválida', 'No puedes registrar salida antes de entrada');
-    closeAutoModal();
+    hideAutoModal();
     return;
   }
 
@@ -180,7 +212,7 @@ async function processManualQR(token, action) {
   await registerStepManual(employee, action, todayRecord);
 
   // Cerrar modal manual al finalizar
-  closeAutoModal();
+  hideAutoModal();
 }
 
 // Registrar paso manual (reutilizando registerStep)
