@@ -519,4 +519,46 @@ init();
   loadRecords();
   loadWorkers();
 
+  /* ================== PWA INSTALL ADMIN ================== */
+
+let deferredPromptAdmin = null;
+const installAdminBtn = document.getElementById('installAdminApp');
+
+// Detectar si ya está instalada
+function isAppInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+}
+
+// Escuchar evento de instalación disponible
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault(); // evita banner automático
+  deferredPromptAdmin = e;
+
+  if (installAdminBtn && !isAppInstalled()) {
+    installAdminBtn.style.display = 'flex';
+  }
+});
+
+// Click en instalar
+if (installAdminBtn) {
+  installAdminBtn.addEventListener('click', async () => {
+    if (!deferredPromptAdmin) return;
+
+    deferredPromptAdmin.prompt();
+    const { outcome } = await deferredPromptAdmin.userChoice;
+
+    if (outcome === 'accepted') {
+      installAdminBtn.style.display = 'none';
+      deferredPromptAdmin = null;
+    }
+  });
+}
+
+// Si ya está instalada, nunca mostrar botón
+if (installAdminBtn && isAppInstalled()) {
+  installAdminBtn.style.display = 'none';
+}
+
+
 });
