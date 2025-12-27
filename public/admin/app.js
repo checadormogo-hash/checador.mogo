@@ -446,16 +446,6 @@ document.getElementById('closeEditWorker').onclick = () => {
   document.getElementById('editWorkerModal').style.display = 'none';
 };
 
-function mostrarToast(mensaje) {
-  const toast = document.getElementById('toastSuccess');
-  toast.textContent = mensaje;
-  toast.style.display = 'block';
-
-  setTimeout(() => {
-    toast.style.display = 'none';
-  }, 2500);
-}
-
 regenQR.addEventListener('click', async () => {
   if (!currentQRWorkerId) return;
 
