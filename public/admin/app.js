@@ -4,6 +4,167 @@ const supabase = window.supabase.createClient(
   "https://akgbqsfkehqlpxtrjsnw.supabase.co",
   "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
 );
+/* ================== CACHE ================== */
+let recordsCache = [];
+
+/* ================== RENDER ================== */
+function renderRecords() {
+  const tbody = document.getElementById('recordsTableBody');
+  tbody.innerHTML = '';
+
+  if (!recordsCache.length) {
+    tbody.innerHTML = `<tr><td colspan="7">No hay registros</td></tr>`;
+    return;
+  }
+
+  recordsCache.forEach(record => {
+    const tr = document.createElement('tr');
+    tr.dataset.id = record.id;
+
+    tr.innerHTML = `
+      <td>${record.trabajador}</td>
+      <td>${record.fecha}</td>
+      <td class="editable">${record.entrada || ''}</td>
+      <td class="editable">${record.salida_comida || ''}</td>
+      <td class="editable">${record.entrada_comida || ''}</td>
+      <td class="editable">${record.salida || ''}</td>
+      <td class="actions">
+        <button class="btn-icon btn-edit">✏️</button>
+        <button class="btn-icon btn-delete">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ================== CARGAR DATOS ================== */
+async function loadRecords() {
+  try {
+    const { data, error } = await supabase
+      .from('records')
+      .select('*')
+      .order('fecha', { ascending: false });
+
+    if (error) throw error;
+
+    // Guardar en cache
+    recordsCache = data.map(r => ({
+      id: r.id,
+      trabajador: r.trabajador,
+      fecha: r.fecha.substring(0,10), // YYYY-MM-DD
+      entrada: r.entrada,
+      salida_comida: r.salida_comida,
+      entrada_comida: r.entrada_comida,
+      salida: r.salida
+    }));
+
+    renderRecords();
+  } catch (err) {
+    console.error(err);
+    alert('Error al cargar registros');
+  }
+}
+
+/* ================== EDITAR / GUARDAR / ELIMINAR ================== */
+document.getElementById('recordsTableBody').addEventListener('click', async e => {
+  const tr = e.target.closest('tr');
+  if (!tr) return;
+  const id = tr.dataset.id;
+
+  // Editar
+  if (e.target.closest('.btn-edit')) {
+    const inputsExist = tr.querySelectorAll('input').length;
+    if (inputsExist) {
+      // Guardar cambios
+      const updated = {};
+      tr.querySelectorAll('td.editable').forEach((td, i) => {
+        updated[ ['entrada','salida_comida','entrada_comida','salida'][i] ] = td.querySelector('input').value;
+      });
+
+      try {
+        const { error } = await supabase
+          .from('records')
+          .update(updated)
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Actualizar cache
+        const rec = recordsCache.find(r => r.id == id);
+        Object.assign(rec, updated);
+
+        renderRecords();
+        mostrarToast('✏️ Registro actualizado');
+
+      } catch (err) {
+        console.error(err);
+        alert('Error al actualizar registro');
+      }
+
+    } else {
+      // Activar inputs
+      tr.querySelectorAll('td.editable').forEach(td => {
+        const val = td.textContent.trim();
+        td.innerHTML = `<input type="time" value="${val}">`;
+      });
+    }
+    return;
+  }
+
+  // Eliminar
+  if (e.target.closest('.btn-delete')) {
+    if (!confirm('¿Eliminar registro de este día?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('records')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // eliminar del cache y re-render
+      recordsCache = recordsCache.filter(r => r.id != id);
+      renderRecords();
+      mostrarToast('🗑️ Registro eliminado');
+
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo eliminar el registro');
+    }
+  }
+});
+
+/* ================== TOAST ================== */
+function mostrarToast(mensaje) {
+  let toast = document.getElementById('toastSuccess');
+  if(!toast){
+    toast = document.createElement('div');
+    toast.id = 'toastSuccess';
+    toast.style = `
+      display:none;
+      position:fixed;
+      bottom:20px;
+      left:50%;
+      transform:translateX(-50%);
+      background:#22c55e;
+      color:#fff;
+      padding:12px 20px;
+      border-radius:10px;
+      font-size:14px;
+      box-shadow:0 8px 20px rgba(0,0,0,.25);
+      z-index:9999;
+    `;
+    document.body.appendChild(toast);
+  }
+
+  toast.textContent = mensaje;
+  toast.style.display = 'block';
+  setTimeout(()=> toast.style.display = 'none', 2500);
+}
+
+/* ================== INICIO ================== */
+loadRecords();
 
 /* ================== MOSTRAR ADMIN (SIN LOGIN) ================== */
 const overlay = document.getElementById('loginOverlay');
