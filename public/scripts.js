@@ -294,6 +294,11 @@ function showAutoModal() {
   // Mostrar overlay
   autoOverlay.style.display = 'flex';
 
+  // 🔹 Limpiar cualquier acción manual previa
+  if (autoOverlay.dataset.manualAction) {
+    delete autoOverlay.dataset.manualAction;
+  }
+
   // Forzar que sea modo automático (scanner activo)
   autoTabs.forEach(tab => tab.classList.remove('active'));
   autoPanels.forEach(panel => panel.classList.remove('active'));
