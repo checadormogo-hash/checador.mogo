@@ -104,10 +104,10 @@ function showAutoModal() {
 }
 
 function hideAutoModal() {
+  stopCameraScanner();
   autoOverlay.style.display = 'none';
   startInactivityTimer();
 }
-
 function startInactivityTimer() {
   clearTimeout(inactivityTimer);
   inactivityTimer = setTimeout(() => {
@@ -138,6 +138,11 @@ const autoPanels = document.querySelectorAll('.auto-panel');
 
 autoTabs.forEach(tab => {
   tab.addEventListener('click', () => {
+        if (tab.dataset.mode === 'camera') {
+      startCameraScanner();
+    } else {
+      stopCameraScanner();
+    }
     autoTabs.forEach(t => t.classList.remove('active'));
     autoPanels.forEach(p => p.classList.remove('active'));
 
@@ -151,6 +156,56 @@ autoTabs.forEach(tab => {
     }
   });
 });
+// ===== QR POR CÁMARA =====
+let html5QrCode = null;
+let cameraActive = false;
+
+function startCameraScanner() {
+  if (cameraActive) return;
+
+  const cameraContainer = document.getElementById('autoCamera');
+
+  cameraContainer.innerHTML = `
+    <div id="qr-reader" style="width:100%;"></div>
+    <p style="text-align:center; margin-top:10px;">
+      Apunta la cámara al QR del gafete
+    </p>
+  `;
+
+  html5QrCode = new Html5Qrcode("qr-reader");
+
+  Html5Qrcode.getCameras().then(devices => {
+    if (!devices || devices.length === 0) {
+      showCriticalModal('Cámara no disponible', 'No se detectó ninguna cámara');
+      return;
+    }
+
+    const cameraId = devices[0].id;
+
+    html5QrCode.start(
+      cameraId,
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        stopCameraScanner();
+        processQR(decodedText);
+      }
+    );
+
+    cameraActive = true;
+  }).catch(err => {
+    console.error('ERROR CÁMARA:', err);
+    showCriticalModal('Error de cámara', 'No se pudo acceder a la cámara');
+  });
+}
+
+function stopCameraScanner() {
+  if (html5QrCode && cameraActive) {
+    html5QrCode.stop().then(() => {
+      html5QrCode.clear();
+      cameraActive = false;
+    });
+  }
+}
 
 // ===== ESCANEAR QR =====
 if (scannerInput) {
