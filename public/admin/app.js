@@ -519,6 +519,17 @@ init();
   loadRecords();
   loadWorkers();
 
+  /* ================== SERVICE WORKER ================== */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js')
+    .then(reg => {
+      console.log('✅ SW registrado en ADMIN:', reg.scope);
+    })
+    .catch(err => {
+      console.error('❌ Error al registrar SW en ADMIN', err);
+    });
+}
+
   /* ================== PWA INSTALL ADMIN ================== */
 
 let deferredPromptAdmin = null;
