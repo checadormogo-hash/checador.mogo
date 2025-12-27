@@ -606,3 +606,48 @@ tbody td {
 .login-error.show {
   display: block;
 }
+.btn-gen-pin {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: .25s ease;
+}
+
+.btn-gen-pin:hover {
+  background: #1d4ed8;
+}
+.copy-pin,
+.share-pin {
+  border: none;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: .2s ease;
+}
+
+.copy-pin:hover {
+  background: #e2e8f0;
+}
+
+.share-pin {
+  background: rgba(34,197,94,.15);
+}
+
+.share-pin:hover {
+  background: rgba(34,197,94,.25);
+}
+.pin-cell {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+#authPinsModal {
+  z-index: 3000;
+}
