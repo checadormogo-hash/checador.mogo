@@ -472,4 +472,5 @@ setInterval(updateDateTime, 1000);
 document.addEventListener('DOMContentLoaded', async () => {
   await loadEmployees();
   showAutoModal();
+  switchToScannerTab();
 });
