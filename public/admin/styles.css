@@ -104,9 +104,11 @@ tbody td {
   background: #fff;
   width: 90%;
   max-width: 360px;
-  border-radius: 16px;
-  padding: 25px;
+  border-radius: 20px;
+  padding: 28px 26px;
   text-align: center;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+  animation: loginFade .35s ease;
 }
 
 .login-error {
@@ -544,4 +546,63 @@ tbody td {
   opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
+}
+@keyframes loginFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.login-modal h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.login-modal p {
+  margin: 6px 0 22px;
+  font-size: 13px;
+  color: var(--secondary);
+}
+.login-field {
+  margin-bottom: 14px;
+}
+
+.login-field input {
+  width: 100%;
+  padding: 14px 14px;
+  border-radius: 14px;
+  border: 2px solid #e5e7eb;
+  font-size: 14px;
+  outline: none;
+  transition: .25s ease;
+  background: #f8fafc;
+}
+
+.login-field input::placeholder {
+  color: #94a3b8;
+}
+
+.login-field input:focus {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+}
+.login-error {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--danger);
+  font-size: 13px;
+  display: none;
+}
+
+.login-error.show {
+  display: block;
 }
