@@ -376,3 +376,47 @@ body {
   font-size: 1.2em;
   display: inline-block;
 }
+/* Modal PIN */
+#pinModal {
+  display: none; /* se muestra solo cuando se llama */
+  position: fixed; /* importante para salir del flujo */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* centra horizontal y vertical */
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  z-index: 9999; /* siempre por encima */
+  width: 300px; /* ajustar según necesidad */
+  max-width: 90%;
+}
+
+#pinModal h2 {
+  margin-top: 0;
+  font-size: 18px;
+  text-align: center;
+}
+
+#pinModal input {
+  width: 100%;
+  padding: 10px;
+  margin: 15px 0;
+  font-size: 16px;
+  text-align: center;
+}
+
+#pinModal .btn-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#pinModal button {
+  flex: 1;
+  padding: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  border: none;
+}
