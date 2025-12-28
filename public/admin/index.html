@@ -272,6 +272,62 @@
   </div>
 </div>
 
+<!-- ================== REPORTE SEMANAL ================== -->
+<div id="weeklyReportModal" class="modal oculto">
+  <div class="modal-content report-modal">
+
+    <button class="close" id="closeWeeklyReport">✕</button>
+
+    <h2>📆 Reporte semanal</h2>
+    <p id="reportWeekRange" class="week-range"></p>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Trabajador</th>
+          <th>Días trabajados</th>
+          <th>Horas totales</th>
+          <th>Detalle</th>
+        </tr>
+      </thead>
+      <tbody id="weeklyReportBody">
+        <!-- Se llena por JS -->
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+<!-- ================== DETALLE SEMANAL POR TRABAJADOR ================== -->
+<div id="workerDetailModal" class="modal oculto">
+  <div class="modal-content report-modal large">
+
+    <button class="close" id="closeWorkerDetail">✕</button>
+
+    <h3 id="workerDetailName"></h3>
+    <p id="workerDetailWeek"></p>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Entrada</th>
+          <th>Salida comida</th>
+          <th>Entrada comida</th>
+          <th>Salida</th>
+          <th>Horas</th>
+        </tr>
+      </thead>
+      <tbody id="workerDetailBody">
+        <!-- Se llena por JS -->
+      </tbody>
+    </table>
+
+    <div class="report-footer" id="workerDetailFooter"></div>
+
+  </div>
+</div>
+
   <div id="toastSuccess" style="
   display:none;
   position:fixed;
@@ -285,7 +341,6 @@
   font-size:14px;
   box-shadow:0 8px 20px rgba(0,0,0,.25);
   z-index:9999;">✅ Trabajador guardado correctamente</div>
-  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module" src="../admin/app.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>

@@ -651,3 +651,23 @@ tbody td {
 #authPinsModal {
   z-index: 3000;
 }
+
+/* ================== REPORTES ================== */
+.report-modal {
+  max-width: 900px;
+  width: 95%;
+}
+
+.report-modal.large {
+  max-width: 1100px;
+}
+
+.week-range {
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.report-footer {
+  margin-top: 15px;
+  font-weight: bold;
+}

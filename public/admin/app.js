@@ -795,5 +795,32 @@ if (installAdminBtn && isAppInstalled()) {
   installAdminBtn.style.display = 'none';
 }
 
+/* ================== REPORTE SEMANAL ================== */
+
+const weeklyReportModal = document.getElementById('weeklyReportModal');
+const workerDetailModal = document.getElementById('workerDetailModal');
+
+document.getElementById('closeWeeklyReport').onclick = () =>
+  weeklyReportModal.classList.add('oculto');
+
+document.getElementById('closeWorkerDetail').onclick = () =>
+  workerDetailModal.classList.add('oculto');
+/* ================== BOTÓN REPORTES ================== */
+
+// buscamos el botón por su texto
+const reportBtn = [...document.querySelectorAll('button')]
+  .find(btn => btn.textContent.trim().includes('Reportes'));
+
+if (reportBtn) {
+  reportBtn.addEventListener('click', () => {
+    closeHamburgerMenu();   // misma función que ya usas
+    openWeeklyReport();
+  });
+}
+function openWeeklyReport() {
+  weeklyReportModal.classList.remove('oculto');
+  generateWeeklyReport();
+}
+
 
 });
