@@ -813,7 +813,7 @@ const reportBtn = [...document.querySelectorAll('button')]
 
 if (reportBtn) {
   reportBtn.addEventListener('click', () => {
-    closeHamburgerMenu();   // misma función que ya usas
+    closeMenuFn();
     openWeeklyReport();
   });
 }
