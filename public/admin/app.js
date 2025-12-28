@@ -562,10 +562,12 @@ if (authPinsTableBody) {
         }]);
 
         if (error) throw error;
-
-        if (addModal) addModal.style.display = 'none';
         loadWorkers();
-
+        mostrarToast('✅ Trabajador guardado correctamente');
+        document.getElementById('workerName').value = '';
+        document.getElementById('workerPin').value = '';
+        document.getElementById('workerActive').value = 'SI';
+        document.getElementById('fechaIngreso').value = '';
       } catch (err) {
         console.error(err);
         alert('Error al guardar trabajador');
