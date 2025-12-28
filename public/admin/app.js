@@ -311,7 +311,9 @@ const authPinsTableBody = document.getElementById('authPinsTableBody');
 if (menuAuthPins) {
   menuAuthPins.onclick = async () => {
   closeMenuFn();
+  if (authPinsModal) {
   authPinsModal.style.display = 'flex';
+}
   // 👇 aseguras que existan trabajadores
   if (!workersCache.length) {
     await loadWorkers();
