@@ -28,7 +28,6 @@ async function loadEmployees() {
 const recentScans = new Map();
 const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
 
-
 const actionButtons = document.querySelectorAll('.action-btn');
 const scannerInput = document.querySelector('.scanner-input');
 const currentDateEl = document.getElementById('currentDate');
@@ -38,7 +37,6 @@ function getTodayISO() {
   return new Date()
     .toLocaleDateString('en-CA', { timeZone: 'America/Monterrey' });
 }
-// devuelve: 2025-12-26
 
 function updateDateTime() {
   const now = new Date();
@@ -762,7 +760,7 @@ async function solicitarPin(workerId, recordId) {
         .eq('worker_id', workerId)
         .eq('pin', pin)
         .eq('tipo', 'salida_temprana')
-        .or('used.is.null,used.eq.false')
+        .eq('used', false)
         .limit(1)
         .single();
 

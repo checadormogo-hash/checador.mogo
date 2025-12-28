@@ -408,7 +408,7 @@ body {
   padding: 20px 30px;
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-  z-index: 9999; /* siempre por encima */
+  z-index: 99999; /* siempre por encima */
   width: 300px; /* ajustar según necesidad */
   max-width: 90%;
 }
@@ -440,4 +440,7 @@ body {
   cursor: pointer;
   border-radius: 6px;
   border: none;
+}
+#pinModal.oculto {
+  display: none;
 }
