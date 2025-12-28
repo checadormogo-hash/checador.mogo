@@ -671,3 +671,7 @@ tbody td {
   margin-top: 15px;
   font-weight: bold;
 }
+/* ===== UTILIDADES ===== */
+.oculto {
+  display: none !important;
+}
