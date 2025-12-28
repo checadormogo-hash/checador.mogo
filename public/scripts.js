@@ -702,12 +702,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   showAutoModal();
   switchToScannerTab();
 
-  const pinModal = document.getElementById('pinModal');
-const workerPinInput = document.getElementById('workerPinInput');
-const submitPinBtn = document.getElementById('submitPinBtn');
-const cancelPinBtn = document.getElementById('cancelPinBtn');
-const pinError = document.getElementById('pinError');
-
+  // ✅ Asignaciones a las variables globales
+  pinModal = document.getElementById('pinModal');
+  workerPinInput = document.getElementById('workerPinInput');
+  submitPinBtn = document.getElementById('submitPinBtn');
+  cancelPinBtn = document.getElementById('cancelPinBtn');
+  pinError = document.getElementById('pinError');
 });
 
 let deferredPrompt;
