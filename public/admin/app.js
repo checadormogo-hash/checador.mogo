@@ -389,7 +389,8 @@ if (authPinsTableBody) {
       const workerId = genBtn.dataset.worker;
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
 
-      const { error } = await supabase.from('auth_pins').insert([{
+      const { error } = await supabase
+        .from('auth_pins').insert([{
         worker_id: workerId,
         pin,
         tipo: 'salida_temprana'

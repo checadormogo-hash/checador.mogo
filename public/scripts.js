@@ -748,7 +748,7 @@ async function solicitarPin(workerId, recordId) {
 
   workerPinInput.value = '';
   pinError.style.display = 'none';
-  pinModal.style.display = 'flex';
+  pinModal.classList.remove('oculto');
 
   return new Promise(resolve => {
     submitPinBtn.onclick = async () => {
@@ -762,7 +762,7 @@ async function solicitarPin(workerId, recordId) {
         .eq('worker_id', workerId)
         .eq('pin', pin)
         .eq('tipo', 'salida_temprana')
-        .is('used', false)
+        .or('used.is.null,used.eq.false')
         .limit(1)
         .single();
 
@@ -777,12 +777,12 @@ async function solicitarPin(workerId, recordId) {
         .update({ used: true })
         .eq('id', data.id);
 
-      pinModal.style.display = 'none';
+      pinModal.classList.add('oculto');
       resolve(true);
     };
 
     cancelPinBtn.onclick = () => {
-      pinModal.style.display = 'none';
+      pinModal.classList.add('oculto');
       resolve(false);
     };
   });
