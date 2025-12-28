@@ -762,13 +762,16 @@ async function solicitarPin(workerId, recordId) {
         .eq('tipo', 'salida_temprana')
         .is('usado', false)
         .limit(1)
-        .single();
+        maybeSingle()
 
       if (error || !data) {
         pinError.style.display = 'block';
         return;
       }
-
+      if (!data) {
+        pinError.style.display = 'block';
+        return;
+      }
       // Marcamos PIN como usado
       await supabaseClient
         .from('auth_pins')
