@@ -760,7 +760,7 @@ async function solicitarPin(workerId, recordId) {
         .eq('worker_id', workerId)
         .eq('pin', pin)
         .eq('tipo', 'salida_temprana')
-        .eq('used', false)
+        .is('used', false)
         .limit(1)
         .single();
 
