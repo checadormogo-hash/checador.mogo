@@ -121,7 +121,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 9999;
 }
 
 .pin-modal {
@@ -149,6 +149,7 @@ body {
 .pin-modal h3 {
   margin: 0;
   font-size: 1.2rem;
+  margin-bottom: 15px;
 }
 
 .pin-modal p {
@@ -166,6 +167,7 @@ body {
   border-radius: 12px;
   border: 2px solid #e5e7eb;
   outline: none;
+  margin-bottom: 10px;
 }
 
 .pin-input:focus {
@@ -182,7 +184,26 @@ body {
 .pin-error.show {
   display: block;
 }
+.pin-modal .btn-container {
+  display: flex;
+  gap: 10px;
+}
 
+.pin-modal button {
+  flex: 1;
+  padding: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  transition: 0.2s;
+}
+
+.pin-modal button:hover {
+  background: #1e40af;
+}
 /* ===== MODAL AUTOMÁTICO ===== */
 .auto-overlay {
   position: fixed;
