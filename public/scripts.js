@@ -696,7 +696,7 @@ function setConfirmStyle(color) {
 updateDateTime();
 setInterval(updateDateTime, 1000);
 
-
+let pinModal, workerPinInput, submitPinBtn, cancelPinBtn, pinError;
 document.addEventListener('DOMContentLoaded', async () => {
   await loadEmployees();
   showAutoModal();
