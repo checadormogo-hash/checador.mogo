@@ -760,7 +760,7 @@ async function solicitarPin(workerId, recordId) {
         .eq('worker_id', workerId)
         .eq('pin', pin)
         .eq('tipo', 'salida_temprana')
-        .is('used', false)
+        .is('usado', false)
         .limit(1)
         .single();
 
@@ -772,7 +772,7 @@ async function solicitarPin(workerId, recordId) {
       // Marcamos PIN como usado
       await supabaseClient
         .from('auth_pins')
-        .update({ used: true })
+        .update({ usado: true })
         .eq('id', data.id);
 
       pinModal.classList.add('oculto');
