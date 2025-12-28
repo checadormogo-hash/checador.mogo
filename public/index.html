@@ -124,6 +124,19 @@
 
   </div>
 </div>
+
+<div id="pinModal" class="modal" style="display:none; justify-content:center; align-items:center;">
+  <div class="modal-content" style="padding:20px; max-width:300px; width:100%; border-radius:10px; background:#fff; text-align:center;">
+    <h3>Ingrese su PIN</h3>
+    <input type="number" id="workerPinInput" placeholder="####" maxlength="4" style="font-size:18px; text-align:center; width:80%; padding:8px; margin:12px 0;">
+    <div>
+      <button id="submitPinBtn" class="btn primary" style="margin-right:10px;">Aceptar</button>
+      <button id="cancelPinBtn" class="btn secondary">Cancelar</button>
+    </div>
+    <p id="pinError" style="color:red; display:none; margin-top:10px;">PIN incorrecto</p>
+  </div>
+</div>
+
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="scripts.js" defer></script>
@@ -136,6 +149,5 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
-
 </body>
 </html>

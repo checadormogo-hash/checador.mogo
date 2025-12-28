@@ -214,7 +214,6 @@ async function processManualQR(token, action) {
   // Cerrar modal manual al finalizar
   hideAutoModal();
 }
-
 // Registrar paso manual (reutilizando registerStep)
 async function registerStepManual(employee, action, todayRecord) {
   recentScans.set(employee.id, Date.now());
@@ -228,13 +227,21 @@ async function registerStepManual(employee, action, todayRecord) {
 
   switch (action) {
     case 'entrada':
-      recordData.entrada = nowTime; break;
+      recordData.entrada = nowTime;
+      break;
     case 'salida-comida':
-      recordData.salida_comida = nowTime; break;
+      recordData.salida_comida = nowTime;
+      break;
     case 'entrada-comida':
-      recordData.entrada_comida = nowTime; break;
+      recordData.entrada_comida = nowTime;
+      break;
     case 'salida':
-      recordData.salida = nowTime; break;
+      // 🔒 Antes de registrar salida, solicitar PIN
+      const pinValidado = await solicitarPin(employee.id, todayRecord?.id);
+      if (!pinValidado) return; // si canceló o PIN incorrecto, salir
+
+      recordData.salida = nowTime;
+      break;
   }
 
   if (!todayRecord) {
@@ -266,7 +273,6 @@ async function registerStepManual(employee, action, todayRecord) {
     `Hola <span class="employee-name">${employee.name}</span>, ${action.includes('salida') ? '¡Hasta luego!' : 'registro exitoso'}`
   );
 }
-
 
 function isBlocked(workerId) {
   const lastTime = recentScans.get(workerId);
@@ -726,3 +732,49 @@ installBtn.addEventListener('click', async () => {
   deferredPrompt = null;
   installBtn.style.display = 'none';
 });
+
+const pinModal = document.getElementById('pinModal');
+const workerPinInput = document.getElementById('workerPinInput');
+const submitPinBtn = document.getElementById('submitPinBtn');
+const cancelPinBtn = document.getElementById('cancelPinBtn');
+const pinError = document.getElementById('pinError');
+
+async function solicitarPin(workerId, recordId) {
+  workerPinInput.value = '';
+  pinError.style.display = 'none';
+  pinModal.style.display = 'flex';
+
+  return new Promise(resolve => {
+    submitPinBtn.onclick = async () => {
+      const pin = workerPinInput.value.trim();
+      if (!pin) return;
+
+      // Verificamos en Supabase
+      const { data, error } = await supabase
+        .from('auth_pins')
+        .select('id')
+        .eq('worker_id', workerId)
+        .eq('pin', pin)
+        .eq('tipo', 'salida_temprana')
+        .is('used', false)
+        .limit(1)
+        .single();
+
+      if (error || !data) {
+        pinError.style.display = 'block';
+        return;
+      }
+
+      // Marcamos PIN como usado
+      await supabase.from('auth_pins').update({ used: true }).eq('id', data.id);
+
+      pinModal.style.display = 'none';
+      resolve(true);
+    };
+
+    cancelPinBtn.onclick = () => {
+      pinModal.style.display = 'none';
+      resolve(false);
+    };
+  });
+}
