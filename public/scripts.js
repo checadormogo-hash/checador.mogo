@@ -740,6 +740,11 @@ const cancelPinBtn = document.getElementById('cancelPinBtn');
 const pinError = document.getElementById('pinError');
 
 async function solicitarPin(workerId, recordId) {
+  if (!workerPinInput || !pinError || !pinModal) {
+    console.error('El modal o los inputs del PIN no existen en el DOM');
+    return false;
+  }
+
   workerPinInput.value = '';
   pinError.style.display = 'none';
   pinModal.style.display = 'flex';
