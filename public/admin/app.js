@@ -333,44 +333,49 @@ async function loadAuthPinsToday() {
 
   const today = new Date().toISOString().substring(0, 10);
 
-  const { data, error } = await supabase
-    .from('records')
-    .select('id, worker_id, entrada')
-    .eq('fecha', today)
-    .not('entrada', 'is', null)
-    .is('salida', null);
+  try {
+    const { data, error } = await supabase
+      .from('records')
+      .select('id, worker_id, entrada')
+      .eq('fecha', today);
 
-  if (error) {
-    console.error(error);
-    return;
-  }
+    if (error) throw error;
 
-  if (!data.length) {
+    // Filtrar registros que tienen entrada y no tienen salida
+    const activos = data.filter(r => r.entrada && !r.salida);
+
+    if (!activos.length) {
+      authPinsTableBody.innerHTML = `
+        <tr><td colspan="4">No hay trabajadores con entrada activa</td></tr>
+      `;
+      return;
+    }
+
+    activos.forEach(rec => {
+      const worker = workersCache.find(w => w.id == rec.worker_id);
+      if (!worker) return;
+
+      const tr = document.createElement('tr');
+
+      tr.innerHTML = `
+        <td>${worker.nombre}</td>
+        <td>${rec.entrada}</td>
+        <td class="pin-cell">—</td>
+        <td>
+          <button class="btn primary btn-gen-pin" data-worker="${worker.id}">
+            Generar PIN
+          </button>
+        </td>
+      `;
+
+      authPinsTableBody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error(err);
     authPinsTableBody.innerHTML = `
-      <tr><td colspan="4">No hay trabajadores con entrada activa</td></tr>
+      <tr><td colspan="4">Error al cargar trabajadores</td></tr>
     `;
-    return;
   }
-
-  data.forEach(rec => {
-    const worker = workersCache.find(w => w.id == rec.worker_id);
-    if (!worker) return;
-
-    const tr = document.createElement('tr');
-
-    tr.innerHTML = `
-      <td>${worker.nombre}</td>
-      <td>${rec.entrada}</td>
-      <td class="pin-cell">—</td>
-      <td>
-        <button class="btn primary btn-gen-pin" data-worker="${worker.id}">
-          Generar PIN
-        </button>
-      </td>
-    `;
-
-    authPinsTableBody.appendChild(tr);
-  });
 }
 if (authPinsTableBody) {
   authPinsTableBody.addEventListener('click', async e => {
