@@ -302,7 +302,7 @@ if (logoutBtn) {
   if (menuOverlay) menuOverlay.onclick = closeMenuFn;
 
 
-/* ================== Aurizaciones ================== */
+/* ================== Autorizaciones ================== */
 const menuAuthPins = document.getElementById('menuAuthPins');
 const authPinsModal = document.getElementById('authPinsModal');
 const closeAuthPins = document.getElementById('closeAuthPins');
@@ -331,14 +331,16 @@ if (closeAuthPins) {
 async function loadAuthPinsToday() {
   authPinsTableBody.innerHTML = '';
 
-  const today = '2025-12-27'; // para pruebas fijas, o usa new Date().toISOString().substring(0,10)
+  const today = new Date().toISOString().substring(0, 10);
 
   try {
     // Traer todos los registros de hoy
-    const { data, error } = await supabase
-      .from('records')
-      .select('id, worker_id, entrada, salida')
-      .eq('fecha', today);
+      const { data, error } = await supabase
+        .from('records')
+        .select('id, worker_id, entrada, salida')
+        .eq('fecha', today)
+        .not('entrada', 'is', null)
+        .order('entrada', { ascending: true });
 
     if (error) throw error;
 
