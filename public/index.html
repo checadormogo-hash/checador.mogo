@@ -127,17 +127,16 @@
 
 
 <!-- MODAL PIN -->
-<div class="pin-overlay" id="pinOverlay" style="display:none;">
+<div class="pin-overlay" id="pinModal" style="display:none;">
   <div class="pin-modal">
     <i class="fa-solid fa-lock"></i>
     <h3>Ingrese su PIN</h3>
     <input type="text" id="workerPinInput" class="pin-input" maxlength="4" placeholder="••••">
     <div id="pinError" class="pin-error">PIN incorrecto</div>
     <div class="btn-container">
-      <button id="cancelPinBtn">Cancelar</button>
       <button id="submitPinBtn">Aceptar</button>
+      <button id="cancelPinBtn">Cancelar</button>
     </div>
-    <div id="pinError" style="color:red; display:none;">PIN incorrecto</div>
   </div>
 </div>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
