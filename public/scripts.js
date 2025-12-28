@@ -756,7 +756,7 @@ async function solicitarPin(workerId, recordId) {
       if (!pin) return;
 
       // Verificamos en Supabase
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('auth_pins')
         .select('id')
         .eq('worker_id', workerId)
@@ -772,7 +772,10 @@ async function solicitarPin(workerId, recordId) {
       }
 
       // Marcamos PIN como usado
-      await supabase.from('auth_pins').update({ used: true }).eq('id', data.id);
+      await supabaseClient
+        .from('auth_pins')
+        .update({ used: true })
+        .eq('id', data.id);
 
       pinModal.style.display = 'none';
       resolve(true);
