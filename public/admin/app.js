@@ -331,18 +331,19 @@ if (closeAuthPins) {
 async function loadAuthPinsToday() {
   authPinsTableBody.innerHTML = '';
 
-  const today = new Date().toISOString().substring(0, 10);
+  const today = '2025-12-27'; // para pruebas fijas, o usa new Date().toISOString().substring(0,10)
 
   try {
+    // Traer todos los registros de hoy
     const { data, error } = await supabase
       .from('records')
-      .select('id, worker_id, entrada')
+      .select('id, worker_id, entrada, salida')
       .eq('fecha', today);
 
     if (error) throw error;
 
-    // Filtrar registros que tienen entrada y no tienen salida
-    const activos = data.filter(r => r.entrada && !r.salida);
+    // Filtrar: entrada tiene valor y salida aún no registrada
+    const activos = data.filter(r => r.entrada && r.entrada.trim() !== "" && (!r.salida || r.salida.trim() === ""));
 
     if (!activos.length) {
       authPinsTableBody.innerHTML = `
