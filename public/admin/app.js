@@ -338,7 +338,7 @@ async function loadAuthPinsToday() {
     .select('id, worker_id, entrada')
     .eq('fecha', today)
     .not('entrada', 'is', null)
-    .or('salida.is.null,salida.eq.""');
+    .is('salida', null);
 
   if (error) {
     console.error(error);
