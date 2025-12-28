@@ -231,7 +231,11 @@ const loginError = document.getElementById('loginError');
 function showAdmin() {
   loginOverlay.style.display = 'none';
   adminApp.style.display = 'block';
+
+  const fabAdd = document.getElementById('openAddModal');
+  if (fabAdd) fabAdd.style.display = 'flex';
 }
+
 
 function showLogin() {
   loginOverlay.style.display = 'flex';
