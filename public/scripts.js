@@ -701,6 +701,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadEmployees();
   showAutoModal();
   switchToScannerTab();
+
+  const pinModal = document.getElementById('pinModal');
+const workerPinInput = document.getElementById('workerPinInput');
+const submitPinBtn = document.getElementById('submitPinBtn');
+const cancelPinBtn = document.getElementById('cancelPinBtn');
+const pinError = document.getElementById('pinError');
+
 });
 
 let deferredPrompt;
@@ -732,12 +739,6 @@ installBtn.addEventListener('click', async () => {
   deferredPrompt = null;
   installBtn.style.display = 'none';
 });
-
-const pinModal = document.getElementById('pinModal');
-const workerPinInput = document.getElementById('workerPinInput');
-const submitPinBtn = document.getElementById('submitPinBtn');
-const cancelPinBtn = document.getElementById('cancelPinBtn');
-const pinError = document.getElementById('pinError');
 
 async function solicitarPin(workerId, recordId) {
   if (!workerPinInput || !pinError || !pinModal) {
