@@ -821,6 +821,10 @@ function openWeeklyReport() {
   weeklyReportModal.classList.remove('oculto');
   generateWeeklyReport();
 }
+function generateWeeklyReport() {
+  console.log('📊 Generando reporte semanal...');
+  // aquí después metemos la lógica real
+}
 
 
 });
