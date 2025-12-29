@@ -802,6 +802,7 @@ if (installAdminBtn && isAppInstalled()) {
 }
 
 /* ================== REPORTE SEMANAL ================== */
+/* ================== REPORTE SEMANAL ================== */
 
 const weeklyReportModal = document.getElementById('weeklyReportModal');
 const workerDetailModal = document.getElementById('workerDetailModal');
@@ -842,3 +843,5 @@ function generateWeeklyReport() {
   console.log('📊 Generando reporte semanal...');
   // aquí va la lógica real después
 }
+
+});
