@@ -802,9 +802,12 @@ if (installAdminBtn && isAppInstalled()) {
 }
 
 /* ================== REPORTE SEMANAL ================== */
+
+// Modales
 const weeklyReportModal = document.getElementById('weeklyReportModal');
 const workerDetailModal = document.getElementById('workerDetailModal');
 
+// Botones cerrar
 const closeWeeklyReportBtn = document.getElementById('closeWeeklyReport');
 const closeWorkerDetailBtn = document.getElementById('closeWorkerDetail');
 
@@ -826,8 +829,8 @@ const reportBtn = document.getElementById('menuReports');
 
 if (reportBtn) {
   reportBtn.addEventListener('click', () => {
-    closeMenuFn();
-    openWeeklyReport();
+    closeMenuFn();       // cierra menú hamburguesa
+    openWeeklyReport(); // abre modal reporte
   });
 }
 
@@ -836,8 +839,103 @@ function openWeeklyReport() {
   generateWeeklyReport();
 }
 
+/* ================== GENERAR REPORTE ================== */
+
 function generateWeeklyReport() {
-  console.log('📊 Generando reporte semanal...');
+  const rangeEl = document.getElementById('reportWeekRange');
+  const tbody = document.getElementById('weeklyReportBody');
+  tbody.innerHTML = '';
+
+  const { start, end } = getCurrentWeekRange();
+
+  // Mostrar rango de semana
+  const format = d =>
+    d.toLocaleDateString('es-MX', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+
+  rangeEl.textContent = `Semana: ${format(start)} – ${format(end)}`;
+
+  // Filtrar registros de la semana
+  const weeklyRecords = recordsCache.filter(r =>
+    isDateInRange(r.fecha, start, end)
+  );
+
+  // Agrupar por trabajador
+  const grouped = {};
+
+  weeklyRecords.forEach(r => {
+    if (!grouped[r.worker_id]) {
+      grouped[r.worker_id] = [];
+    }
+    grouped[r.worker_id].push(r);
+  });
+
+  // Pintar tabla
+  Object.entries(grouped).forEach(([workerId, records]) => {
+    const worker = workersCache.find(w => w.id == workerId);
+    if (!worker) return;
+
+    let totalHours = 0;
+    records.forEach(r => totalHours += calcHours(r));
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${worker.nombre}</td>
+      <td>${records.length}</td>
+      <td>${totalHours.toFixed(2)}</td>
+      <td>
+        <button class="btn primary btn-detail" data-worker="${workerId}">
+          Ver
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  console.log('📊 Reporte semanal generado');
 }
+
+/* ================== HELPERS ================== */
+
+function calcHours(record) {
+  if (!record.entrada || !record.salida) return 0;
+
+  const toMin = t => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  let total = toMin(record.salida) - toMin(record.entrada);
+
+  if (record.salida_comida && record.entrada_comida) {
+    total -= toMin(record.entrada_comida) - toMin(record.salida_comida);
+  }
+
+  return Math.max(total, 0) / 60;
+}
+
+function getCurrentWeekRange() {
+  const today = new Date();
+  const day = today.getDay(); // 0 = domingo
+
+  const start = new Date(today);
+  start.setDate(today.getDate() - day);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  return { start, end };
+}
+
+function isDateInRange(dateStr, start, end) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d >= start && d <= end;
+}
+
+
 
 });
