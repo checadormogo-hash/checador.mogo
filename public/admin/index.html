@@ -275,23 +275,32 @@
 <!-- ================== REPORTE SEMANAL ================== -->
 <div id="weeklyReportModal" class="modal-overlay oculto">
   <div class="modal modal-large report-modal">
-    <button class="btn-icon" id="closeWorkerDetail"><i class="fa-solid fa-xmark"></i></button>
-    <h2>📆 Reporte semanal</h2>
+
+    <div class="modal-header">
+      <h3>📆 Reporte semanal</h3>
+
+      <button class="btn-icon" id="closeWeeklyReport">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
     <p id="reportWeekRange" class="week-range"></p>
 
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Trabajador</th>
-          <th>Días trabajados</th>
-          <th>Horas totales</th>
-          <th>Detalle</th>
-        </tr>
-      </thead>
-      <tbody id="weeklyReportBody">
-        <!-- Se llena por JS -->
-      </tbody>
-    </table>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Trabajador</th>
+            <th>Días trabajados</th>
+            <th>Horas totales</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody id="weeklyReportBody">
+          <!-- Se llena por JS -->
+        </tbody>
+      </table>
+    </div>
 
   </div>
 </div>
@@ -299,27 +308,35 @@
 <!-- ================== DETALLE SEMANAL POR TRABAJADOR ================== -->
 <div id="workerDetailModal" class="modal-overlay oculto">
   <div class="modal modal-large report-modal">
-    <button class="btn-icon" id="closeWeeklyReport"><i class="fa-solid fa-xmark"></i></button>
-    <h3 id="workerDetailName"></h3>
+
+    <div class="modal-header">
+      <h3 id="workerDetailName"></h3>
+
+      <button class="btn-icon" id="closeWorkerDetail">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
     <p id="workerDetailWeek"></p>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Día</th>
-          <th>Entrada</th>
-          <th>Salida comida</th>
-          <th>Entrada comida</th>
-          <th>Salida</th>
-          <th>Horas</th>
-        </tr>
-      </thead>
-      <tbody id="workerDetailBody">
-        <!-- Se llena por JS -->
-      </tbody>
-    </table>
 
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Día</th>
+            <th>Entrada</th>
+            <th>Salida comida</th>
+            <th>Entrada comida</th>
+            <th>Salida</th>
+            <th>Horas</th>
+          </tr>
+        </thead>
+        <tbody id="workerDetailBody">
+          <!-- Se llena por JS -->
+        </tbody>
+      </table>
+    </div>
     <div class="report-footer" id="workerDetailFooter"></div>
-
   </div>
 </div>
 
