@@ -802,8 +802,6 @@ if (installAdminBtn && isAppInstalled()) {
 }
 
 /* ================== REPORTE SEMANAL ================== */
-/* ================== REPORTE SEMANAL ================== */
-
 const weeklyReportModal = document.getElementById('weeklyReportModal');
 const workerDetailModal = document.getElementById('workerDetailModal');
 
@@ -811,26 +809,25 @@ const closeWeeklyReportBtn = document.getElementById('closeWeeklyReport');
 const closeWorkerDetailBtn = document.getElementById('closeWorkerDetail');
 
 if (closeWeeklyReportBtn) {
-  closeWeeklyReportBtn.onclick = () => {
+  closeWeeklyReportBtn.addEventListener('click', () => {
     weeklyReportModal.classList.add('oculto');
-  };
+  });
 }
 
 if (closeWorkerDetailBtn) {
-  closeWorkerDetailBtn.onclick = () => {
+  closeWorkerDetailBtn.addEventListener('click', () => {
     workerDetailModal.classList.add('oculto');
-  };
+  });
 }
 
 /* ================== BOTÓN REPORTES ================== */
 
-// ahora usamos ID (como debe ser)
 const reportBtn = document.getElementById('menuReports');
 
 if (reportBtn) {
   reportBtn.addEventListener('click', () => {
-    closeMenuFn();          // se cierra el menú hamburguesa
-    openWeeklyReport();     // se abre el reporte
+    closeMenuFn();
+    openWeeklyReport();
   });
 }
 
@@ -841,7 +838,6 @@ function openWeeklyReport() {
 
 function generateWeeklyReport() {
   console.log('📊 Generando reporte semanal...');
-  // aquí va la lógica real después
 }
 
 });
