@@ -806,31 +806,39 @@ if (installAdminBtn && isAppInstalled()) {
 const weeklyReportModal = document.getElementById('weeklyReportModal');
 const workerDetailModal = document.getElementById('workerDetailModal');
 
-document.getElementById('closeWeeklyReport').onclick = () =>
-  weeklyReportModal.classList.add('oculto');
+const closeWeeklyReportBtn = document.getElementById('closeWeeklyReport');
+const closeWorkerDetailBtn = document.getElementById('closeWorkerDetail');
 
-document.getElementById('closeWorkerDetail').onclick = () =>
-  workerDetailModal.classList.add('oculto');
+if (closeWeeklyReportBtn) {
+  closeWeeklyReportBtn.onclick = () => {
+    weeklyReportModal.classList.add('oculto');
+  };
+}
+
+if (closeWorkerDetailBtn) {
+  closeWorkerDetailBtn.onclick = () => {
+    workerDetailModal.classList.add('oculto');
+  };
+}
+
 /* ================== BOTÓN REPORTES ================== */
 
-// buscamos el botón por su texto
-const reportBtn = [...document.querySelectorAll('button')]
-  .find(btn => btn.textContent.trim().includes('Reportes'));
+// ahora usamos ID (como debe ser)
+const reportBtn = document.getElementById('menuReports');
 
 if (reportBtn) {
   reportBtn.addEventListener('click', () => {
-    closeMenuFn();
-    openWeeklyReport();
+    closeMenuFn();          // se cierra el menú hamburguesa
+    openWeeklyReport();     // se abre el reporte
   });
 }
+
 function openWeeklyReport() {
   weeklyReportModal.classList.remove('oculto');
   generateWeeklyReport();
 }
+
 function generateWeeklyReport() {
   console.log('📊 Generando reporte semanal...');
-  // aquí después metemos la lógica real
+  // aquí va la lógica real después
 }
-
-
-});
