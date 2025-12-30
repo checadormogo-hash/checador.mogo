@@ -181,35 +181,57 @@ body{
 }
 
 /* ===== RESPONSIVE (CLAVE) ===== */
-@media(max-width:768px){
+/* ===== RESPONSIVE REAL PARA MÓVIL ===== */
+@media (max-width: 768px){
+
+  body{
+    align-items:flex-start;
+  }
 
   .map{
     height:auto;
     display:flex;
     flex-direction:column;
     align-items:center;
+    gap:14px;
   }
 
-  /* ocultamos líneas */
-  .map svg{display:none;}
+  /* ocultamos completamente el modo mapa */
+  .map svg{
+    display:none;
+  }
 
   /* centro como encabezado */
   .center{
     position:relative;
+    top:auto;
+    left:auto;
     transform:none;
-    width:180px;
-    height:180px;
-    margin-bottom:20px;
+    width:160px;
+    height:160px;
+    margin:0 0 10px;
   }
 
-  .center i{font-size:28px;}
+  .center strong{
+    font-size:16px;
+  }
 
-  /* nodos en lista */
+  .center small{
+    font-size:12px;
+  }
+
+  /* nodos en lista limpia */
   .node{
     position:relative;
+    inset:auto;
+    transform:none;
     width:100%;
-    max-width:420px;
-    margin:8px 0;
+    max-width:480px;
+    margin:0;
+  }
+
+  .node span{
+    font-size:14px;
   }
 }
 </style>
@@ -224,7 +246,7 @@ body{
     <p>Sistema de Control de Asistencia – SuperMogo</p>
   </div>
 
-  <div class="map">
+  <div class="map layout-map">
 
     <!-- LÍNEAS -->
     <svg>
