@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Políticas de Uso y Aviso de Privacidad | SuperMogo</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+:root{
+  --bg1:#1b1f4a;
+  --bg2:#0f122e;
+  --card:#ffffff14;
+  --text:#ffffff;
+  --accent:#4fd1c5;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
+
+body{
+  min-height:100vh;
+  background:radial-gradient(circle at top,var(--bg1),var(--bg2));
+  color:var(--text);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:20px;
+}
+
+.container{
+  width:100%;
+  max-width:1100px;
+  position:relative;
+}
+
+.title{
+  text-align:center;
+  margin-bottom:40px;
+}
+
+.title h1{
+  font-size:28px;
+  margin-bottom:6px;
+}
+
+.title p{
+  opacity:.8;
+  font-size:14px;
+}
+
+.map{
+  position:relative;
+  width:100%;
+  height:600px;
+}
+
+.center{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:linear-gradient(135deg,#4fd1c5,#63b3ed);
+  color:#000;
+  width:220px;
+  height:220px;
+  border-radius:50%;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  box-shadow:0 20px 50px #00000055;
+}
+
+.center i{
+  font-size:36px;
+  margin-bottom:10px;
+}
+
+.node{
+  position:absolute;
+  width:180px;
+  padding:14px;
+  background:var(--card);
+  backdrop-filter:blur(10px);
+  border-radius:14px;
+  text-align:center;
+  cursor:pointer;
+  transition:.3s;
+}
+
+.node:hover{
+  transform:scale(1.05);
+  box-shadow:0 15px 35px #00000055;
+}
+
+.node i{
+  font-size:22px;
+  margin-bottom:6px;
+  color:var(--accent);
+}
+
+.node span{
+  font-size:13px;
+  font-weight:600;
+}
+
+/* posiciones */
+.n1{top:20px;left:50%;transform:translateX(-50%);}
+.n2{top:120px;right:20px;}
+.n3{bottom:120px;right:20px;}
+.n4{bottom:20px;left:50%;transform:translateX(-50%);}
+.n5{bottom:120px;left:20px;}
+.n6{top:120px;left:20px;}
+
+/* modal */
+.modal{
+  position:fixed;
+  inset:0;
+  background:#000000aa;
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+}
+
+.modal.active{display:flex;}
+
+.modal-content{
+  background:#0f122e;
+  width:90%;
+  max-width:600px;
+  max-height:80vh;
+  border-radius:18px;
+  padding:24px;
+  overflow-y:auto;
+  animation:fadeUp .3s ease;
+}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(30px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+.modal-content h2{
+  margin-bottom:12px;
+  color:var(--accent);
+}
+
+.modal-content p{
+  font-size:14px;
+  line-height:1.6;
+  margin-bottom:10px;
+}
+
+.close{
+  position:absolute;
+  top:15px;
+  right:20px;
+  font-size:22px;
+  cursor:pointer;
+}
+
+/* responsive */
+@media(max-width:768px){
+  .map{height:auto;}
+  .node{
+    position:relative;
+    width:100%;
+    margin:10px 0;
+  }
+  .center{
+    position:relative;
+    transform:none;
+    margin:0 auto 20px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="title">
+    <h1>Políticas de Uso y Aviso de Privacidad</h1>
+    <p>Sistema de Control de Asistencia – SuperMogo</p>
+  </div>
+
+  <div class="map">
+
+    <div class="center">
+      <i class="fa-solid fa-shield-halved"></i>
+      <strong>SuperMogo</strong>
+      <small>Sistema de Asistencia</small>
+    </div>
+
+    <div class="node n1" onclick="openModal(1)">
+      <i class="fa-solid fa-bullseye"></i>
+      <span>Finalidad del sistema</span>
+    </div>
+
+    <div class="node n2" onclick="openModal(2)">
+      <i class="fa-solid fa-user-lock"></i>
+      <span>Datos personales</span>
+    </div>
+
+    <div class="node n3" onclick="openModal(3)">
+      <i class="fa-solid fa-user-check"></i>
+      <span>Responsabilidad del usuario</span>
+    </div>
+
+    <div class="node n4" onclick="openModal(4)">
+      <i class="fa-solid fa-ban"></i>
+      <span>Uso indebido</span>
+    </div>
+
+    <div class="node n5" onclick="openModal(5)">
+      <i class="fa-solid fa-database"></i>
+      <span>Conservación de datos</span>
+    </div>
+
+    <div class="node n6" onclick="openModal(6)">
+      <i class="fa-solid fa-scale-balanced"></i>
+      <span>Marco legal y derechos</span>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">✕</span>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const content = {
+1:`<h2>Políticas de Uso</h2>
+<p>El sistema SuperMogo tiene como finalidad exclusiva el registro y control de la jornada laboral del personal autorizado.</p>
+<p>Su uso es estrictamente laboral y no debe utilizarse para fines personales o ajenos a la empresa.</p>`,
+
+2:`<h2>Aviso de Privacidad</h2>
+<p>SuperMogo recopila datos como nombre del trabajador, horarios, registros de entrada y salida.</p>
+<p>Estos datos son utilizados únicamente para control interno y cumplimiento laboral.</p>`,
+
+3:`<h2>Responsabilidad del Usuario</h2>
+<p>El trabajador es responsable de realizar sus registros de forma correcta, personal y honesta.</p>
+<p>Queda prohibido registrar asistencia por terceros.</p>`,
+
+4:`<h2>Uso Indebido</h2>
+<p>Cualquier intento de manipulación, alteración o uso fraudulento del sistema podrá ser sancionado conforme a la normativa interna.</p>`,
+
+5:`<h2>Conservación de Datos</h2>
+<p>La información se conserva únicamente durante el tiempo necesario para cumplir obligaciones laborales y legales.</p>`,
+
+6:`<h2>Marco Legal y Derechos ARCO</h2>
+<p>El tratamiento de datos se rige por la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.</p>
+<p>El trabajador puede solicitar acceso, rectificación o cancelación de sus datos.</p>`
+};
+
+function openModal(id){
+  document.getElementById('modalBody').innerHTML = content[id];
+  document.getElementById('modal').classList.add('active');
+}
+
+function closeModal(){
+  document.getElementById('modal').classList.remove('active');
+}
+</script>
+
+</body>
+</html>
