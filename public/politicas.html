@@ -151,6 +151,7 @@ body{
 .modal.active{display:flex;}
 
 .modal-content{
+  position: relative;
   background:#0f122e;
   width:90%;
   max-width:600px;
@@ -160,7 +161,16 @@ body{
   overflow-y:auto;
   animation:fadeUp .3s ease;
 }
-
+.modal-close{
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--accent);
+  cursor: pointer;
+}
 @keyframes fadeUp{
   from{opacity:0;transform:translateY(30px);}
   to{opacity:1;transform:translateY(0);}
@@ -305,10 +315,13 @@ body{
 
 <div class="modal" id="modal">
   <div class="modal-content">
-    <span class="close" onclick="closeModal()">✕</span>
+    <button class="modal-close" onclick="closeModal()">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
     <div id="modalBody"></div>
   </div>
 </div>
+
 
 <script>
 const content = {
