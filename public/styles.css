@@ -442,10 +442,22 @@ body {
 
 /* botón cerrar igual que los otros */
 #closePolicies{
-  position: absolute;
-  top: 12px;
+  position: fixed;
+  top: 14px;
   right: 14px;
-  z-index: 20;
+  z-index: 100000;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+}
+#closePolicies i{
+  font-size: 20px;
 }
 @media (min-width: 768px){
   .policies-modal{
