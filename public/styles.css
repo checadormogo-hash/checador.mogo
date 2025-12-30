@@ -445,7 +445,7 @@ body {
   position: fixed;
   top: 14px;
   right: 14px;
-  z-index: 9998;
+  z-index: 8000;
   background: rgba(0,0,0,0.55);
   color: #fff;
   width: 42px;
