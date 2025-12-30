@@ -941,7 +941,6 @@ function isDateInRange(dateStr, start, end) {
 const menuAguinaldo = document.getElementById('menuAguinaldo');
 const aguinaldoModal = document.getElementById('aguinaldoModal');
 const closeAguinaldo = document.getElementById('closeAguinaldo');
-const closeAguinaldo2 = document.getElementById('closeAguinaldo2');
 
 if (menuAguinaldo) {
   menuAguinaldo.addEventListener('click', () => {
@@ -958,13 +957,8 @@ if (closeAguinaldo) {
   });
 }
 
-if (closeAguinaldo2) {
-  closeAguinaldo2.addEventListener('click', () => {
-    aguinaldoModal.classList.add('oculto');
-  });
-}
 function setFechaHoyAguinaldo() {
-  const input = document.getElementById('aguinaldoFecha');
+  const input = document.getElementById('fechaCalculo');
   if (!input) return;
 
   const hoy = new Date().toISOString().substring(0, 10);
@@ -975,7 +969,7 @@ function cargarTrabajadoresAguinaldo() {
   const select = document.getElementById('aguinaldoWorker');
   if (!select) return;
 
-  select.innerHTML = '<option value="">Selecciona un trabajador</option>';
+  select.innerHTML = '<option value="all">(Todos)</option>';
 
   workersCache.forEach(w => {
     if (!w.activo) return;
@@ -984,6 +978,76 @@ function cargarTrabajadoresAguinaldo() {
     opt.value = w.id;
     opt.textContent = w.nombre;
     select.appendChild(opt);
+  });
+}
+
+/* ================== CALCULAR BISIESTO ================== */
+function esBisiesto(year) {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function calcularDiasLaborados(fechaIngreso, fechaCalculo) {
+  const inicio = new Date(fechaIngreso);
+  const fin = new Date(fechaCalculo);
+
+  inicio.setHours(0, 0, 0, 0);
+  fin.setHours(0, 0, 0, 0);
+
+  const diff = fin - inicio;
+  return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+}
+const btnCalcularAguinaldo = document.getElementById('btnCalcularAguinaldo');
+
+if (btnCalcularAguinaldo) {
+  btnCalcularAguinaldo.addEventListener('click', () => {
+
+    const workerId = document.getElementById('aguinaldoWorker').value;
+    const salarioDiario = parseFloat(document.getElementById('salarioDiario').value);
+    const fechaCalculo = document.getElementById('fechaCalculo').value;
+
+    if (!salarioDiario || salarioDiario <= 0) {
+      alert('Ingresa un salario diario válido');
+      return;
+    }
+
+    if (!fechaCalculo) {
+      alert('Selecciona una fecha de cálculo');
+      return;
+    }
+
+    // Determinar trabajadores a calcular
+    let trabajadores = [];
+
+    if (workerId === 'all') {
+      trabajadores = workersCache.filter(w => w.activo);
+    } else {
+      const w = workersCache.find(w => w.id === workerId);
+      if (!w) return;
+      trabajadores = [w];
+    }
+
+    // Año y días del año
+    const year = new Date(fechaCalculo).getFullYear();
+    const diasDelAnio = esBisiesto(year) ? 366 : 365;
+
+    // SOLO mostramos el primero por ahora (ya luego hacemos tabla)
+    const trabajador = trabajadores[0];
+
+    const diasLaborados = calcularDiasLaborados(
+      trabajador.fechaIngreso,
+      fechaCalculo
+    );
+
+    const diasAguinaldo = (diasLaborados / diasDelAnio) * 15;
+    const monto = diasAguinaldo * salarioDiario;
+
+    // Mostrar resultados
+    document.getElementById('diasTrabajados').textContent = diasLaborados;
+    document.getElementById('diasAguinaldo').textContent = diasAguinaldo.toFixed(2);
+    document.getElementById('montoAguinaldo').textContent = monto.toFixed(2);
+
+    document.getElementById('aguinaldoResultado').style.display = 'block';
+
   });
 }
 
