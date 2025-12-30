@@ -3,25 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Políticas de Uso y Aviso de Privacidad | SuperMogo</title>
+<title>Políticas y Privacidad | SuperMogo</title>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
 :root{
-  --bg1:#1b1f4a;
-  --bg2:#0f122e;
-  --card:#ffffff14;
-  --text:#ffffff;
+  --bg:#0f122e;
   --accent:#4fd1c5;
+  --card:#ffffff18;
+  --text:#fff;
 }
 
-*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;}
 
 body{
-  min-height:100vh;
-  background:radial-gradient(circle at top,var(--bg1),var(--bg2));
+  background:radial-gradient(circle at top,#1b1f4a,var(--bg));
   color:var(--text);
+  min-height:100vh;
   display:flex;
   justify-content:center;
   align-items:center;
@@ -29,65 +28,52 @@ body{
 }
 
 .container{
-  width:100%;
   max-width:1100px;
-  position:relative;
+  width:100%;
 }
 
-.title{
+.header{
   text-align:center;
-  margin-bottom:40px;
+  margin-bottom:30px;
 }
 
-.title h1{
-  font-size:28px;
-  margin-bottom:6px;
-}
-
-.title p{
-  opacity:.8;
-  font-size:14px;
-}
+.header h1{font-size:26px;}
+.header p{opacity:.8;font-size:14px;}
 
 .map{
   position:relative;
-  width:100%;
   height:600px;
 }
 
 .center{
   position:absolute;
-  top:50%;
-  left:50%;
+  inset:50%;
   transform:translate(-50%,-50%);
-  background:linear-gradient(135deg,#4fd1c5,#63b3ed);
-  color:#000;
   width:220px;
   height:220px;
   border-radius:50%;
+  background:linear-gradient(135deg,#4fd1c5,#63b3ed);
+  color:#000;
   display:flex;
   flex-direction:column;
-  justify-content:center;
   align-items:center;
-  text-align:center;
-  box-shadow:0 20px 50px #00000055;
+  justify-content:center;
+  z-index:2;
 }
 
-.center i{
-  font-size:36px;
-  margin-bottom:10px;
-}
+.center i{font-size:34px;margin-bottom:8px;}
 
 .node{
   position:absolute;
   width:180px;
-  padding:14px;
   background:var(--card);
   backdrop-filter:blur(10px);
   border-radius:14px;
+  padding:14px;
   text-align:center;
   cursor:pointer;
   transition:.3s;
+  z-index:2;
 }
 
 .node:hover{
@@ -95,26 +81,29 @@ body{
   box-shadow:0 15px 35px #00000055;
 }
 
-.node i{
-  font-size:22px;
-  margin-bottom:6px;
-  color:var(--accent);
-}
+.node i{color:var(--accent);font-size:22px;margin-bottom:6px;}
+.node span{font-size:13px;font-weight:600;}
 
-.node span{
-  font-size:13px;
-  font-weight:600;
-}
-
-/* posiciones */
 .n1{top:20px;left:50%;transform:translateX(-50%);}
-.n2{top:120px;right:20px;}
-.n3{bottom:120px;right:20px;}
+.n2{top:130px;right:20px;}
+.n3{bottom:130px;right:20px;}
 .n4{bottom:20px;left:50%;transform:translateX(-50%);}
-.n5{bottom:120px;left:20px;}
-.n6{top:120px;left:20px;}
+.n5{bottom:130px;left:20px;}
+.n6{top:130px;left:20px;}
 
-/* modal */
+svg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:1;
+}
+
+line{
+  stroke:#4fd1c588;
+  stroke-width:2;
+}
+
 .modal{
   position:fixed;
   inset:0;
@@ -122,7 +111,7 @@ body{
   display:none;
   justify-content:center;
   align-items:center;
-  z-index:999;
+  z-index:99;
 }
 
 .modal.active{display:flex;}
@@ -131,27 +120,16 @@ body{
   background:#0f122e;
   width:90%;
   max-width:600px;
-  max-height:80vh;
   border-radius:18px;
   padding:24px;
-  overflow-y:auto;
-  animation:fadeUp .3s ease;
+  animation:fade .3s ease;
+  max-height:80vh;
+  overflow:auto;
 }
 
-@keyframes fadeUp{
-  from{opacity:0;transform:translateY(30px);}
-  to{opacity:1;transform:translateY(0);}
-}
-
-.modal-content h2{
-  margin-bottom:12px;
-  color:var(--accent);
-}
-
-.modal-content p{
-  font-size:14px;
-  line-height:1.6;
-  margin-bottom:10px;
+@keyframes fade{
+  from{opacity:0;transform:translateY(20px);}
+  to{opacity:1;}
 }
 
 .close{
@@ -162,18 +140,19 @@ body{
   cursor:pointer;
 }
 
-/* responsive */
 @media(max-width:768px){
-  .map{height:auto;}
+  .map{
+    height:auto;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+
+  svg,.center{display:none;}
+
   .node{
     position:relative;
     width:100%;
-    margin:10px 0;
-  }
-  .center{
-    position:relative;
-    transform:none;
-    margin:0 auto 20px;
   }
 }
 </style>
@@ -182,50 +161,34 @@ body{
 <body>
 
 <div class="container">
-
-  <div class="title">
+  <div class="header">
     <h1>Políticas de Uso y Aviso de Privacidad</h1>
     <p>Sistema de Control de Asistencia – SuperMogo</p>
   </div>
 
   <div class="map">
 
+    <svg>
+      <line x1="50%" y1="50%" x2="50%" y2="8%"/>
+      <line x1="50%" y1="50%" x2="90%" y2="25%"/>
+      <line x1="50%" y1="50%" x2="90%" y2="75%"/>
+      <line x1="50%" y1="50%" x2="50%" y2="92%"/>
+      <line x1="50%" y1="50%" x2="10%" y2="75%"/>
+      <line x1="50%" y1="50%" x2="10%" y2="25%"/>
+    </svg>
+
     <div class="center">
       <i class="fa-solid fa-shield-halved"></i>
       <strong>SuperMogo</strong>
-      <small>Sistema de Asistencia</small>
+      <small>Control de Asistencia</small>
     </div>
 
-    <div class="node n1" onclick="openModal(1)">
-      <i class="fa-solid fa-bullseye"></i>
-      <span>Finalidad del sistema</span>
-    </div>
-
-    <div class="node n2" onclick="openModal(2)">
-      <i class="fa-solid fa-user-lock"></i>
-      <span>Datos personales</span>
-    </div>
-
-    <div class="node n3" onclick="openModal(3)">
-      <i class="fa-solid fa-user-check"></i>
-      <span>Responsabilidad del usuario</span>
-    </div>
-
-    <div class="node n4" onclick="openModal(4)">
-      <i class="fa-solid fa-ban"></i>
-      <span>Uso indebido</span>
-    </div>
-
-    <div class="node n5" onclick="openModal(5)">
-      <i class="fa-solid fa-database"></i>
-      <span>Conservación de datos</span>
-    </div>
-
-    <div class="node n6" onclick="openModal(6)">
-      <i class="fa-solid fa-scale-balanced"></i>
-      <span>Marco legal y derechos</span>
-    </div>
-
+    <div class="node n1" onclick="openModal(1)"><i class="fa-solid fa-bullseye"></i><span>Finalidad</span></div>
+    <div class="node n2" onclick="openModal(2)"><i class="fa-solid fa-user-lock"></i><span>Datos</span></div>
+    <div class="node n3" onclick="openModal(3)"><i class="fa-solid fa-user-check"></i><span>Responsabilidad</span></div>
+    <div class="node n4" onclick="openModal(4)"><i class="fa-solid fa-ban"></i><span>Uso indebido</span></div>
+    <div class="node n5" onclick="openModal(5)"><i class="fa-solid fa-database"></i><span>Conservación</span></div>
+    <div class="node n6" onclick="openModal(6)"><i class="fa-solid fa-scale-balanced"></i><span>Marco legal</span></div>
   </div>
 </div>
 
@@ -237,38 +200,20 @@ body{
 </div>
 
 <script>
-const content = {
-1:`<h2>Políticas de Uso</h2>
-<p>El sistema SuperMogo tiene como finalidad exclusiva el registro y control de la jornada laboral del personal autorizado.</p>
-<p>Su uso es estrictamente laboral y no debe utilizarse para fines personales o ajenos a la empresa.</p>`,
-
-2:`<h2>Aviso de Privacidad</h2>
-<p>SuperMogo recopila datos como nombre del trabajador, horarios, registros de entrada y salida.</p>
-<p>Estos datos son utilizados únicamente para control interno y cumplimiento laboral.</p>`,
-
-3:`<h2>Responsabilidad del Usuario</h2>
-<p>El trabajador es responsable de realizar sus registros de forma correcta, personal y honesta.</p>
-<p>Queda prohibido registrar asistencia por terceros.</p>`,
-
-4:`<h2>Uso Indebido</h2>
-<p>Cualquier intento de manipulación, alteración o uso fraudulento del sistema podrá ser sancionado conforme a la normativa interna.</p>`,
-
-5:`<h2>Conservación de Datos</h2>
-<p>La información se conserva únicamente durante el tiempo necesario para cumplir obligaciones laborales y legales.</p>`,
-
-6:`<h2>Marco Legal y Derechos ARCO</h2>
-<p>El tratamiento de datos se rige por la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.</p>
-<p>El trabajador puede solicitar acceso, rectificación o cancelación de sus datos.</p>`
+const data={
+1:`<h2>Políticas de Uso</h2><p>Uso exclusivo laboral para control de asistencia.</p>`,
+2:`<h2>Aviso de Privacidad</h2><p>Se recopilan datos de identificación y horarios.</p>`,
+3:`<h2>Responsabilidad</h2><p>El usuario es responsable de su propio registro.</p>`,
+4:`<h2>Uso indebido</h2><p>Cualquier manipulación será sancionada.</p>`,
+5:`<h2>Conservación</h2><p>Los datos se conservan según obligación legal.</p>`,
+6:`<h2>Marco Legal</h2><p>LFPDPPP y derechos ARCO.</p>`
 };
 
-function openModal(id){
-  document.getElementById('modalBody').innerHTML = content[id];
-  document.getElementById('modal').classList.add('active');
+function openModal(i){
+  modalBody.innerHTML=data[i];
+  modal.classList.add('active');
 }
-
-function closeModal(){
-  document.getElementById('modal').classList.remove('active');
-}
+function closeModal(){modal.classList.remove('active');}
 </script>
 
 </body>
