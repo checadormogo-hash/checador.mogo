@@ -797,12 +797,14 @@ const closePolicies = document.getElementById('closePolicies');
 if(openPolicies){
   openPolicies.addEventListener('click',()=>{
     policiesModal.classList.remove('oculto');
+    clearTimeout(inactivityTimer);
   });
 }
 
 if(closePolicies){
   closePolicies.addEventListener('click',()=>{
     policiesModal.classList.add('oculto');
+    startInactivityTimer();
   });
 }
 
