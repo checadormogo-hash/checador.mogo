@@ -1005,6 +1005,11 @@ if (btnCalcularAguinaldo) {
     const salarioDiario = parseFloat(document.getElementById('salarioDiario').value);
     const fechaCalculo = document.getElementById('fechaCalculo').value;
 
+    const resultadoIndividual = document.getElementById('aguinaldoResultado');
+    const tablaContainer = document.getElementById('aguinaldoTablaContainer');
+    const tablaBody = document.getElementById('aguinaldoTablaBody');
+
+    // Validaciones
     if (!salarioDiario || salarioDiario <= 0) {
       alert('Ingresa un salario diario válido');
       return;
@@ -1015,13 +1020,17 @@ if (btnCalcularAguinaldo) {
       return;
     }
 
-    // Determinar trabajadores a calcular
+    // Ocultamos ambos resultados
+    resultadoIndividual.style.display = 'none';
+    tablaContainer.style.display = 'none';
+
+    // Determinar trabajadores
     let trabajadores = [];
 
     if (workerId === 'all') {
       trabajadores = workersCache.filter(w => w.activo);
     } else {
-      const w = workersCache.find(w => w.id === workerId);
+      const w = workersCache.find(w => w.id == workerId);
       if (!w) return;
       trabajadores = [w];
     }
@@ -1030,7 +1039,37 @@ if (btnCalcularAguinaldo) {
     const year = new Date(fechaCalculo).getFullYear();
     const diasDelAnio = esBisiesto(year) ? 366 : 365;
 
-    // SOLO mostramos el primero por ahora (ya luego hacemos tabla)
+    /* ================== TODOS ================== */
+    if (workerId === 'all') {
+
+      tablaBody.innerHTML = '';
+
+      trabajadores.forEach(trabajador => {
+        const diasLaborados = calcularDiasLaborados(
+          trabajador.fechaIngreso,
+          fechaCalculo
+        );
+
+        const diasAguinaldo = (diasLaborados / diasDelAnio) * 15;
+        const monto = diasAguinaldo * salarioDiario;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${trabajador.nombre}</td>
+          <td>$${salarioDiario.toFixed(2)}</td>
+          <td>${diasLaborados}</td>
+          <td>${diasAguinaldo.toFixed(2)}</td>
+          <td>$${monto.toFixed(2)}</td>
+        `;
+
+        tablaBody.appendChild(tr);
+      });
+
+      tablaContainer.style.display = 'block';
+      return;
+    }
+
+    /* ================== INDIVIDUAL ================== */
     const trabajador = trabajadores[0];
 
     const diasLaborados = calcularDiasLaborados(
@@ -1041,16 +1080,13 @@ if (btnCalcularAguinaldo) {
     const diasAguinaldo = (diasLaborados / diasDelAnio) * 15;
     const monto = diasAguinaldo * salarioDiario;
 
-    // Mostrar resultados
     document.getElementById('diasTrabajados').textContent = diasLaborados;
     document.getElementById('diasAguinaldo').textContent = diasAguinaldo.toFixed(2);
     document.getElementById('montoAguinaldo').textContent = monto.toFixed(2);
 
-    document.getElementById('aguinaldoResultado').style.display = 'block';
-
+    resultadoIndividual.style.display = 'block';
   });
 }
-
 
 
 });
