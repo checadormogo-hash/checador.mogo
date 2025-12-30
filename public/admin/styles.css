@@ -665,7 +665,11 @@ tbody td {
 /* ================== MODAL AGUINALDO ================== */
 #aguinaldoModal .modal {
   max-width: 720px;
+  max-height: 85vh;        /* 🔥 CLAVE */
   padding: 20px 22px;
+  display: flex;           /* 🔥 CLAVE */
+  flex-direction: column; /* 🔥 CLAVE */
+  overflow: hidden;        /* 🔥 CLAVE */
 }
 
 /* Header */
