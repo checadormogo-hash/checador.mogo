@@ -786,5 +786,23 @@ async function solicitarPin(workerId, recordId) {
       pinModal.classList.add('oculto');
       resolve(false);
     };
+
   });
 }
+
+const openPolicies = document.getElementById('openPolicies');
+const policiesModal = document.getElementById('policiesModal');
+const closePolicies = document.getElementById('closePolicies');
+
+if(openPolicies){
+  openPolicies.addEventListener('click',()=>{
+    policiesModal.classList.remove('oculto');
+  });
+}
+
+if(closePolicies){
+  closePolicies.addEventListener('click',()=>{
+    policiesModal.classList.add('oculto');
+  });
+}
+

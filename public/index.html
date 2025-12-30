@@ -55,8 +55,8 @@
     </div>
 
       <div class="footer">
-        <span>Sistema de control de asistencia · Uso laboral</span><br>
-        <a href="politicas.html" target="_blank">Políticas de uso · Aviso de privacidad</a>
+        Sistema de control de asistencia · Uso laboral<br>
+        <span class="footer-link" id="openPolicies">Políticas de Uso · Aviso de Privacidad</span>
       </div>
   </div>
 
@@ -139,6 +139,20 @@
     </div>
   </div>
 </div>
+
+<div class="modal-overlay oculto" id="policiesModal">
+  <div class="modal modal-large">
+    <button class="btn-icon" id="closePolicies">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <iframe
+      src="policies.html"
+      style="width:100%; height:100%; border:none; border-radius:12px;">
+    </iframe>
+  </div>
+</div>
+
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="scripts.js" defer></script>
