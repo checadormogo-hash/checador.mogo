@@ -936,6 +936,57 @@ function isDateInRange(dateStr, start, end) {
   return d >= start && d <= end;
 }
 
+/* ================== AGUINALDO MODAL ================== */
+
+const menuAguinaldo = document.getElementById('menuAguinaldo');
+const aguinaldoModal = document.getElementById('aguinaldoModal');
+const closeAguinaldo = document.getElementById('closeAguinaldo');
+const closeAguinaldo2 = document.getElementById('closeAguinaldo2');
+
+if (menuAguinaldo) {
+  menuAguinaldo.addEventListener('click', () => {
+    closeMenuFn(); // cierra menú hamburguesa
+    aguinaldoModal.classList.remove('oculto');
+    setFechaHoyAguinaldo();
+    cargarTrabajadoresAguinaldo();
+  });
+}
+
+if (closeAguinaldo) {
+  closeAguinaldo.addEventListener('click', () => {
+    aguinaldoModal.classList.add('oculto');
+  });
+}
+
+if (closeAguinaldo2) {
+  closeAguinaldo2.addEventListener('click', () => {
+    aguinaldoModal.classList.add('oculto');
+  });
+}
+function setFechaHoyAguinaldo() {
+  const input = document.getElementById('aguinaldoFecha');
+  if (!input) return;
+
+  const hoy = new Date().toISOString().substring(0, 10);
+  input.value = hoy;
+}
+
+function cargarTrabajadoresAguinaldo() {
+  const select = document.getElementById('aguinaldoWorker');
+  if (!select) return;
+
+  select.innerHTML = '<option value="">Selecciona un trabajador</option>';
+
+  workersCache.forEach(w => {
+    if (!w.activo) return;
+
+    const opt = document.createElement('option');
+    opt.value = w.id;
+    opt.textContent = w.nombre;
+    select.appendChild(opt);
+  });
+}
+
 
 
 });
