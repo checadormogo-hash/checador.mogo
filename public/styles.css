@@ -410,3 +410,42 @@ body {
   cursor:pointer;
   text-decoration:underline;
 }
+/* ===== MODAL POLÍTICAS ===== */
+#policiesModal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999; /* por encima de TODO */
+}
+
+#policiesModal.oculto{
+  display: none;
+}
+
+.policies-modal{
+  position: relative;
+  width: 95%;
+  height: 92vh;
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+}
+
+/* iframe ocupa todo */
+.policies-iframe{
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* botón cerrar igual que los otros */
+#closePolicies{
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 10;
+}
