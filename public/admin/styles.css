@@ -735,3 +735,36 @@ tbody td {
     grid-template-columns: 1fr;
   }
 }
+
+
+.records-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.records-nav button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.records-nav button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+#currentDateLabel {
+  font-weight: 600;
+}
+
+/* SCROLL SI HAY MUCHOS REGISTROS */
+.records-table-wrapper {
+  max-height: 320px; /* ≈ 6 filas */
+  overflow-y: auto;
+}

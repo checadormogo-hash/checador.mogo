@@ -23,7 +23,7 @@ async function sha256(text) {
   let recordsCache = [];
   let workersCache = [];
   let currentQRWorkerId = null;
-
+  let fechaVista = null;
   /* ================== TOAST ================== */
   function mostrarToast(mensaje) {
     let toast = document.getElementById('toastSuccess');
@@ -85,6 +85,13 @@ async function sha256(text) {
     });
   }
 
+function renderRecordsByFecha() {
+  if (!fechaVista) return;
+
+  const data = recordsCache.filter(r => r.fecha === fechaVista);
+  renderRecords(data);
+}
+
   function applyRecordFilters() {
   const text = filterText.value.toLowerCase().trim();
   const date = filterDate.value;
@@ -117,7 +124,7 @@ if (clearFiltersBtn) {
   clearFiltersBtn.addEventListener('click', () => {
     filterText.value = '';
     filterDate.value = '';
-    renderRecords();
+    renderRecordsByFecha();
   });
 }
 
@@ -141,8 +148,11 @@ if (clearFiltersBtn) {
         entrada_comida: r.entrada_comida,
         salida: r.salida
       }));
-
-      renderRecords();
+      if (!fechaVista) {
+        fechaVista = new Date().toISOString().substring(0, 10);
+      }
+      renderRecordsByFecha();
+      updateVistaFecha();
     } catch (err) {
       console.error(err);
       alert('Error al cargar registros');
@@ -183,7 +193,7 @@ init();
             const rec = recordsCache.find(r => r.id == id);
             Object.assign(rec, updated);
 
-            renderRecords();
+            renderRecordsByFecha();
             mostrarToast('✏️ Registro actualizado');
           } catch (err) {
             console.error(err);
@@ -212,7 +222,7 @@ init();
           if (error) throw error;
 
           recordsCache = recordsCache.filter(r => r.id != id);
-          renderRecords();
+          renderRecordsByFecha();
           mostrarToast('🗑️ Registro eliminado');
         } catch (err) {
           console.error(err);
@@ -1087,6 +1097,54 @@ if (btnCalcularAguinaldo) {
     resultadoIndividual.style.display = 'block';
   });
 }
+
+
+const prevDayBtn = document.getElementById('prevDay');
+const nextDayBtn = document.getElementById('nextDay');
+const currentDateLabel = document.getElementById('currentDateLabel');
+function formatFecha(fecha) {
+  return new Date(fecha + 'T00:00:00')
+    .toLocaleDateString('es-MX', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+}
+
+function existeFecha(fecha) {
+  return recordsCache.some(r => r.fecha === fecha);
+}
+function updateVistaFecha() {
+  renderRecordsByFecha();
+  currentDateLabel.textContent = formatFecha(fechaVista);
+
+  const hoy = new Date().toISOString().substring(0, 10);
+
+  prevDayBtn.disabled = !existeFecha(
+    new Date(new Date(fechaVista).setDate(new Date(fechaVista).getDate() - 1))
+      .toISOString().substring(0, 10)
+  );
+
+  nextDayBtn.disabled =
+    fechaVista >= hoy ||
+    !existeFecha(
+      new Date(new Date(fechaVista).setDate(new Date(fechaVista).getDate() + 1))
+        .toISOString().substring(0, 10)
+    );
+}
+prevDayBtn.addEventListener('click', () => {
+  const d = new Date(fechaVista);
+  d.setDate(d.getDate() - 1);
+  fechaVista = d.toISOString().substring(0, 10);
+  updateVistaFecha();
+});
+nextDayBtn.addEventListener('click', () => {
+  const d = new Date(fechaVista);
+  d.setDate(d.getDate() + 1);
+  fechaVista = d.toISOString().substring(0, 10);
+  updateVistaFecha();
+});
 
 
 });
