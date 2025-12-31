@@ -720,3 +720,18 @@ tbody td {
   padding: 6px 14px;
   font-size: 0.85rem;
 }
+
+/* ===== FILA DE CAMPOS AGUINALDO ===== */
+#aguinaldoModal .form-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* En móviles se apilan */
+@media (max-width: 640px) {
+  #aguinaldoModal .form-row {
+    grid-template-columns: 1fr;
+  }
+}
