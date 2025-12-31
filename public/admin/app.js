@@ -149,7 +149,7 @@ if (clearFiltersBtn) {
         salida: r.salida
       }));
       if (!fechaVista) {
-        fechaVista = new Date().toISOString().substring(0, 10);
+        fechaVista = hoyLocal();
       }
       renderRecordsByFecha();
       updateVistaFecha();
@@ -1119,7 +1119,7 @@ function updateVistaFecha() {
   renderRecordsByFecha();
   currentDateLabel.textContent = formatFecha(fechaVista);
 
-  const hoy = new Date().toISOString().substring(0, 10);
+  const hoy = hoyLocal();
 
   prevDayBtn.disabled = !existeFecha(
     new Date(new Date(fechaVista).setDate(new Date(fechaVista).getDate() - 1))
@@ -1145,6 +1145,15 @@ nextDayBtn.addEventListener('click', () => {
   fechaVista = d.toISOString().substring(0, 10);
   updateVistaFecha();
 });
+
+function hoyLocal() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 
 
 });
