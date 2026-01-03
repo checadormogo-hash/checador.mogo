@@ -1154,6 +1154,88 @@ function hoyLocal() {
   return `${year}-${month}-${day}`;
 }
 
+/* ================== CAMBIAR CREDENCIALES ADMIN ================== */
+
+const btnChangeCredentials = document.getElementById('btnChangeCredentials');
+const credentialsModal = document.getElementById('credentialsModal');
+const closeCredentialsModal = document.getElementById('closeCredentialsModal');
+const cancelCredentials = document.getElementById('cancelCredentials');
+const saveCredentials = document.getElementById('saveCredentials');
+
+const newAdminUser = document.getElementById('newAdminUser');
+const newAdminPass = document.getElementById('newAdminPass');
+const confirmAdminPass = document.getElementById('confirmAdminPass');
+
+/* ABRIR MODAL */
+btnChangeCredentials?.addEventListener('click', () => {
+  sideMenu.classList.remove('show');
+  menuOverlay.classList.remove('show');
+  credentialsModal.classList.remove('oculto');
+});
+
+/* CERRAR MODAL */
+function closeCredentials() {
+  credentialsModal.classList.add('oculto');
+  newAdminUser.value = '';
+  newAdminPass.value = '';
+  confirmAdminPass.value = '';
+}
+
+closeCredentialsModal.addEventListener('click', closeCredentials);
+cancelCredentials.addEventListener('click', closeCredentials);
+
+/* GUARDAR CAMBIOS */
+saveCredentials.addEventListener('click', async () => {
+
+  const adminSession = JSON.parse(localStorage.getItem('adminSession'));
+  if (!adminSession) return;
+
+  const user = newAdminUser.value.trim();
+  const pass = newAdminPass.value.trim();
+  const confirm = confirmAdminPass.value.trim();
+
+  if (!user && !pass) {
+    alert('No hay cambios para guardar');
+    return;
+  }
+
+  if (pass && pass.length < 4) {
+    alert('La contraseña debe tener al menos 4 caracteres');
+    return;
+  }
+
+  if (pass && pass !== confirm) {
+    alert('Las contraseñas no coinciden');
+    return;
+  }
+
+  const updateData = {};
+
+  if (user) {
+    updateData.username = user;
+  }
+
+  if (pass) {
+    updateData.password_hash = await sha256(pass);
+  }
+
+  const { error } = await supabase
+    .from('admin_users')
+    .update(updateData)
+    .eq('id', adminSession.id);
+
+  if (error) {
+    alert('Error al actualizar credenciales');
+    return;
+  }
+
+  // 🔐 CERRAR SESIÓN AUTOMÁTICAMENTE
+  localStorage.removeItem('adminSession');
+  location.reload();
+
+});
+
+
 
 
 });

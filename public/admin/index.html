@@ -32,6 +32,7 @@
     <button id="menuAuthPins"><i class="fa-solid fa-key"></i>Autorizaciones</button>
     <button id="menuReports"><i class="fa-solid fa-chart-column"></i>Reportes(Dias/Semanas)</button>
     <button id="menuAguinaldo"><i class="fa-solid fa-sack-dollar"></i>Calcular Aguinaldo</button>
+    <button id="btnChangeCredentials"><i class="fa-solid fa-user-gear"></i>Cambiar usuario/contraseña</button>
     <button id="logoutAdmin" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</button>
     <button id="installAdminApp" style="display:none;"><i class="fa-solid fa-download"></i>Instalar app</button>
   </nav>
@@ -410,6 +411,36 @@
         </div>
       </div>
 
+
+  </div>
+</div>
+<div class="modal-overlay oculto" id="credentialsModal">
+  <div class="modal">
+    
+    <div class="modal-header">
+      <h3>Credenciales del administrador</h3>
+      <button id="closeCredentialsModal" class="btn-icon">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label>Nuevo usuario</label>
+      <input type="text" id="newAdminUser" placeholder="Usuario nuevo">
+    </div>
+
+    <div class="form-group">
+      <label>Nueva contraseña</label>
+      <input type="password" id="newAdminPass" placeholder="Contraseña nueva">
+    </div>
+
+    <div class="form-group">
+      <label>Confirmar contraseña</label>
+      <input type="password" id="confirmAdminPass" placeholder="Repite la contraseña">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn cancel" id="cancelCredentials">Cancelar</button>
+      <button class="btn primary" id="saveCredentials">Guardar cambios</button>
+    </div>
 
   </div>
 </div>
