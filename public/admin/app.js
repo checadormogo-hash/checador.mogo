@@ -24,6 +24,37 @@ async function sha256(text) {
   let workersCache = [];
   let currentQRWorkerId = null;
   let fechaVista = null;
+
+
+  const alertModal   = document.getElementById('alertModal');
+const alertMessage = document.getElementById('alertMessage');
+const alertOkBtn   = document.getElementById('alertOkBtn');
+
+let alertTimer = null;
+
+function showAlert({ message, type = 'info', autoClose = null }) {
+  alertMessage.textContent = message;
+
+  const box = alertModal.querySelector('.alert-box');
+  box.className = `alert-box ${type}`;
+
+  alertModal.classList.remove('hidden');
+
+  if (alertTimer) clearTimeout(alertTimer);
+
+  if (autoClose) {
+    alertTimer = setTimeout(closeAlert, autoClose);
+  }
+}
+
+function closeAlert() {
+  alertModal.classList.add('hidden');
+}
+
+alertOkBtn.addEventListener('click', closeAlert);
+alertModal.addEventListener('click', e => {
+  if (e.target === alertModal) closeAlert();
+});
   /* ================== TOAST ================== */
   function mostrarToast(mensaje) {
     let toast = document.getElementById('toastSuccess');
@@ -155,7 +186,12 @@ if (clearFiltersBtn) {
       updateVistaFecha();
     } catch (err) {
       console.error(err);
-      alert('Error al cargar registros');
+      showAlert({
+        message: 'Error al cargar registros',
+        type: 'warning',
+        autoClose: 3000
+      });
+
     }
   }
 /* ================== INICIO: CARGAR TRABAJADORES + REGISTROS ================== */
@@ -197,7 +233,12 @@ init();
             mostrarToast('✏️ Registro actualizado');
           } catch (err) {
             console.error(err);
-            alert('Error al actualizar registro');
+            showAlert({
+              message: 'Error al actualizar registro',
+              type: 'warning',
+              autoClose: 3000
+            });
+
           }
 
         } else {
@@ -211,24 +252,34 @@ init();
 
       // Eliminar
       if (e.target.closest('.btn-delete')) {
-        if (!confirm('¿Eliminar registro de este día?')) return;
+          openConfirmModal({
+            title: 'Eliminar registro',
+            message: 'Este registro del día será eliminado permanentemente. ¿Deseas continuar?',
+            onConfirm: async () => {
+              try {
+                const { error } = await supabase
+                  .from('records')
+                  .delete()
+                  .eq('id', id);
 
-        try {
-          const { error } = await supabase
-            .from('records')
-            .delete()
-            .eq('id', id);
+                if (error) throw error;
 
-          if (error) throw error;
+                recordsCache = recordsCache.filter(r => r.id != id);
+                renderRecordsByFecha();
+                mostrarToast('🗑️ Registro eliminado');
+              } catch (err) {
+                  console.error(err);
+                  showAlert({
+                    message: 'No se pudo eliminar el registro',
+                    type: 'warning',
+                    autoClose: 3000
+                  });
 
-          recordsCache = recordsCache.filter(r => r.id != id);
-          renderRecordsByFecha();
-          mostrarToast('🗑️ Registro eliminado');
-        } catch (err) {
-          console.error(err);
-          alert('No se pudo eliminar el registro');
+               }
+            }
+          });
         }
-      }
+
     });
   }
 
@@ -423,7 +474,11 @@ if (authPinsTableBody) {
       }]);
 
       if (error) {
-        alert('No se pudo generar el PIN');
+        showAlert({
+            message: 'No se pudo generar el PIN',
+            type: 'warning',
+            autoClose: 3000
+        });
         return;
       }
 
@@ -571,7 +626,11 @@ if (authPinsTableBody) {
         const fecha = document.getElementById('fechaIngreso').value;
 
         if (!nombre || pin.length !== 4 || !fecha) {
-          alert('Completa todos los campos');
+          showAlert({
+            message: 'Completa todos los campos',
+            type: 'warning',
+            autoClose: 3000
+          });
           return;
         }
 
@@ -592,7 +651,12 @@ if (authPinsTableBody) {
         document.getElementById('fechaIngreso').value = '';
       } catch (err) {
         console.error(err);
-        alert('Error al guardar trabajador');
+        showAlert({
+          message: 'Error al guardar trabajador',
+          type: 'warning',
+          autoClose: 3000
+        });
+
       }
     });
   }
@@ -661,7 +725,11 @@ if (authPinsTableBody) {
                     loadWorkers();
                 } catch (err) {
                 console.error(err);
-                  alert('No se pudo eliminar el trabajador');
+                  showAlert({
+                    message: 'No se pudo eliminar el trabajador',
+                    type: 'warning',
+                    autoClose: 3000
+                  });
                 }
             }
           });
@@ -680,7 +748,11 @@ if (authPinsTableBody) {
       const fechaInput = document.getElementById('editFecha').value;
 
       if (!nombre || pin.length !== 4 || !fechaInput) {
-        alert('Completa todos los campos');
+        showAlert({
+          message: 'Completa todos los campos',
+          type: 'warning',
+          autoClose: 3000
+        });
         return;
       }
 
@@ -702,7 +774,12 @@ if (authPinsTableBody) {
         loadWorkers();
       } catch (err) {
         console.error(err);
-        alert('Error al actualizar trabajador');
+        showAlert({
+          message: 'Error al actualizar trabajador',
+          type: 'warning',
+          autoClose: 3000
+        });
+
       }
     });
   }
@@ -716,43 +793,51 @@ if (authPinsTableBody) {
   }
 
   /* ================== REGENERAR QR ================== */
-  if (regenQR) {
-    regenQR.addEventListener('click', async () => {
-      if (!currentQRWorkerId) return;
+if (regenQR) {
+  regenQR.addEventListener('click', () => {
+    if (!currentQRWorkerId) return;
 
-      const ok = confirm('Esto invalidará el QR anterior.\n¿Deseas generar uno nuevo?');
-      if (!ok) return;
+    openConfirmModal({
+      title: 'Regenerar QR',
+      message: 'El QR anterior quedará inválido. El trabajador deberá usar el nuevo código. ¿Deseas continuar?',
+      onConfirm: async () => {
+        const newToken = crypto.randomUUID();
 
-      const newToken = crypto.randomUUID();
+        try {
+          const { error } = await supabase
+            .from('workers')
+            .update({ qr_token: newToken })
+            .eq('id', currentQRWorkerId);
 
-      try {
-        const { error } = await supabase
-          .from('workers')
-          .update({ qr_token: newToken })
-          .eq('id', currentQRWorkerId);
+          if (error) throw error;
 
-        if (error) throw error;
+          const worker = workersCache.find(w => w.id === currentQRWorkerId);
+          if (worker && qrImage) {
+            worker.qr_token = newToken;
+            qrImage.innerHTML = '';
+            new QRCode(qrImage, {
+              text: worker.qr_token,
+              width: 180,
+              height: 180,
+              correctLevel: QRCode.CorrectLevel.H
+            });
+          }
 
-        const worker = workersCache.find(w => w.id === currentQRWorkerId);
-        if (worker && qrImage) {
-          worker.qr_token = newToken;
-          qrImage.innerHTML = '';
-          new QRCode(qrImage, {
-            text: worker.qr_token,
-            width: 180,
-            height: 180,
-            correctLevel: QRCode.CorrectLevel.H
+          mostrarToast('🔄 QR regenerado correctamente');
+        } catch (err) {
+          console.error(err);
+          showAlert({
+            message: 'No se pudo regenerar el QR',
+            type: 'warning',
+            autoClose: 3000
           });
+
         }
-
-        mostrarToast('🔄 QR regenerado correctamente');
-
-      } catch (err) {
-        console.error(err);
-        alert('No se pudo regenerar el QR');
       }
     });
-  }
+  });
+}
+
 
   /* ================== DESCARGAR QR ================== */
   if (downloadQR && badge) {
@@ -1034,12 +1119,20 @@ if (btnCalcularAguinaldo) {
 
     // Validaciones
     if (!salarioDiario || salarioDiario <= 0) {
-      alert('Ingresa un salario diario válido');
+      showAlert({
+        message: 'Ingresa un salario diario válido',
+        type: 'warning',
+        autoClose: 3000
+      });
       return;
     }
 
     if (!fechaCalculo) {
-      alert('Selecciona una fecha de cálculo');
+      showAlert({
+        message: 'Selecciona una fecha de cálculo',
+        type: 'warning',
+        autoClose: 3000
+      });
       return;
     }
 
@@ -1208,17 +1301,29 @@ saveCredentials.addEventListener('click', async () => {
   const confirm = confirmAdminPass.value.trim();
 
   if (!user && !pass) {
-    alert('No hay cambios para guardar');
+    showAlert({
+        message: 'No hay cambios para guardar',
+        type: 'warning',
+        autoClose: 3000
+    });
     return;
   }
 
   if (pass && pass.length < 4) {
-    alert('La contraseña debe tener al menos 4 caracteres');
+      showAlert({
+        message: 'La contraseña debe tener al menos 4 caracteres',
+        type: 'warning',
+        autoClose: 3000
+      });
     return;
   }
 
   if (pass && pass !== confirm) {
-    alert('Las contraseñas no coinciden');
+      showAlert({
+        message: 'Las contraseñas no coinciden',
+        type: 'warning',
+        autoClose: 3000
+      });
     return;
   }
 
@@ -1240,7 +1345,11 @@ saveCredentials.addEventListener('click', async () => {
 
   if (error) {
     console.error(error);
-    alert('Error al actualizar credenciales');
+      showAlert({
+        message: 'Error al actualizar credenciales',
+        type: 'warning',
+        autoClose: 3000
+      });
     return;
   }
 

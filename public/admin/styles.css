@@ -787,3 +787,57 @@ tbody td {
 .btn.danger:hover {
   background: #dc2626;
 }
+.alert-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.alert-modal.hidden {
+  display: none;
+}
+
+.alert-box {
+  background: #fff;
+  padding: 22px 24px;
+  border-radius: 12px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  animation: fadeInScale .2s ease-out;
+}
+
+.alert-box.warning { border-left: 5px solid #f59e0b; }
+.alert-box.success { border-left: 5px solid #22c55e; }
+.alert-box.error   { border-left: 5px solid #ef4444; }
+.alert-box.info    { border-left: 5px solid #3b82f6; }
+
+.alert-message {
+  font-size: 15px;
+  margin-bottom: 18px;
+  color: #333;
+}
+
+.alert-box button {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.alert-box button:hover {
+  opacity: .9;
+}
+
+@keyframes fadeInScale {
+  from { transform: scale(.95); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
