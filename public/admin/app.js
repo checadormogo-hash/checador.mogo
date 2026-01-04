@@ -697,7 +697,7 @@ if (authPinsTableBody) {
         document.getElementById('editNombre').value = worker.nombre;
         document.getElementById('editPin').value = worker.pin;
         document.getElementById('editActivo').checked = worker.activo;
-
+        updateActivoLabel(worker.activo);
         if (worker.fechaIngreso) {
           document.getElementById('editFecha').value = worker.fechaIngreso.substring(0, 10);
         } else {
@@ -1386,6 +1386,32 @@ document.getElementById('confirmAccept').onclick = () => {
   closeConfirmModal();
 };
 
+const cancelEditWorkerBtn = document.getElementById('cancelEditWorker');
+
+if (cancelEditWorkerBtn) {
+  cancelEditWorkerBtn.onclick = () => {
+    document.getElementById('editWorkerModal').classList.add('oculto');
+  };
+}
+
+const editActivoInput = document.getElementById('editActivo');
+const editActivoLabel = document.getElementById('editActivoLabel');
+function updateActivoLabel(isActivo) {
+  if (isActivo) {
+    editActivoLabel.textContent = 'Activo';
+    editActivoLabel.classList.add('activo');
+    editActivoLabel.classList.remove('inactivo');
+  } else {
+    editActivoLabel.textContent = 'Inactivo';
+    editActivoLabel.classList.add('inactivo');
+    editActivoLabel.classList.remove('activo');
+  }
+}
+if (editActivoInput) {
+  editActivoInput.addEventListener('change', () => {
+    updateActivoLabel(editActivoInput.checked);
+  });
+}
 
 
 });
