@@ -645,24 +645,27 @@ if (authPinsTableBody) {
 
       // DELETE
       if (delBtn) {
-        if (!confirm('¿Eliminar trabajador definitivamente?')) return;
+        openConfirmModal({
+            title: 'Eliminar trabajador',
+            message: 'Esta acción eliminará al trabajador definitivamente. ¿Deseas continuar?',
+            onConfirm: async () => {
+              try {
+                const { error } = await supabase
+                .from('workers')
+                .delete()
+                .eq('id', delBtn.dataset.id);
 
-        try {
-          const { error } = await supabase
-            .from('workers')
-            .delete()
-            .eq('id', delBtn.dataset.id);
+                if (error) throw error;
 
-          if (error) throw error;
-
-          mostrarToast('🗑️ Trabajador eliminado correctamente');
-          loadWorkers();
-
-        } catch (err) {
-          console.error(err);
-          alert('No se pudo eliminar el trabajador');
-        }
-      }
+                    mostrarToast('🗑️ Trabajador eliminado correctamente');
+                    loadWorkers();
+                } catch (err) {
+                console.error(err);
+                  alert('No se pudo eliminar el trabajador');
+                }
+            }
+          });
+       }
     });
   }
 
@@ -917,8 +920,6 @@ function generateWeeklyReport() {
 
     tbody.appendChild(tr);
   });
-
-  console.log('📊 Reporte semanal generado');
 }
 
 /* ================== HELPERS ================== */
@@ -1247,6 +1248,33 @@ saveCredentials.addEventListener('click', async () => {
   localStorage.removeItem('adminSession');
   location.reload();
 });
+
+let confirmCallback = null;
+
+function openConfirmModal({ title, message, onConfirm }) {
+  const modal = document.getElementById('confirmModal');
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMessage').textContent = message;
+
+  confirmCallback = onConfirm;
+  modal.classList.remove('oculto');
+}
+
+function closeConfirmModal() {
+  const modal = document.getElementById('confirmModal');
+  modal.classList.add('oculto');
+  confirmCallback = null;
+}
+
+document.getElementById('closeConfirmModal').onclick = closeConfirmModal;
+document.getElementById('confirmCancel').onclick = closeConfirmModal;
+
+document.getElementById('confirmAccept').onclick = () => {
+  if (typeof confirmCallback === 'function') {
+    confirmCallback();
+  }
+  closeConfirmModal();
+};
 
 
 

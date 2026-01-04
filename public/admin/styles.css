@@ -768,3 +768,22 @@ tbody td {
   max-height: 320px; /* ≈ 6 filas */
   overflow-y: auto;
 }
+
+.confirm-modal {
+  max-width: 420px;
+}
+
+.confirm-modal p {
+  margin: 20px 0;
+  font-size: 15px;
+  color: #334155;
+}
+
+.btn.danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn.danger:hover {
+  background: #dc2626;
+}
