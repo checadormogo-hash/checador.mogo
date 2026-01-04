@@ -704,7 +704,7 @@ if (authPinsTableBody) {
           document.getElementById('editFecha').value = '';
         }
 
-        document.getElementById('editWorkerModal').style.display = 'flex';
+        document.getElementById('editWorkerModal').classList.remove('oculto');
         return;
       }
 
@@ -770,7 +770,7 @@ if (authPinsTableBody) {
 
         if (error) throw error;
 
-        document.getElementById('editWorkerModal').style.display = 'none';
+        document.getElementById('editWorkerModal').classList.add('oculto');
         mostrarToast('✏️ Trabajador actualizado correctamente');
         loadWorkers();
       } catch (err) {
@@ -789,7 +789,7 @@ if (authPinsTableBody) {
   const closeEditWorkerBtn = document.getElementById('closeEditWorker');
   if (closeEditWorkerBtn) {
     closeEditWorkerBtn.onclick = () => {
-      document.getElementById('editWorkerModal').style.display = 'none';
+      document.getElementById('editWorkerModal').classList.add('oculto');
     };
   }
 
