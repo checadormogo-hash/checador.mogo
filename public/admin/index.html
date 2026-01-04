@@ -183,13 +183,20 @@
   <div class="modal">
 
     <div class="modal-header">
-      <h3>Editar trabajador</h3>
       <button class="btn-icon" id="closeEditWorker">
         <i class="fa-solid fa-xmark"></i>
       </button>
+      <h3>Editar trabajador</h3>
     </div>
 
     <input type="hidden" id="editWorkerId">
+    <div class="form-group">
+      <label class="switch">
+         <input type="checkbox" id="editActivo">
+        <span class="slider"></span>
+      </label>
+      <span id="editActivoLabel" class="estado-label">Inactivo</span>
+    </div>
 
     <div class="form-group">
       <label>Nombre</label>
@@ -205,19 +212,6 @@
       <label>Fecha de ingreso</label>
       <input type="date" id="editFecha">
     </div>
-
-    <div class="form-group">
-  <label>Estado del trabajador</label>
-
-  <label class="switch">
-    <input type="checkbox" id="editActivo">
-    <span class="slider"></span>
-  </label>
-
-  <span id="editActivoLabel" class="estado-label">Inactivo</span>
-</div>
-
-
 
     <div class="modal-actions">
       <button class="btn cancel" id="cancelEditWorker">Cancelar</button>
