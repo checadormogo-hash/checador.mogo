@@ -253,9 +253,22 @@ function showLogin() {
 }
 
 // Sesión persistente
-if (localStorage.getItem('adminSession')) {
+function validarSesionAdmin() {
+  const sessionRaw = localStorage.getItem('adminSession');
+  if (!sessionRaw) return false;
+
+  try {
+    const session = JSON.parse(sessionRaw);
+    return session.id && session.username && session.role;
+  } catch {
+    return false;
+  }
+}
+
+if (validarSesionAdmin()) {
   showAdmin();
 } else {
+  localStorage.removeItem('adminSession'); // limpieza preventiva
   showLogin();
 }
 
