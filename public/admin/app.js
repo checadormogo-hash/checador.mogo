@@ -239,8 +239,8 @@ const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
 
 function showAdmin() {
-  loginOverlay.style.display = 'none';
-  adminApp.style.display = 'block';
+  loginOverlay.classList.add('oculto');
+  adminApp.classList.remove('oculto');
 
   const fabAdd = document.getElementById('openAddModal');
   if (fabAdd) fabAdd.style.display = 'flex';
@@ -248,8 +248,8 @@ function showAdmin() {
 
 
 function showLogin() {
-  loginOverlay.style.display = 'flex';
-  adminApp.style.display = 'none';
+  adminApp.classList.add('oculto');
+  loginOverlay.classList.remove('oculto');
 }
 
 // Sesión persistente
