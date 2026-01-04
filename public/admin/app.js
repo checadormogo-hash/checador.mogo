@@ -1222,19 +1222,19 @@ saveCredentials.addEventListener('click', async () => {
   const { error } = await supabase
     .from('admin_users')
     .update(updateData)
-    .eq('id', adminSession.id);
+    .eq('id', adminSession.id)
+    .select(); // 👈 importante con RLS
 
   if (error) {
+    console.error(error);
     alert('Error al actualizar credenciales');
     return;
   }
 
-  // 🔐 CERRAR SESIÓN AUTOMÁTICAMENTE
+  // 🔐 cerrar sesión automáticamente
   localStorage.removeItem('adminSession');
   location.reload();
-
 });
-
 
 
 
