@@ -239,11 +239,13 @@ const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
 
 function showAdmin() {
-  loginOverlay.classList.add('oculto');
-  adminApp.classList.remove('oculto');
+  if (!adminApp || !loginOverlay) {
+    console.error('adminApp o loginOverlay no encontrados');
+    return;
+  }
 
-  const fabAdd = document.getElementById('openAddModal');
-  if (fabAdd) fabAdd.style.display = 'flex';
+  loginOverlay.style.display = 'none';
+  adminApp.style.display = 'block';
 }
 
 
