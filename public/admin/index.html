@@ -179,11 +179,15 @@
   </div>
 </div>
 
-<div id="editWorkerModal" class="modal-overlay" style="display:none;">
+<div id="editWorkerModal" class="modal-overlay oculto">
   <div class="modal">
 
-    <button id="closeEditWorker" class="close">✕</button>
-    <h3>Editar trabajador</h3>
+    <div class="modal-header">
+      <h3>Editar trabajador</h3>
+      <button class="btn-icon" id="closeEditWorker">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
 
     <input type="hidden" id="editWorkerId">
 
@@ -202,10 +206,13 @@
       <input type="date" id="editFecha">
     </div>
 
-    <label>
-      <input type="checkbox" id="editActivo">
-      Trabajador activo
-    </label>
+    <div class="form-group">
+      <label>Estado del trabajador</label>
+      <label class="switch">
+        <input type="checkbox" id="editActivo">
+        <span class="slider"></span>
+      </label>
+    </div>
 
     <div class="modal-actions">
       <button class="btn cancel" id="cancelEditWorker">Cancelar</button>
@@ -214,6 +221,8 @@
 
   </div>
 </div>
+
+
 
 <div id="qrModal" class="modal-overlay" style="display:none;">
   <div class="modal-content badge" id="badge">

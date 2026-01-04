@@ -48,6 +48,7 @@ function showAlert({ message, type = 'info', autoClose = null }) {
 }
 
 function closeAlert() {
+  if (alertTimer) clearTimeout(alertTimer);
   alertModal.classList.add('hidden');
 }
 
