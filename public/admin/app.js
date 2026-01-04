@@ -239,13 +239,10 @@ const loginBtn = document.getElementById('loginBtn');
 const loginError = document.getElementById('loginError');
 
 function showAdmin() {
-  if (!adminApp || !loginOverlay) {
-    console.error('adminApp o loginOverlay no encontrados');
-    return;
-  }
+  if (!adminApp || !loginOverlay) return;
 
-  loginOverlay.style.display = 'none';
-  adminApp.style.display = 'block';
+  loginOverlay.classList.add('oculto');
+  adminApp.classList.remove('oculto');
 }
 
 
