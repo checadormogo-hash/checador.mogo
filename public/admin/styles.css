@@ -208,6 +208,19 @@ tbody td {
   color: #555;
   font-weight: 500;
 }
+.form-group .switch,
+.form-group .estado-label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.form-group .switch {
+  margin-right: 10px;
+}
+
+.estado-label {
+  font-weight: 600;
+}
 
 .input-calendar {
   display: flex;
