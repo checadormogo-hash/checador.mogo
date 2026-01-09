@@ -112,6 +112,8 @@ function canProceedWithLocation() {
 
 async function validateGeolocation() {
   return new Promise(resolve => {
+    locationAllowed = false;
+    currentCoords = null;
 
     navigator.geolocation.getCurrentPosition(
       pos => {
@@ -626,10 +628,9 @@ if (scannerInput) {
 }
 
 async function processQR(token) {
-if (locationPermissionState !== 'allowed') {
   await validateGeolocation();
-}
-if (!canProceedWithLocation()) return;
+
+  if (!canProceedWithLocation()) return;
 
   if (!employeesReady) {
     showWarningModal(
