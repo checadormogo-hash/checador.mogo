@@ -27,8 +27,8 @@ async function loadEmployees() {
 
 // ================== GEOLOCALIZACIÓN ==================
 const STORE_LOCATION = {
-  lat: 25.81968621058341,   // 👈 CAMBIA por tu ubicación real
-  lng: -100.08913410403942, // 👈 CAMBIA por tu ubicación real
+  lat: 25.821034737584974,   // 👈 CAMBIA por tu ubicación real
+  lng: -100.08712245322982, // 👈 CAMBIA por tu ubicación real
   radius: 80        // metros permitidos
 };
 const LOCATION_MESSAGES = {
