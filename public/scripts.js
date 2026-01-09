@@ -106,20 +106,12 @@ function canProceedWithLocation() {
     );
     return false;
   }
-
   // 5️⃣ Todo correcto
   return true;
 }
 
 async function validateGeolocation() {
   return new Promise(resolve => {
-
-    if (locationPermissionState === 'pending') {
-      showCriticalModal(
-        LOCATION_MESSAGES.permissionRequired.title,
-        LOCATION_MESSAGES.permissionRequired.message
-      );
-    }
 
     navigator.geolocation.getCurrentPosition(
       pos => {
@@ -141,13 +133,21 @@ async function validateGeolocation() {
         resolve(locationAllowed);
       },
       error => {
-        locationPermissionState = 'blocked';
         locationAllowed = false;
 
-        updateCriticalModal(
-          LOCATION_MESSAGES.blocked.title,
-          LOCATION_MESSAGES.blocked.message
-        );
+        if (error.code === error.PERMISSION_DENIED) {
+          locationPermissionState = 'blocked';
+          showCriticalModal(
+            LOCATION_MESSAGES.blocked.title,
+            LOCATION_MESSAGES.blocked.message
+          );
+        } else {
+          locationPermissionState = 'pending';
+          showCriticalModal(
+            LOCATION_MESSAGES.permissionRequired.title,
+            LOCATION_MESSAGES.permissionRequired.message
+          );
+        }
 
         resolve(false);
       },
