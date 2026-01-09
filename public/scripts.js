@@ -29,7 +29,7 @@ async function loadEmployees() {
 const STORE_LOCATION = {
   lat: 25.821034737584974,   // 👈 CAMBIA por tu ubicación real
   lng: -100.08712245322982, // 👈 CAMBIA por tu ubicación real
-  radius: 80        // metros permitidos
+  radius: 120        // metros permitidos
 };
 const LOCATION_MESSAGES = {
   notSupported: {
@@ -129,7 +129,8 @@ async function validateGeolocation() {
           STORE_LOCATION.lng
         );
 
-        locationAllowed = distance <= STORE_LOCATION.radius;
+        const accuracy = pos.coords.accuracy || 0;
+        locationAllowed = distance <= (STORE_LOCATION.radius + accuracy);
 
         closeCriticalModal();
         resolve(locationAllowed);
