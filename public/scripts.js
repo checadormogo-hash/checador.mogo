@@ -50,6 +50,8 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 async function validateGeolocation() {
+  await requestLocationPermissionUI();
+
   return new Promise(resolve => {
     if (!navigator.geolocation) {
       locationAllowed = false;
@@ -71,8 +73,21 @@ async function validateGeolocation() {
         locationAllowed = distance <= STORE_LOCATION.radius;
         resolve(locationAllowed);
       },
-      () => {
+      error => {
         locationAllowed = false;
+
+        if (error.code === error.PERMISSION_DENIED) {
+          showCriticalModal(
+            'Ubicación bloqueada',
+            'Debes permitir el acceso a tu ubicación para poder registrar asistencia.'
+          );
+        } else {
+          showCriticalModal(
+            'Error de ubicación',
+            'No fue posible obtener tu ubicación. Intenta nuevamente.'
+          );
+        }
+
         resolve(false);
       },
       {
@@ -81,6 +96,22 @@ async function validateGeolocation() {
         maximumAge: 0
       }
     );
+  });
+}
+
+function requestLocationPermissionUI() {
+  return new Promise(resolve => {
+    showCriticalModal(
+      'Permiso de ubicación requerido',
+      'Para registrar asistencia es obligatorio compartir tu ubicación y estar dentro del establecimiento.'
+    );
+
+    const observer = setInterval(() => {
+      if (!document.querySelector('.critical-modal')) {
+        clearInterval(observer);
+        resolve();
+      }
+    }, 300);
   });
 }
 
