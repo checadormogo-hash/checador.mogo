@@ -68,7 +68,10 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
 function canProceedWithLocation() {
+
+  // 1️⃣ El dispositivo no soporta geolocalización
   if (!navigator.geolocation) {
     showCriticalModal(
       LOCATION_MESSAGES.notSupported.title,
@@ -77,6 +80,7 @@ function canProceedWithLocation() {
     return false;
   }
 
+  // 2️⃣ Permiso nunca otorgado aún
   if (locationPermissionState === 'pending') {
     showCriticalModal(
       LOCATION_MESSAGES.permissionRequired.title,
@@ -85,6 +89,7 @@ function canProceedWithLocation() {
     return false;
   }
 
+  // 3️⃣ Permiso bloqueado explícitamente
   if (locationPermissionState === 'blocked') {
     showCriticalModal(
       LOCATION_MESSAGES.blocked.title,
@@ -93,7 +98,8 @@ function canProceedWithLocation() {
     return false;
   }
 
-  if (!locationAllowed) {
+  // 4️⃣ Permiso OK, pero fuera del radio
+  if (locationPermissionState === 'allowed' && !locationAllowed) {
     showCriticalModal(
       LOCATION_MESSAGES.outOfRange.title,
       LOCATION_MESSAGES.outOfRange.message
@@ -101,7 +107,8 @@ function canProceedWithLocation() {
     return false;
   }
 
-  return true; // ✅ todo OK
+  // 5️⃣ Todo correcto
+  return true;
 }
 
 async function validateGeolocation() {
