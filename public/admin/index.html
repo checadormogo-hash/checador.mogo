@@ -7,7 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="../admin/styles.css">
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="/admin/manifest-admin.json">
 </head>
 <body>
   <!-- ===== PANEL ADMIN ===== -->
@@ -497,5 +497,10 @@
   <script type="module" src="../admin/app.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/admin/sw-admin.js');
+    }
+  </script>
 </body>
 </html>
