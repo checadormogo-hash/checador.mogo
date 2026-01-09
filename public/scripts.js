@@ -114,10 +114,12 @@ function canProceedWithLocation() {
 async function validateGeolocation() {
   return new Promise(resolve => {
 
-    showCriticalModal(
-      LOCATION_MESSAGES.permissionRequired.title,
-      LOCATION_MESSAGES.permissionRequired.message
-    );
+    if (locationPermissionState === 'pending') {
+      showCriticalModal(
+        LOCATION_MESSAGES.permissionRequired.title,
+        LOCATION_MESSAGES.permissionRequired.message
+      );
+    }
 
     navigator.geolocation.getCurrentPosition(
       pos => {
