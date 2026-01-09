@@ -31,6 +31,24 @@ const STORE_LOCATION = {
   lng: -100.08913410403942, // 👈 CAMBIA por tu ubicación real
   radius: 80        // metros permitidos
 };
+const LOCATION_MESSAGES = {
+  notSupported: {
+    title: 'Ubicación no disponible',
+    message: 'Este dispositivo no soporta geolocalización.'
+  },
+  permissionRequired: {
+    title: 'Permiso de ubicación requerido',
+    message: 'Para registrar asistencia es obligatorio compartir tu ubicación y estar dentro del establecimiento.'
+  },
+  blocked: {
+    title: 'Ubicación bloqueada',
+    message: 'Bloqueaste el acceso a tu ubicación. Es obligatorio permitirla para poder registrar tus checadas.'
+  },
+  outOfRange: {
+    title: 'Fuera de zona autorizada',
+    message: 'Debes encontrarte dentro del establecimiento para registrar asistencia.'
+  }
+};
 
 let locationAllowed = false;
 let currentCoords = null;
@@ -50,22 +68,42 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+function canProceedWithLocation() {
+  if (!navigator.geolocation) {
+    showCriticalModal(
+      LOCATION_MESSAGES.notSupported.title,
+      LOCATION_MESSAGES.notSupported.message
+    );
+    return false;
+  }
+
+  if (locationPermissionState === 'pending') {
+    showCriticalModal(
+      LOCATION_MESSAGES.permissionRequired.title,
+      LOCATION_MESSAGES.permissionRequired.message
+    );
+    return false;
+  }
+
+  if (locationPermissionState === 'blocked') {
+    showCriticalModal(
+      LOCATION_MESSAGES.blocked.title,
+      LOCATION_MESSAGES.blocked.message
+    );
+    return false;
+  }
+
+if (!canProceedWithLocation()) return;
+
+  return true; // ✅ todo OK
+}
 
 async function validateGeolocation() {
   return new Promise(resolve => {
 
-    if (!navigator.geolocation) {
-      updateCriticalModal(
-        'Ubicación no disponible',
-        'Este dispositivo no soporta geolocalización.'
-      );
-      return resolve(false);
-    }
-
-    // MOSTRAMOS SOLO UNA VEZ
     showCriticalModal(
-      'Permiso de ubicación requerido',
-      'Para registrar asistencia es obligatorio compartir tu ubicación y estar dentro del establecimiento.'
+      LOCATION_MESSAGES.permissionRequired.title,
+      LOCATION_MESSAGES.permissionRequired.message
     );
 
     navigator.geolocation.getCurrentPosition(
@@ -84,29 +122,20 @@ async function validateGeolocation() {
 
         locationAllowed = distance <= STORE_LOCATION.radius;
 
-        closeCriticalModal(); // 👈 se cierra SOLO si todo salió bien
+        closeCriticalModal();
         resolve(locationAllowed);
       },
-
       error => {
         locationPermissionState = 'blocked';
         locationAllowed = false;
 
-        if (error.code === error.PERMISSION_DENIED) {
-          updateCriticalModal(
-            'Ubicación bloqueada',
-            'Bloqueaste el acceso a tu ubicación. Es obligatorio permitirla para poder registrar tus checadas.'
-          );
-        } else {
-          updateCriticalModal(
-            'Error de ubicación',
-            'No fue posible obtener tu ubicación. Intenta nuevamente.'
-          );
-        }
+        updateCriticalModal(
+          LOCATION_MESSAGES.blocked.title,
+          LOCATION_MESSAGES.blocked.message
+        );
 
         resolve(false);
       },
-
       {
         enableHighAccuracy: true,
         timeout: 8000,
@@ -115,6 +144,7 @@ async function validateGeolocation() {
     );
   });
 }
+
 function updateCriticalModal(title, message) {
   document.getElementById('criticalTitle').textContent = title;
   document.getElementById('criticalMessage').textContent = message;
@@ -219,13 +249,7 @@ processQR = function(token) {
 
 // Procesar QR en modo manual
 async function processManualQR(token, action) {
-if (!locationAllowed) {
-  showCriticalModal(
-    'Ubicación no autorizada',
-    'Debes estar dentro del establecimiento para registrar asistencia.'
-  );
-  return;
-}
+  if (!canProceedWithLocation()) return;
 
   if (!employeesReady) {
     showWarningModal('Sistema iniciando', 'Espera un momento e intenta nuevamente');
@@ -584,13 +608,7 @@ if (scannerInput) {
 }
 
 function processQR(token) {
-if (!locationAllowed) {
-  showCriticalModal(
-    'Ubicación no autorizada',
-    'Debes estar dentro del establecimiento para registrar asistencia.'
-  );
-  return;
-}
+if (!canProceedWithLocation()) return;
 
   if (!employeesReady) {
     showWarningModal(
