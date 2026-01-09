@@ -93,7 +93,13 @@ function canProceedWithLocation() {
     return false;
   }
 
-if (!canProceedWithLocation()) return;
+  if (!locationAllowed) {
+    showCriticalModal(
+      LOCATION_MESSAGES.outOfRange.title,
+      LOCATION_MESSAGES.outOfRange.message
+    );
+    return false;
+  }
 
   return true; // ✅ todo OK
 }
@@ -249,6 +255,9 @@ processQR = function(token) {
 
 // Procesar QR en modo manual
 async function processManualQR(token, action) {
+  if (locationPermissionState !== 'allowed') {
+    await validateGeolocation();
+  }
   if (!canProceedWithLocation()) return;
 
   if (!employeesReady) {
@@ -608,6 +617,9 @@ if (scannerInput) {
 }
 
 function processQR(token) {
+if (locationPermissionState !== 'allowed') {
+  await validateGeolocation();
+}
 if (!canProceedWithLocation()) return;
 
   if (!employeesReady) {
