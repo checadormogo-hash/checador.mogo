@@ -266,9 +266,8 @@ processQR = function(token) {
 
 // Procesar QR en modo manual
 async function processManualQR(token, action) {
-  if (locationPermissionState !== 'allowed') {
-    await validateGeolocation();
-  }
+  await validateGeolocation();
+
   if (!canProceedWithLocation()) return;
 
   if (!employeesReady) {
