@@ -1,8 +1,8 @@
 {
   "name": "Checador Mogo Admin",
   "short_name": "Admin",
-  "start_url": "/admin/",
-  "scope": "/admin/",
+  "start_url": "/admin",
+  "scope": "/admin",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0f172a",
