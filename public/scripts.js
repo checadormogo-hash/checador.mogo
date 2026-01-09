@@ -365,7 +365,7 @@ async function processManualQR(token, action) {
 }
 // Registrar paso manual (reutilizando registerStep)
 async function registerStepManual(employee, action, todayRecord) {
-  recentScans.set(employee.id, Date.now());
+  
 
   const nowTime = new Date().toLocaleTimeString('es-MX', {
     hour12: false,
@@ -415,7 +415,7 @@ async function registerStepManual(employee, action, todayRecord) {
       return;
     }
   }
-
+  recentScans.set(employee.id, Date.now());
   // Mensaje de éxito
   showSuccessModal(
     `${formatActionTitle(action)} registrada`,
@@ -591,8 +591,9 @@ function startCameraScanner() {
       cameraId,
       { fps: 10, qrbox: 250 },
       (decodedText) => {
+      if (processingQR) return;
+        stopCameraScanner(); // 👈 frena inmediatamente la cámara
         processQR(decodedText);
-        resetCameraInactivity();
       }
     );
 
@@ -626,55 +627,64 @@ if (scannerInput) {
     processQR(token);
   });
 }
-
+let processingQR = false;
 async function processQR(token) {
-  await validateGeolocation();
+  if (processingQR) return;
+  processingQR = true;
 
-  if (!canProceedWithLocation()) return;
+  try {
+    await validateGeolocation();
 
-  if (!employeesReady) {
-    showWarningModal(
-      'Sistema iniciando',
-      'Espera un momento e intenta nuevamente'
+    if (!canProceedWithLocation()) return;
+
+    if (!employeesReady) {
+      showWarningModal(
+        'Sistema iniciando',
+        'Espera un momento e intenta nuevamente'
+      );
+      return;
+    }
+
+    const tokenNormalized = token
+      .trim()
+      .replace(/['"]/g, '-')
+      .toLowerCase();
+
+    const employee = employees.find(e =>
+      e.token?.trim().toLowerCase() === tokenNormalized
     );
-    return;
+
+    if (!employee) {
+      showCriticalModal(
+        'QR no válido',
+        'Este código no pertenece a ningún trabajador'
+      );
+      return;
+    }
+
+    if (employee.activo !== 'SI') {
+      showCriticalModal(
+        'Acceso denegado',
+        'El trabajador está desactivado'
+      );
+      return;
+    }
+
+    if (isBlocked(employee.id)) {
+      showWarningModal(
+        'Checada reciente',
+        'Ya registraste una checada hace unos momentos'
+      );
+      return;
+    }
+
+    await registerStep(employee);
+
+  } finally {
+    processingQR = false;
   }
-
-  const tokenNormalized = token
-    .trim()
-    .replace(/['"]/g, '-') // scanners raros
-    .toLowerCase();
-
-  const employee = employees.find(e =>
-    e.token?.trim().toLowerCase() === tokenNormalized
-  );
-
-  if (!employee) {
-    showCriticalModal(
-      'QR no válido',
-      'Este código no pertenece a ningún trabajador'
-    );
-    return;
-  }
-
-  if (employee.activo !== 'SI') {
-    showCriticalModal(
-      'Acceso denegado',
-      'El trabajador está desactivado'
-    );
-    return;
-  }
-
-  if (isBlocked(employee.id)) {
-    showWarningModal(
-      'Checada reciente',
-      'Ya registraste una checada hace unos momentos'
-    );
-    return;
-  }
-
-  registerStep(employee);
 }
+
 
 function getStepFromRecord(record) {
   if (!record) return 0;
@@ -692,7 +702,7 @@ function showSuccessModal(title, message) {
 
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
-  recentScans.set(employee.id, Date.now());
+  
 
   const today = getTodayISO();
 
@@ -780,7 +790,7 @@ switch (step) {
       return;
     }
   }
-
+  recentScans.set(employee.id, Date.now());
   // ✅ MODALES CORRECTOS
   switch (step) {
     case 0:
