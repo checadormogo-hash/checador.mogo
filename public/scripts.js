@@ -616,7 +616,7 @@ if (scannerInput) {
   });
 }
 
-function processQR(token) {
+async function processQR(token) {
 if (locationPermissionState !== 'allowed') {
   await validateGeolocation();
 }
