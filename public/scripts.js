@@ -24,6 +24,66 @@ async function loadEmployees() {
 
   employeesReady = true;
 }
+
+// ================== GEOLOCALIZACIÓN ==================
+const STORE_LOCATION = {
+  lat: 25.81968621058341,   // 👈 CAMBIA por tu ubicación real
+  lng: -100.08913410403942, // 👈 CAMBIA por tu ubicación real
+  radius: 80        // metros permitidos
+};
+
+let locationAllowed = false;
+let currentCoords = null;
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function validateGeolocation() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) {
+      locationAllowed = false;
+      return resolve(false);
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude, longitude } = pos.coords;
+        currentCoords = { latitude, longitude };
+
+        const distance = calculateDistance(
+          latitude,
+          longitude,
+          STORE_LOCATION.lat,
+          STORE_LOCATION.lng
+        );
+
+        locationAllowed = distance <= STORE_LOCATION.radius;
+        resolve(locationAllowed);
+      },
+      () => {
+        locationAllowed = false;
+        resolve(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 0
+      }
+    );
+  });
+}
+
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
 const recentScans = new Map();
 const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
@@ -120,6 +180,14 @@ processQR = function(token) {
 
 // Procesar QR en modo manual
 async function processManualQR(token, action) {
+if (!locationAllowed) {
+  showCriticalModal(
+    'Ubicación no autorizada',
+    'Debes estar dentro del establecimiento para registrar asistencia.'
+  );
+  return;
+}
+
   if (!employeesReady) {
     showWarningModal('Sistema iniciando', 'Espera un momento e intenta nuevamente');
     return;
@@ -477,6 +545,13 @@ if (scannerInput) {
 }
 
 function processQR(token) {
+if (!locationAllowed) {
+  showCriticalModal(
+    'Ubicación no autorizada',
+    'Debes estar dentro del establecimiento para registrar asistencia.'
+  );
+  return;
+}
 
   if (!employeesReady) {
     showWarningModal(
@@ -697,6 +772,7 @@ setInterval(updateDateTime, 1000);
 let pinModal, workerPinInput, submitPinBtn, cancelPinBtn, pinError;
 document.addEventListener('DOMContentLoaded', async () => {
   await loadEmployees();
+  await validateGeolocation();
   showAutoModal();
   switchToScannerTab();
 
