@@ -34,6 +34,8 @@ const STORE_LOCATION = {
 
 let locationAllowed = false;
 let currentCoords = null;
+let locationPermissionState = 'pending';
+// pending | blocked | allowed
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -50,16 +52,26 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 async function validateGeolocation() {
-  await requestLocationPermissionUI();
-
   return new Promise(resolve => {
+
     if (!navigator.geolocation) {
-      locationAllowed = false;
+      updateCriticalModal(
+        'Ubicación no disponible',
+        'Este dispositivo no soporta geolocalización.'
+      );
       return resolve(false);
     }
 
+    // MOSTRAMOS SOLO UNA VEZ
+    showCriticalModal(
+      'Permiso de ubicación requerido',
+      'Para registrar asistencia es obligatorio compartir tu ubicación y estar dentro del establecimiento.'
+    );
+
     navigator.geolocation.getCurrentPosition(
       pos => {
+        locationPermissionState = 'allowed';
+
         const { latitude, longitude } = pos.coords;
         currentCoords = { latitude, longitude };
 
@@ -71,18 +83,22 @@ async function validateGeolocation() {
         );
 
         locationAllowed = distance <= STORE_LOCATION.radius;
+
+        closeCriticalModal(); // 👈 se cierra SOLO si todo salió bien
         resolve(locationAllowed);
       },
+
       error => {
+        locationPermissionState = 'blocked';
         locationAllowed = false;
 
         if (error.code === error.PERMISSION_DENIED) {
-          showCriticalModal(
+          updateCriticalModal(
             'Ubicación bloqueada',
-            'Debes permitir el acceso a tu ubicación para poder registrar asistencia.'
+            'Bloqueaste el acceso a tu ubicación. Es obligatorio permitirla para poder registrar tus checadas.'
           );
         } else {
-          showCriticalModal(
+          updateCriticalModal(
             'Error de ubicación',
             'No fue posible obtener tu ubicación. Intenta nuevamente.'
           );
@@ -90,6 +106,7 @@ async function validateGeolocation() {
 
         resolve(false);
       },
+
       {
         enableHighAccuracy: true,
         timeout: 8000,
@@ -98,21 +115,12 @@ async function validateGeolocation() {
     );
   });
 }
-
-function requestLocationPermissionUI() {
-  return new Promise(resolve => {
-    showCriticalModal(
-      'Permiso de ubicación requerido',
-      'Para registrar asistencia es obligatorio compartir tu ubicación y estar dentro del establecimiento.'
-    );
-
-    const observer = setInterval(() => {
-      if (!document.querySelector('.critical-modal')) {
-        clearInterval(observer);
-        resolve();
-      }
-    }, 300);
-  });
+function updateCriticalModal(title, message) {
+  document.getElementById('criticalTitle').textContent = title;
+  document.getElementById('criticalMessage').textContent = message;
+}
+function closeCriticalModal() {
+  document.querySelector('.critical-overlay')?.remove();
 }
 
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
