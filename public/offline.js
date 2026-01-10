@@ -1,17 +1,23 @@
 // ===== OFFLINE MANAGER =====
 const DB_NAME = 'checadorDB';
-const STORE_NAME = 'pending_records';
+const STORE_PENDING = 'pending_records';
+const STORE_WORKERS = 'workers';
 let db = null;
 
 // ===== ABRIR / CREAR INDEXEDDB =====
 function openDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(DB_NAME, 2);
 
     request.onupgradeneeded = e => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+
+      if (!db.objectStoreNames.contains(STORE_PENDING)) {
+        db.createObjectStore(STORE_PENDING, { keyPath: 'id' });
+      }
+
+      if (!db.objectStoreNames.contains(STORE_WORKERS)) {
+        db.createObjectStore(STORE_WORKERS, { keyPath: 'id' });
       }
     };
 
@@ -24,12 +30,12 @@ function openDB() {
   });
 }
 
-// ===== UTILIDADES INDEXEDDB =====
+// ===== UTILIDADES PENDIENTES =====
 async function getAllPending() {
   if (!db) await openDB();
   return new Promise(resolve => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(STORE_PENDING, 'readonly');
+    const store = tx.objectStore(STORE_PENDING);
     const req = store.getAll();
     req.onsuccess = () => resolve(req.result || []);
   });
@@ -38,11 +44,12 @@ async function getAllPending() {
 async function deletePending(id) {
   if (!db) await openDB();
   return new Promise(resolve => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).delete(id);
+    const tx = db.transaction(STORE_PENDING, 'readwrite');
+    tx.objectStore(STORE_PENDING).delete(id);
     tx.oncomplete = () => resolve();
   });
 }
+
 // ===== GEOLOCALIZACIÓN =====
 function getLocation() {
   return new Promise(resolve => {
@@ -51,12 +58,10 @@ function getLocation() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude
-        });
-      },
+      pos => resolve({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude
+      }),
       () => resolve({ lat: null, lng: null }),
       {
         enableHighAccuracy: true,
@@ -65,34 +70,72 @@ function getLocation() {
     );
   });
 }
+
 // ===== GUARDAR CHECADA OFFLINE =====
 async function savePendingRecord(data) {
   if (!db) await openDB();
 
-  return new Promise(async (resolve, reject) => {
-    const location = await getLocation();
+  const location = await getLocation();
 
-    const record = {
-      id: crypto.randomUUID(),
-      ...data,
-      lat: location.lat,
-      lng: location.lng,
-      estado: 'pendiente',
-      created_at: new Date().toISOString()
-    };
+  const record = {
+    id: crypto.randomUUID(),
+    ...data,
+    lat: location.lat,
+    lng: location.lng,
+    estado: 'pendiente',
+    created_at: new Date().toISOString()
+  };
 
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-    store.add(record);
-
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_PENDING, 'readwrite');
+    tx.objectStore(STORE_PENDING).add(record);
     tx.oncomplete = () => resolve(record);
     tx.onerror = () => reject('Error guardando checada offline');
   });
 }
 
+// ===== TRABAJADORES OFFLINE =====
+async function saveWorkers(workers) {
+  if (!db) await openDB();
+
+  return new Promise(resolve => {
+    const tx = db.transaction(STORE_WORKERS, 'readwrite');
+    const store = tx.objectStore(STORE_WORKERS);
+
+    workers.forEach(w => {
+      store.put({
+        id: w.id,
+        name: w.name,
+        qr: w.qr,
+        active: w.active
+      });
+    });
+
+    tx.oncomplete = () => resolve();
+  });
+}
+
+async function findWorkerByQR(qr) {
+  if (!db) await openDB();
+
+  return new Promise(resolve => {
+    const tx = db.transaction(STORE_WORKERS, 'readonly');
+    const store = tx.objectStore(STORE_WORKERS);
+    const req = store.getAll();
+
+    req.onsuccess = () => {
+      const worker = req.result.find(w => w.qr === qr && w.active);
+      resolve(worker || null);
+    };
+  });
+}
+
+// ===== TABLA OFFLINE =====
 async function renderOfflineTable() {
   const records = await getAllPending();
   const tbody = document.getElementById('offlineTableBody');
+  if (!tbody) return;
+
   tbody.innerHTML = '';
 
   records.forEach(r => {
@@ -112,13 +155,23 @@ async function renderOfflineTable() {
   });
 }
 
+// ===== ESTADO ONLINE / OFFLINE =====
 document.addEventListener("DOMContentLoaded", async () => {
   await openDB();
 
   const statusEl = document.getElementById("connectionStatus");
   const offlineBtn = document.getElementById("openOfflineModal");
 
+  async function updateOfflineButton() {
+    if (!offlineBtn) return;
+    const pending = await getAllPending();
+    offlineBtn.style.display =
+      (!navigator.onLine && pending.length > 0) ? 'flex' : 'none';
+  }
+
   function updateStatus() {
+    if (!statusEl) return;
+
     if (navigator.onLine) {
       statusEl.textContent = "● En línea";
       statusEl.classList.add("online");
@@ -129,15 +182,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       statusEl.classList.remove("online");
     }
     updateOfflineButton();
-  }
-
-  async function updateOfflineButton() {
-    const pending = await getAllPending();
-    if (!navigator.onLine && pending.length > 0) {
-      offlineBtn.style.display = 'flex';
-    } else {
-      offlineBtn.style.display = 'none';
-    }
   }
 
   updateStatus();

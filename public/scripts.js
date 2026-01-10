@@ -6,22 +6,43 @@ const supabaseClient = window.supabase.createClient(
 let employees = [];
 let employeesReady = false;
 async function loadEmployees() {
-  const { data, error } = await supabaseClient
-    .from('workers')
-    .select('id, nombre, activo, qr_token');
 
-  if (error) {
-    console.error('ERROR CARGANDO TRABAJADORES:', error);
+  // ================= ONLINE =================
+  if (navigator.onLine) {
+    const { data, error } = await supabaseClient
+      .from('workers')
+      .select('id, nombre, activo, qr_token');
+
+    if (error) {
+      console.error('ERROR CARGANDO TRABAJADORES:', error);
+      return;
+    }
+
+    employees = data.map(w => ({
+      id: w.id,
+      name: w.nombre,
+      activo: w.activo ? 'SI' : 'NO',
+      token: w.qr_token
+    }));
+
+    employeesReady = true;
+
+    // 🔴 AQUÍ VA EXACTAMENTE ESTO
+    await saveWorkers(employees);
+
     return;
   }
 
-  employees = data.map(w => ({
-    id: w.id,
-    name: w.nombre,
-    activo: w.activo ? 'SI' : 'NO',
-    token: w.qr_token
-  }));
+  // ================= OFFLINE =================
+  const offlineWorkers = await getOfflineWorkers();
 
+  if (!offlineWorkers || offlineWorkers.length === 0) {
+    console.warn('No hay trabajadores guardados offline');
+    employeesReady = false;
+    return;
+  }
+
+  employees = offlineWorkers;
   employeesReady = true;
 }
 
