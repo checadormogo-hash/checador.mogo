@@ -488,6 +488,32 @@ body {
   color: #f59e0b;
   font-weight: 600;
 }
+
 #openOfflineModal {
   display: none;
+}
+/* ===== MODAL CHECADAS OFFLINE ===== */
+#offlineModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+#offlineModal.oculto {
+  display: none;
+}
+
+.offline-modal {
+  background: #fff;
+  width: 94%;
+  max-width: 420px;
+  max-height: 90dvh;
+  border-radius: 18px;
+  padding: 20px;
+  overflow: auto;
+  animation: fadeIn 0.25s ease;
 }

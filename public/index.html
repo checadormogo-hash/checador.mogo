@@ -157,18 +157,18 @@
   </div>
 </div>
 
-<div class="modal-overlay oculto" id="offlineModal">
-  <div class="modal-box">
-    <h3>Checadas pendientes de sincronizar</h3>
-
-    <table class="offline-table">
+<div id="offlineModal" class="oculto">
+  <div class="offline-modal">
+    <button id="closeOfflineModal">✕</button>
+    <h3>Checadas pendientes</h3>
+    <table>
       <thead>
         <tr>
-          <th>Nombre</th>
+          <th>Empleado</th>
           <th>Fecha</th>
           <th>Entrada</th>
-          <th>Salida Comida</th>
-          <th>Entrada Comida</th>
+          <th>Salida C.</th>
+          <th>Entrada C.</th>
           <th>Salida</th>
           <th>Estado</th>
           <th>Lat</th>
@@ -177,8 +177,6 @@
       </thead>
       <tbody id="offlineTableBody"></tbody>
     </table>
-
-    <button id="closeOfflineModal">Cerrar</button>
   </div>
 </div>
 
