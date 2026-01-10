@@ -159,8 +159,10 @@ async function renderOfflineTable() {
 document.addEventListener("DOMContentLoaded", async () => {
   await openDB();
 
+  const offlineBtn = document.getElementById('openOfflineModal');
+  const offlineModal = document.getElementById('offlineModal');
+  const closeOfflineModal = document.getElementById('closeOfflineModal');
   const statusEl = document.getElementById("connectionStatus");
-  const offlineBtn = document.getElementById("openOfflineModal");
 
   async function updateOfflineButton() {
     if (!offlineBtn) return;
@@ -181,10 +183,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       statusEl.classList.add("offline");
       statusEl.classList.remove("online");
     }
+
     updateOfflineButton();
   }
 
   updateStatus();
   window.addEventListener("online", updateStatus);
   window.addEventListener("offline", updateStatus);
+
+  if (offlineBtn && offlineModal) {
+    offlineBtn.addEventListener('click', async () => {
+      await renderOfflineTable();
+      offlineModal.classList.remove('oculto');
+    });
+  }
+
+  if (closeOfflineModal) {
+    closeOfflineModal.addEventListener('click', () => {
+      offlineModal.classList.add('oculto');
+    });
+  }
 });

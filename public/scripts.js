@@ -330,7 +330,7 @@ if (!navigator.onLine) {
       timeZone: 'America/Monterrey'
     })
   });
-
+  await updateOfflineButton();
   recentScans.set(employee.id, Date.now());
 
   showSuccessModal(
@@ -767,6 +767,8 @@ async function registerStep(employee) {
       tipo: 'auto', // o luego lo refinamos
       hora: nowTime
     });
+    await renderOfflineTable();
+    await updateOfflineButton();
 
     recentScans.set(employee.id, Date.now());
 
