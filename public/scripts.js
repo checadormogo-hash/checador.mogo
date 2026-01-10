@@ -723,7 +723,6 @@ function showSuccessModal(title, message) {
 
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
-  
 
   const today = getTodayISO();
 
@@ -731,6 +730,32 @@ async function registerStep(employee) {
     hour12: false,
     timeZone: 'America/Monterrey'
   });
+
+  // =================================================
+  // 🔴 OFFLINE PRIMERO (NUNCA tocar Supabase aquí)
+  // =================================================
+  if (!navigator.onLine) {
+    await savePendingRecord({
+      worker_id: employee.id,
+      worker_name: employee.name,
+      fecha: today,
+      tipo: 'auto', // o luego lo refinamos
+      hora: nowTime
+    });
+
+    recentScans.set(employee.id, Date.now());
+
+    showSuccessModal(
+      'Checada registrada (offline)',
+      `Hola <span class="employee-name">${employee.name}</span>, tu checada quedó guardada`
+    );
+
+    return; // ⛔ IMPORTANTE: aquí termina el flujo OFFLINE
+  }
+
+  // =================================================
+  // 🟢 ONLINE (solo si HAY internet)
+  // =================================================
 
   // 🔎 Buscar registro del día
   const { data: todayRecord, error: findError } = await supabaseClient
@@ -747,6 +772,7 @@ async function registerStep(employee) {
 
   // 🧠 STEP REAL DESDE BD
   const step = getStepFromRecord(todayRecord);
+
   if (!todayRecord && step !== 0) {
     showCriticalModal(
       'Error de secuencia',
@@ -754,6 +780,7 @@ async function registerStep(employee) {
     );
     return;
   }
+
   // 🛑 Día ya completo
   if (step === 4) {
     showWarningModal(
@@ -765,71 +792,22 @@ async function registerStep(employee) {
 
   const recordData = {};
 
-switch (step) {
-  case 0:
-    recordData.entrada = nowTime;
-    recordData.step = 1;
-    break;
-  case 1:
-    recordData.salida_comida = nowTime;
-    recordData.step = 2;
-    break;
-  case 2:
-    recordData.entrada_comida = nowTime;
-    recordData.step = 3;
-    break;
-  case 3:
-    recordData.salida = nowTime;
-    recordData.step = 3; // día completo
-    break;
-}
-// ===== OFFLINE MODE =====
-if (!navigator.onLine) {
-  await savePendingRecord({
-    worker_id: employee.id,
-    worker_name: employee.name,
-    fecha: today,
-    tipo: step === 0 ? 'entrada' :
-          step === 1 ? 'salida_comida' :
-          step === 2 ? 'entrada_comida' :
-          'salida',
-    hora: nowTime
-  });
-
-  recentScans.set(employee.id, Date.now());
-
-  // Mostrar el mismo modal que online
   switch (step) {
     case 0:
-      showSuccessModal(
-        'Entrada registrada (offline)',
-        `Hola <span class="employee-name">${employee.name}</span> bienvenido`
-      );
+      recordData.entrada = nowTime;
       break;
     case 1:
-      showSuccessModal(
-        'Salida a comida (offline)',
-        `Buen provecho <span class="employee-name">${employee.name}</span>.`
-      );
+      recordData.salida_comida = nowTime;
       break;
     case 2:
-      showSuccessModal(
-        'Entrada de comida (offline)',
-        `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`
-      );
+      recordData.entrada_comida = nowTime;
       break;
     case 3:
-      showSuccessModal(
-        'Salida registrada (offline)',
-        `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo`
-      );
+      recordData.salida = nowTime;
       break;
   }
 
-  return; // ⛔ IMPORTANTE: corta aquí, no sigue a Supabase
-}
-
-  // 🆕 INSERT (solo entrada)
+  // 🆕 INSERT
   if (!todayRecord) {
     const { error: insertError } = await supabaseClient
       .from('records')
@@ -843,7 +821,7 @@ if (!navigator.onLine) {
       showCriticalModal('Error', 'No se pudo guardar la entrada');
       return;
     }
-  } 
+  }
   // 🔁 UPDATE
   else {
     const { error: updateError } = await supabaseClient
@@ -856,27 +834,33 @@ if (!navigator.onLine) {
       return;
     }
   }
+
   recentScans.set(employee.id, Date.now());
-  // ✅ MODALES CORRECTOS
+
+  // ✅ MODALES CORRECTOS ONLINE
   switch (step) {
     case 0:
       showSuccessModal(
-        'Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`
+        'Entrada registrada',
+        `Hola <span class="employee-name">${employee.name}</span> bienvenido`
       );
       break;
     case 1:
       showSuccessModal(
-        'Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>.`
+        'Salida a comida',
+        `Buen provecho <span class="employee-name">${employee.name}</span>.`
       );
       break;
     case 2:
       showSuccessModal(
-        'Entrada de comida', `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`
+        'Entrada de comida',
+        `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`
       );
       break;
     case 3:
       showSuccessModal(
-        'Salida registrada', `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo, nos vemos pronto...`
+        'Salida registrada',
+        `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo`
       );
       break;
   }
