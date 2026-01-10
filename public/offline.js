@@ -195,12 +195,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     offlineBtn.addEventListener('click', async () => {
       await renderOfflineTable();
       offlineModal.classList.remove('oculto');
+      offlineModal.style.display = 'flex';
     });
   }
 
   if (closeOfflineModal) {
     closeOfflineModal.addEventListener('click', () => {
       offlineModal.classList.add('oculto');
+      offlineModal.style.display = 'none';
     });
   }
 });
