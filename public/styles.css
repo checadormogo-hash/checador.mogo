@@ -482,3 +482,9 @@ body {
 #connectionStatus.offline {
   color: #e74c3c; /* rojo */
 }
+
+
+.estado-pendiente {
+  color: #f59e0b;
+  font-weight: 600;
+}

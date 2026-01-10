@@ -762,6 +762,51 @@ switch (step) {
     recordData.step = 3; // día completo
     break;
 }
+// ===== OFFLINE MODE =====
+if (!navigator.onLine) {
+  await savePendingRecord({
+    worker_id: employee.id,
+    worker_name: employee.name,
+    fecha: today,
+    tipo: step === 0 ? 'entrada' :
+          step === 1 ? 'salida_comida' :
+          step === 2 ? 'entrada_comida' :
+          'salida',
+    hora: nowTime
+  });
+
+  recentScans.set(employee.id, Date.now());
+
+  // Mostrar el mismo modal que online
+  switch (step) {
+    case 0:
+      showSuccessModal(
+        'Entrada registrada (offline)',
+        `Hola <span class="employee-name">${employee.name}</span> bienvenido`
+      );
+      break;
+    case 1:
+      showSuccessModal(
+        'Salida a comida (offline)',
+        `Buen provecho <span class="employee-name">${employee.name}</span>.`
+      );
+      break;
+    case 2:
+      showSuccessModal(
+        'Entrada de comida (offline)',
+        `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`
+      );
+      break;
+    case 3:
+      showSuccessModal(
+        'Salida registrada (offline)',
+        `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo`
+      );
+      break;
+  }
+
+  return; // ⛔ IMPORTANTE: corta aquí, no sigue a Supabase
+}
 
   // 🆕 INSERT (solo entrada)
   if (!todayRecord) {

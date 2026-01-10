@@ -52,6 +52,10 @@
           <i class="fa-solid fa-download"></i>
           <span>Instalar aplicación</span>
         </div>
+        <div class="action-btn offline-pending" id="openOfflineModal">
+          <i class="fa-solid fa-clock"></i>
+          <span>Checadas pendientes</span>
+        </div>
       </div>
     </div>
 
@@ -150,6 +154,31 @@
       src="politicas.html"
       class="policies-iframe">
     </iframe>
+  </div>
+</div>
+
+<div class="modal-overlay oculto" id="offlineModal">
+  <div class="modal-box">
+    <h3>Checadas pendientes de sincronizar</h3>
+
+    <table class="offline-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Fecha</th>
+          <th>Entrada</th>
+          <th>Salida Comida</th>
+          <th>Entrada Comida</th>
+          <th>Salida</th>
+          <th>Estado</th>
+          <th>Lat</th>
+          <th>Lng</th>
+        </tr>
+      </thead>
+      <tbody id="offlineTableBody"></tbody>
+    </table>
+
+    <button id="closeOfflineModal">Cerrar</button>
   </div>
 </div>
 
