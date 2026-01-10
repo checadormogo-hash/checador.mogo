@@ -318,6 +318,31 @@ async function processManualQR(token, action) {
     return;
   }
 
+  // ⛔ SI NO HAY INTERNET → SOLO OFFLINE
+if (!navigator.onLine) {
+  await savePendingRecord({
+    worker_id: employee.id,
+    worker_name: employee.name,
+    fecha: getTodayISO(),
+    tipo: action,
+    hora: new Date().toLocaleTimeString('es-MX', {
+      hour12: false,
+      timeZone: 'America/Monterrey'
+    })
+  });
+
+  recentScans.set(employee.id, Date.now());
+
+  showSuccessModal(
+    `${formatActionTitle(action)} registrada (offline)`,
+    `Hola <span class="employee-name">${employee.name}</span>, tu checada quedó guardada`
+  );
+
+  hideAutoModal();
+  return; // ⛔⛔ CORTA TODO AQUÍ
+}
+
+
   // Validar secuencia de pasos según acción manual
   const today = getTodayISO();
   const { data: todayRecord } = await supabaseClient
@@ -977,7 +1002,7 @@ async function solicitarPin(workerId, recordId) {
         .eq('tipo', 'salida_temprana')
         .is('usado', false)
         .limit(1)
-        maybeSingle()
+        .maybeSingle();
 
       if (error || !data) {
         pinError.style.display = 'block';
