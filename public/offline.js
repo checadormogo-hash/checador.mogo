@@ -199,8 +199,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener("offline", updateStatus);
 
   if (offlineBtn && offlineModal) {
-    offlineBtn.addEventListener('click', async () => {
+      offlineBtn.addEventListener('click', async () => {
       await renderOfflineTable();
+
+      // 🔴 OCULTAR EL AUTO OVERLAY
+      const autoOverlay = document.getElementById('autoOverlay');
+      if (autoOverlay) autoOverlay.style.display = 'none';
+
       offlineModal.classList.remove('oculto');
       offlineModal.style.display = 'flex';
     });
@@ -210,6 +215,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     closeOfflineModal.addEventListener('click', () => {
       offlineModal.classList.add('oculto');
       offlineModal.style.display = 'none';
+
+      // 🔁 REGRESAR AL AUTO MODAL
+      const autoOverlay = document.getElementById('autoOverlay');
+      if (autoOverlay) autoOverlay.style.display = 'flex';
     });
   }
+
 });
