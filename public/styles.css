@@ -466,3 +466,19 @@ body {
     border-radius: 18px;
   }
 }
+
+/* Estado conexion */
+#connectionStatus {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+#connectionStatus.online {
+  color: #2ecc71; /* verde */
+}
+
+#connectionStatus.offline {
+  color: #e74c3c; /* rojo */
+}

@@ -20,6 +20,7 @@
 
     <div class="card">
       <div class="employee-info">
+        <span id="connectionStatus" class="status online">● En línea</span>
         <span id="currentDate"></span>
       </div>
 
@@ -155,6 +156,7 @@
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="scripts.js" defer></script>
+<script src="offline.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw-worker.js');
