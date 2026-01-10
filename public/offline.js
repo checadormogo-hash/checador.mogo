@@ -40,6 +40,14 @@ async function getAllPending() {
     req.onsuccess = () => resolve(req.result || []);
   });
 }
+async function getLastPendingForWorker(workerId, fecha) {
+  const all = await getAllPending();
+
+  return all
+    .filter(r => r.worker_id === workerId && r.fecha === fecha)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .pop() || null;
+}
 
 async function deletePending(id) {
   if (!db) await openDB();
@@ -174,7 +182,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await openDB();
 
   const offlineBtn = document.getElementById('openOfflineModal');
-  const offlineModal = document.getElementById('offlineModal');
   const closeOfflineModal = document.getElementById('closeOfflineModal');
   const statusEl = document.getElementById("connectionStatus");
 
@@ -200,26 +207,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (offlineBtn && offlineModal) {
       offlineBtn.addEventListener('click', async () => {
-      await renderOfflineTable();
+        await renderOfflineTable();
 
-      // 🔴 OCULTAR EL AUTO OVERLAY
-      const autoOverlay = document.getElementById('autoOverlay');
-      if (autoOverlay) autoOverlay.style.display = 'none';
+        const offlineModal = document.getElementById('offlineModal');
+        if (!offlineModal) return;
 
-      offlineModal.classList.remove('oculto');
-      offlineModal.style.display = 'flex';
-    });
+        offlineModal.classList.remove('oculto');
+        offlineModal.style.display = 'flex';
+      });
   }
+document.addEventListener('click', e => {
+  if (e.target.id === 'closeOfflineModal') {
+    const offlineModal = document.getElementById('offlineModal');
+    if (!offlineModal) return;
 
-  if (closeOfflineModal) {
-    closeOfflineModal.addEventListener('click', () => {
-      offlineModal.classList.add('oculto');
-      offlineModal.style.display = 'none';
-
-      // 🔁 REGRESAR AL AUTO MODAL
-      const autoOverlay = document.getElementById('autoOverlay');
-      if (autoOverlay) autoOverlay.style.display = 'flex';
-    });
+    offlineModal.classList.add('oculto');
+    offlineModal.style.display = 'none';
   }
+});
+
 
 });

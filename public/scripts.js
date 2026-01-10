@@ -320,16 +320,48 @@ async function processManualQR(token, action) {
 
   // ⛔ SI NO HAY INTERNET → SOLO OFFLINE
 if (!navigator.onLine) {
+
+  const today = getTodayISO();
+  const lastPending = await getLastPendingForWorker(employee.id, today);
+
+  // 🧠 VALIDAR SECUENCIA OFFLINE
+  if (lastPending) {
+    const lastType = lastPending.tipo;
+
+    if (action === 'entrada' && lastType === 'entrada') {
+      showWarningModal('Entrada ya registrada', 'Ya habías checado entrada');
+      hideAutoModal();
+      return;
+    }
+    if (action === 'salida-comida' && lastType !== 'entrada') {
+      showWarningModal('Secuencia inválida', 'Primero debes registrar entrada');
+      hideAutoModal();
+      return;
+    }
+    if (action === 'entrada-comida' && lastType !== 'salida-comida') {
+      showWarningModal('Secuencia inválida', 'Primero debes salir a comida');
+      hideAutoModal();
+      return;
+    }
+    if (action === 'salida' && lastType !== 'entrada-comida') {
+      showWarningModal('Secuencia inválida', 'No puedes salir aún');
+      hideAutoModal();
+      return;
+    }
+  }
+
+  // ✅ GUARDAR OFFLINE
   await savePendingRecord({
     worker_id: employee.id,
     worker_name: employee.name,
-    fecha: getTodayISO(),
+    fecha: today,
     tipo: action,
     hora: new Date().toLocaleTimeString('es-MX', {
       hour12: false,
       timeZone: 'America/Monterrey'
     })
   });
+
   await updateOfflineButton();
   recentScans.set(employee.id, Date.now());
 
@@ -339,9 +371,8 @@ if (!navigator.onLine) {
   );
 
   hideAutoModal();
-  return; // ⛔⛔ CORTA TODO AQUÍ
+  return;
 }
-
 
   // Validar secuencia de pasos según acción manual
   const today = getTodayISO();
