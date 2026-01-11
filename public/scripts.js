@@ -979,6 +979,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   submitPinBtn = document.getElementById('submitPinBtn');
   cancelPinBtn = document.getElementById('cancelPinBtn');
   pinError = document.getElementById('pinError');
+
+  const btn = document.getElementById('openOfflineModal');
+  const modal = document.getElementById('offlineModal');
+
+  if (!btn || !modal) {
+    console.error('Botón o modal offline no existen');
+    return;
+  }
+
+  btn.style.display = 'flex'; // SIEMPRE visible
+
+  btn.addEventListener('click', async () => {
+    await renderOfflineTable(); // viene de offline.js
+    modal.classList.remove('oculto');
+  });
 });
 
 let deferredPrompt;
@@ -1080,21 +1095,4 @@ if(closePolicies){
     startInactivityTimer();
   });
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('openOfflineModal');
-  const modal = document.getElementById('offlineModal');
-
-  if (!btn || !modal) {
-    console.error('Botón o modal offline no existen');
-    return;
-  }
-
-  btn.style.display = 'flex'; // SIEMPRE visible
-
-  btn.addEventListener('click', async () => {
-    await renderOfflineTable(); // viene de offline.js
-    modal.classList.remove('oculto');
-  });
-});
 
