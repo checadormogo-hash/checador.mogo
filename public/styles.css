@@ -495,22 +495,16 @@ body {
 /* ===== MODAL CHECADAS OFFLINE ===== */
 #offlineModal {
   position: fixed;
-  top: 0;
-  left: 0;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
-
-  display: flex;
+  display: none; /* CLAVE */
   justify-content: center;
   align-items: center;
-
   background: rgba(0, 0, 0, 0.55);
-  z-index: 9999;
+  z-index: 10000;
 }
 
-#offlineModal.oculto {
-  display: none;
+#offlineModal:not(.oculto) {
+  display: flex;
 }
 
 .offline-modal {
