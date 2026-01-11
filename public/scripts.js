@@ -983,11 +983,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btn = document.getElementById('openOfflineModal');
   const modal = document.getElementById('offlineModal');
 
-  if (!btn || !modal) {
-    console.error('Botón o modal offline no existen');
-    return;
-  }
-
   btn.style.display = 'flex'; // SIEMPRE visible
 
   btn.addEventListener('click', async () => {
