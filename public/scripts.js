@@ -990,6 +990,15 @@ if (btn) {
       if (modal) modal.classList.remove('oculto');
     });
 }
+const closeOfflineModalBtn = document.getElementById('closeOfflineModal');
+const offlineModal = document.getElementById('offlineModal');
+
+if (closeOfflineModalBtn && offlineModal) {
+  closeOfflineModalBtn.addEventListener('click', () => {
+    offlineModal.classList.add('oculto'); // vuelve a ocultar el modal
+  });
+}
+
 
 let deferredPrompt;
 const installBtn = document.getElementById('installAppBtn');
