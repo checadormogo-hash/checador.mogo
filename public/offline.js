@@ -210,7 +210,6 @@ if (offlineBtn && offlineModal) {
   offlineBtn.addEventListener('click', async () => {
     await renderOfflineTable();
     offlineModal.classList.remove('oculto');
-    offlineModal.style.display = 'flex';
   });
 }
 
@@ -220,7 +219,6 @@ document.addEventListener('click', e => {
     if (!offlineModal) return;
 
     offlineModal.classList.add('oculto');
-    offlineModal.style.display = 'none';
   }
 });
 
