@@ -191,12 +191,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener("online", updateStatus);
   window.addEventListener("offline", updateStatus);
 
-if (offlineBtn && offlineModal) {
+
   offlineBtn.addEventListener('click', async () => {
     await renderOfflineTable();
     offlineModal.classList.remove('oculto');
   });
-}
+
 
 document.addEventListener('click', e => {
   if (e.target.id === 'closeOfflineModal') {
