@@ -984,14 +984,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modal = document.getElementById('offlineModal');
 
 if (btn) {
-    btn.style.display = 'flex'; // mostrar siempre
+    btn.classList.remove('oculto'); // ⬅ elimina la clase que lo oculta
+    btn.style.display = 'flex';     // opcional
     btn.addEventListener('click', async () => {
-      await renderOfflineTable(); // del offline.js
       if (modal) modal.classList.remove('oculto');
     });
-  }
-  
-});
+}
 
 let deferredPrompt;
 const installBtn = document.getElementById('installAppBtn');
