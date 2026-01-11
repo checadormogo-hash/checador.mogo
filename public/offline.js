@@ -89,7 +89,7 @@ async function renderOfflineTable() {
   data.forEach(row => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${row.empleado || "-"}</td>
+      <td>${row.nombre || "-"}</td>
       <td>${row.fecha || "-"}</td>
       <td>${row.entrada || "-"}</td>
       <td>${row.salidaComida || "-"}</td>
@@ -111,3 +111,51 @@ document.addEventListener("DOMContentLoaded", () => {
     renderOfflineTable();
   });
 });
+
+//GUARDAR O ACTUALIZAR CHECADAS
+async function savePendingRecord(data) {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      const records = request.result;
+
+      // buscamos si ya existe registro de este empleado en esta fecha
+      let record = records.find(r =>
+        r.empleadoId === data.empleadoId &&
+        r.fecha === data.fecha
+      );
+
+      if (!record) {
+        record = {
+          empleadoId: data.empleadoId,
+          nombre: data.nombre,
+          fecha: data.fecha,
+          entrada: null,
+          salidaComida: null,
+          entradaComida: null,
+          salida: null,
+          lat: null,
+          lng: null,
+          pendiente: {}
+        };
+      }
+
+      // solo se guarda la checada que falló
+      record[data.tipo] = data.hora;
+      record.lat = data.lat;
+      record.lng = data.lng;
+      record.pendiente[data.tipo] = true;
+
+      store.put(record);
+    };
+
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
