@@ -983,12 +983,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btn = document.getElementById('openOfflineModal');
   const modal = document.getElementById('offlineModal');
 
-  btn.style.display = 'flex'; // SIEMPRE visible
-
-  btn.addEventListener('click', async () => {
-    await renderOfflineTable(); // viene de offline.js
-    modal.classList.remove('oculto');
-  });
+if (btn) {
+    btn.style.display = 'flex'; // mostrar siempre
+    btn.addEventListener('click', async () => {
+      await renderOfflineTable(); // del offline.js
+      if (modal) modal.classList.remove('oculto');
+    });
+  }
+  
 });
 
 let deferredPrompt;
