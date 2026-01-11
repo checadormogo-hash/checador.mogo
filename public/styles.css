@@ -489,9 +489,6 @@ body {
   font-weight: 600;
 }
 
-#openOfflineModal {
-  display: none;
-}
 /* ===== MODAL CHECADAS OFFLINE ===== */
 #offlineModal {
   position: fixed;
@@ -499,7 +496,7 @@ body {
   display: flex; /* CLAVE */
   justify-content: center;
   align-items: center;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.5);
   z-index: 100000;
 }
 #offlineModal.oculto {

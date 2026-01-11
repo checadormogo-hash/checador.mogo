@@ -163,20 +163,6 @@ async function renderOfflineTable() {
   });
 }
 
-
-// ===== BOTÓN OFFLINE (GLOBAL) =====
-async function updateOfflineButton() {
-  const offlineBtn = document.getElementById('openOfflineModal');
-  if (!offlineBtn) return;
-
-  const pending = await getAllPending();
-  offlineBtn.style.display =
-    (!navigator.onLine && pending.length > 0) ? 'flex' : 'none';
-}
-
-// 👇 EXPONERLA GLOBALMENTE
-window.updateOfflineButton = updateOfflineButton;
-
 // ===== ESTADO ONLINE / OFFLINE =====
 document.addEventListener("DOMContentLoaded", async () => {
   await openDB();
