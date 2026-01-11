@@ -512,7 +512,7 @@ body {
   width: 100%;
   box-sizing: border-box;
   position: relative;
-  overflow-y: auto; /* scroll vertical si es muy largo */
+  overflow-y: hidden; /* scroll vertical si es muy largo */
   max-height: 90vh; /* no ocupar toda la pantalla */
 }
 /* Botón X alineado a la derecha */
@@ -550,11 +550,32 @@ body {
   max-height: 90%;
   border-radius: 18px;
   padding: 20px;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
   z-index: 1;
   animation: fadeIn 0.25s ease;
 }
 #openOfflineModal {
   display: flex !important;
+}
+.table-wrapper {
+  margin-top: 10px;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 60vh; /* controla altura */
+}
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px; /* para scroll horizontal */
+}
+@media (max-width: 600px) {
+  .modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .table-wrapper {
+    max-height: 65vh;
+  }
 }
