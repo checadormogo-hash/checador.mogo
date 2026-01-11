@@ -44,7 +44,7 @@ async function loadEmployees() {
 
   //employees = offlineWorkers;
   //employeesReady = true;
-//}
+}
 
 // ================== GEOLOCALIZACIÓN ==================
 const STORE_LOCATION = {
@@ -1090,5 +1090,6 @@ if(closePolicies){
     startInactivityTimer();
   });
 }
+
 
 });
