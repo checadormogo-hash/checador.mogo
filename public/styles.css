@@ -500,13 +500,10 @@ body {
   justify-content: center;
   align-items: center;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 10000;
+  z-index: 100000;
 }
 #offlineModal.oculto {
   display: none;
-}
-#offlineModal:not(.oculto) {
-  display: flex;
 }
 
 .offline-modal {
@@ -517,5 +514,7 @@ body {
   border-radius: 18px;
   padding: 20px;
   overflow: auto;
+  position: relative;
+  z-index: 1;
   animation: fadeIn 0.25s ease;
 }
