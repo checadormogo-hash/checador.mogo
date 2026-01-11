@@ -515,3 +515,6 @@ body {
   z-index: 1;
   animation: fadeIn 0.25s ease;
 }
+#openOfflineModal {
+  display: flex !important;
+}
