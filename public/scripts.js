@@ -28,23 +28,23 @@ async function loadEmployees() {
     employeesReady = true;
 
     // 🔴 AQUÍ VA EXACTAMENTE ESTO
-    await saveWorkers(employees);
+    //await saveWorkers(employees);
 
     return;
   }
 
   // ================= OFFLINE =================
-  const offlineWorkers = await getOfflineWorkers();
+  //const offlineWorkers = await getOfflineWorkers();
 
-  if (!offlineWorkers || offlineWorkers.length === 0) {
-    console.warn('No hay trabajadores guardados offline');
-    employeesReady = false;
-    return;
-  }
+ // if (!offlineWorkers || offlineWorkers.length === 0) {
+   // console.warn('No hay trabajadores guardados offline');
+    //employeesReady = false;
+    //return;
+  //}
 
-  employees = offlineWorkers;
-  employeesReady = true;
-}
+  //employees = offlineWorkers;
+  //employeesReady = true;
+//}
 
 // ================== GEOLOCALIZACIÓN ==================
 const STORE_LOCATION = {
