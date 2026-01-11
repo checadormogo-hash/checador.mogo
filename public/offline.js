@@ -185,7 +185,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       statusEl.classList.remove("online");
     }
 
-    updateOfflineButton();
   }
 
   updateStatus();
