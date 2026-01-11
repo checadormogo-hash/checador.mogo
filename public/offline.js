@@ -125,32 +125,37 @@ async function savePendingRecord(data) {
     request.onsuccess = () => {
       const records = request.result;
 
-      // buscamos si ya existe registro de este empleado en esta fecha
+      // 🔧 usar los nombres REALES que vienen de scripts.js
       let record = records.find(r =>
-        r.empleadoId === data.empleadoId &&
+        r.worker_id === data.worker_id &&
         r.fecha === data.fecha
       );
 
       if (!record) {
         record = {
-          empleadoId: data.empleadoId,
-          nombre: data.nombre,
+          worker_id: data.worker_id,
+          nombre: data.worker_name,
           fecha: data.fecha,
           entrada: null,
           salidaComida: null,
           entradaComida: null,
           salida: null,
-          lat: null,
-          lng: null,
-          pendiente: {}
+          estado: "Pendiente"
         };
       }
 
-      // solo se guarda la checada que falló
-      record[data.tipo] = data.hora;
-      record.lat = data.lat;
-      record.lng = data.lng;
-      record.pendiente[data.tipo] = true;
+      // 🔧 normalizar tipos
+      const map = {
+        "entrada": "entrada",
+        "salida-comida": "salidaComida",
+        "entrada-comida": "entradaComida",
+        "salida": "salida"
+      };
+
+      const field = map[data.tipo];
+      if (field) {
+        record[field] = data.hora;
+      }
 
       store.put(record);
     };
