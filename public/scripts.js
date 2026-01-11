@@ -988,6 +988,12 @@ if (btn) {
     btn.style.display = 'flex';     // opcional
     btn.addEventListener('click', async () => {
       if (modal) modal.classList.remove('oculto');
+      if (typeof renderOfflineTable === 'function') {
+        await renderOfflineTable();
+      } else {
+        console.warn('renderOfflineTable no está disponible');
+      }
+
     });
 }
 const closeOfflineModalBtn = document.getElementById('closeOfflineModal');
