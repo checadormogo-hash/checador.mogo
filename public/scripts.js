@@ -24,6 +24,7 @@ async function loadEmployees() {
 
   employeesReady = true;
 }
+const IS_DESKTOP_TEST = true; // ⚠️ SOLO PARA PRUEBAS
 
 // ===== GEOLOCALIZACIÓN CONFIG =====
 const STORE_LOCATION = {
@@ -31,7 +32,7 @@ const STORE_LOCATION = {
   lng: -100.08711844709858  // 👈 CAMBIA por la real
 };
 
-const ALLOWED_RADIUS_METERS = 200; // rango permitido
+const ALLOWED_RADIUS_METERS = 400; // rango permitido
 
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000; // radio tierra en metros
@@ -49,6 +50,12 @@ function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 async function validarUbicacionObligatoria() {
+
+  // 🧪 BYPASS SOLO EN DESARROLLO PC
+  if (IS_DESKTOP_TEST) {
+    console.warn('⚠️ Geolocalización ignorada (modo pruebas en PC)');
+    return true;
+  }
 
   if (!('geolocation' in navigator)) {
     showCriticalModal(
@@ -69,7 +76,8 @@ async function validarUbicacionObligatoria() {
           STORE_LOCATION.lat,
           STORE_LOCATION.lng
         );
-          console.log('📍 Distancia calculada:', Math.round(distancia), 'metros');
+
+        console.log('📍 Distancia calculada:', Math.round(distancia), 'm');
 
         if (distancia > ALLOWED_RADIUS_METERS) {
           showCriticalModal(
@@ -80,41 +88,14 @@ async function validarUbicacionObligatoria() {
           return;
         }
 
-        // ✅ Todo bien
         resolve(true);
       },
       error => {
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            showCriticalModal(
-              'Activa Ubicación',
-              'Para poder continuar...'
-            );
-            break;
-          case error.POSITION_UNAVAILABLE:
-            showCriticalModal(
-              'Ubicación no disponible',
-              'Activa tu ubicación e inténtalo nuevamente'
-            );
-            break;
-          case error.TIMEOUT:
-            showCriticalModal(
-              'Tiempo de espera agotado',
-              'No se pudo obtener tu ubicación'
-            );
-            break;
-          default:
-            showCriticalModal(
-              'Error de ubicación',
-              'No se pudo validar tu ubicación'
-            );
-        }
+        showCriticalModal(
+          'Ubicación requerida',
+          'Debes permitir el acceso a tu ubicación'
+        );
         resolve(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 15000
       }
     );
   });
