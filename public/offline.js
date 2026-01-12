@@ -89,12 +89,12 @@ async function renderOfflineTable() {
   data.forEach(row => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${row.nombre || "-"}</td>
+      <td >${row.nombre || "-"}</td>
       <td>${row.fecha || "-"}</td>
-      <td>${row.entrada || "-"}</td>
-      <td>${row.salidaComida || "-"}</td>
-      <td>${row.entradaComida || "-"}</td>
-      <td>${row.salida || "-"}</td>
+      <td class="${row._offlineFields?.entrada ? 'offline-pending' : ''}">${row.entrada || "-"}</td>
+      <td class="${row._offlineFields?.salidaComida ? 'offline-pending' : ''}">${row.salidaComida || "-"}</td>
+      <td class="${row._offlineFields?.entradaComida ? 'offline-pending' : ''}">${row.entradaComida || "-"}</td>
+      <td class="${row._offlineFields?.salida ? 'offline-pending' : ''}">${row.salida || "-"}</td>
       <td>${row.estado || "Pendiente"}</td>
       <td>${row.lat || "-"}</td>
       <td>${row.lng || "-"}</td>
@@ -152,12 +152,27 @@ async function savePendingRecord(data) {
         "salida": "salida"
       };
 
-      const field = map[data.tipo];
-      if (field) {
-        record[field] = data.hora;
+      // 🔒 Ignorar registros automáticos sin paso definido
+      if (data.tipo === 'auto') {
+          store.put(record);
+          return;
       }
 
-      store.put(record);
+      const field = map[data.tipo];
+      if (!field) return;
+
+record[field] = data.hora;
+
+// 👇 GUARDAR UBICACIÓN SI VIENE
+if (data.lat) record.lat = data.lat;
+if (data.lng) record.lng = data.lng;
+
+// 👇 MARCAR QUE ESTE CAMPO ES OFFLINE
+if (!record._offlineFields) record._offlineFields = {};
+record._offlineFields[field] = true;
+
+store.put(record);
+
     };
 
     tx.oncomplete = () => resolve(true);

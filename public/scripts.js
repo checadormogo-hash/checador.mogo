@@ -365,12 +365,15 @@ if (!navigator.onLine) {
   await updateOfflineButton();
   recentScans.set(employee.id, Date.now());
 
+hideAutoModal();
+
+setTimeout(() => {
   showSuccessModal(
     `${formatActionTitle(action)} registrada (offline)`,
     `Hola <span class="employee-name">${employee.name}</span>, tu checada quedó guardada`
   );
+}, 300);
 
-  hideAutoModal();
   return;
 }
 

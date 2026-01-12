@@ -583,3 +583,7 @@ body {
     max-height: 65vh;
   }
 }
+.offline-pending {
+  background: #fdba74; /* naranja suave */
+  font-weight: 600;
+}
