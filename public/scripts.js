@@ -795,26 +795,7 @@ async function registerStep(employee) {
   // =================================================
   // 🔴 OFFLINE PRIMERO (NUNCA tocar Supabase aquí)
   // =================================================
-  if (!navigator.onLine) {
-    await savePendingRecord({
-      worker_id: employee.id,
-      worker_name: employee.name,
-      fecha: today,
-      tipo: ['entrada', 'salida-comida', 'entrada-comida', 'salida'][getStepFromRecord(todayRecord)],
-      hora: nowTime,
-      lat: currentCoords?.latitude ?? null,
-      lng: currentCoords?.longitude ?? null
-    });
 
-    recentScans.set(employee.id, Date.now());
-
-    showSuccessModal(
-      'Checada registrada (offline)',
-      `Hola <span class="employee-name">${employee.name}</span>, tu checada quedó guardada`
-    );
-
-    return; // ⛔ IMPORTANTE: aquí termina el flujo OFFLINE
-  }
 
   // =================================================
   // 🟢 ONLINE (solo si HAY internet)
