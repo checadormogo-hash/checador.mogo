@@ -657,6 +657,14 @@ function processQR(token) {
 
   registerStep(employee);
 }
+function getStepFromRecord(record) {
+  if (!record) return 0;
+  if (!record.entrada) return 0;
+  if (!record.salida_comida) return 1;
+  if (!record.entrada_comida) return 2;
+  if (!record.salida) return 3;
+  return 4; // día completo
+}
 
 function showSuccessModal(title, message) {
   setConfirmStyle('#16a34a'); // 🟢 verde
@@ -701,7 +709,7 @@ const todayRecord = records?.[0] || null;
   }
 
   // 🧠 STEP REAL DESDE BD
-  const step = todayRecord ? todayRecord.step : 0;
+  const step = getStepFromRecord(todayRecord);
   if (!todayRecord && step !== 0) {
     showCriticalModal(
       'Error de secuencia',
@@ -717,6 +725,13 @@ const todayRecord = records?.[0] || null;
     );
     return;
   }
+// 🛑 BLOQUEO ANTI SOBREESCRITURA (REFRESH / DOBLE ENVÍO)
+if (todayRecord) {
+  if (step === 0 && todayRecord.entrada) return;
+  if (step === 1 && todayRecord.salida_comida) return;
+  if (step === 2 && todayRecord.entrada_comida) return;
+  if (step === 3 && todayRecord.salida) return;
+}
 
   const recordData = {};
 
