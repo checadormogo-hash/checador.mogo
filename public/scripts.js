@@ -31,8 +31,9 @@ const STORE_LOCATION = {
   lng: -100.08711844709858  // 👈 CAMBIA por la real
 };
 
-const ALLOWED_RADIUS_METERS = 80; // rango permitido
-
+const ALLOWED_RADIUS_METERS = 120; // rango permitido
+console.log('📍 Usuario:', latitude, longitude);
+console.log('🏢 Establecimiento:', STORE_LOCATION.lat, STORE_LOCATION.lng);
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000; // radio tierra en metros
   const toRad = x => x * Math.PI / 180;
