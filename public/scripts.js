@@ -278,7 +278,7 @@ async function processManualQR(token, action) {
   const today = getTodayISO();
   const { data: todayRecord } = await supabaseClient
     .from('records')
-    .select('id, entrada, salida_comida, entrada_comida, salida')
+    .select('id, entrada, salida_comida, entrada_comida, salida, step')
     .eq('worker_id', employee.id)
     .eq('fecha', today)
     .maybeSingle();
@@ -658,15 +658,6 @@ function processQR(token) {
   registerStep(employee);
 }
 
-function getStepFromRecord(record) {
-  if (!record) return 0;
-  if (!record.entrada) return 0;
-  if (!record.salida_comida) return 1;
-  if (!record.entrada_comida) return 2;
-  if (!record.salida) return 3;
-  return 4; // día completo
-}
-
 function showSuccessModal(title, message) {
   setConfirmStyle('#16a34a'); // 🟢 verde
   showConfirmModal(title, message, 2500);
@@ -690,7 +681,7 @@ async function registerStep(employee) {
   // 🔎 Buscar registro del día
 const { data: records, error: findError } = await supabaseClient
   .from('records')
-  .select('id, entrada, salida_comida, entrada_comida, salida')
+  .select('id, entrada, salida_comida, entrada_comida, salida, step')
   .eq('worker_id', employee.id)
   .eq('fecha', today)
   .order('id', { ascending: false })
@@ -710,7 +701,7 @@ const todayRecord = records?.[0] || null;
   }
 
   // 🧠 STEP REAL DESDE BD
-  const step = getStepFromRecord(todayRecord);
+  const step = todayRecord ? todayRecord.step : 0;
   if (!todayRecord && step !== 0) {
     showCriticalModal(
       'Error de secuencia',
@@ -744,7 +735,7 @@ switch (step) {
     break;
   case 3:
     recordData.salida = nowTime;
-    recordData.step = 3; // día completo
+    recordData.step = 4; // día completo
     break;
 }
 
