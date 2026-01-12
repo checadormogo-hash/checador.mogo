@@ -359,7 +359,9 @@ if (!navigator.onLine) {
     hora: new Date().toLocaleTimeString('es-MX', {
       hour12: false,
       timeZone: 'America/Monterrey'
-    })
+    }),
+    lat: currentCoords?.latitude ?? null,
+    lng: currentCoords?.longitude ?? null
   });
 
   await updateOfflineButton();
@@ -798,11 +800,11 @@ async function registerStep(employee) {
       worker_id: employee.id,
       worker_name: employee.name,
       fecha: today,
-      tipo: 'auto', // o luego lo refinamos
-      hora: nowTime
+      tipo: ['entrada', 'salida-comida', 'entrada-comida', 'salida'][getStepFromRecord(todayRecord)],
+      hora: nowTime,
+      lat: currentCoords?.latitude ?? null,
+      lng: currentCoords?.longitude ?? null
     });
-    await renderOfflineTable();
-    await updateOfflineButton();
 
     recentScans.set(employee.id, Date.now());
 
