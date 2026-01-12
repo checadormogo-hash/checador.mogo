@@ -49,8 +49,7 @@ function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 async function validarUbicacionObligatoria() {
-  console.log('📍 Distancia calculada:', Math.round(distancia), 'metros');
-  
+
   if (!('geolocation' in navigator)) {
     showCriticalModal(
       'Ubicación no disponible',
@@ -70,6 +69,7 @@ async function validarUbicacionObligatoria() {
           STORE_LOCATION.lat,
           STORE_LOCATION.lng
         );
+          console.log('📍 Distancia calculada:', Math.round(distancia), 'metros');
 
         if (distancia > ALLOWED_RADIUS_METERS) {
           showCriticalModal(
@@ -358,12 +358,15 @@ async function registerStepManual(employee, action, todayRecord) {
   switch (action) {
     case 'entrada':
       recordData.entrada = nowTime;
+      recordData.step = 1;
       break;
     case 'salida-comida':
       recordData.salida_comida = nowTime;
+      recordData.step = 2;
       break;
     case 'entrada-comida':
       recordData.entrada_comida = nowTime;
+      recordData.step = 3;
       break;
     case 'salida':
       // 🔒 Antes de registrar salida, solicitar PIN
@@ -371,6 +374,7 @@ async function registerStepManual(employee, action, todayRecord) {
       if (!pinValidado) return; // si canceló o PIN incorrecto, salir
 
       recordData.salida = nowTime;
+      recordData.step = 3;
       break;
   }
 
@@ -907,7 +911,7 @@ async function solicitarPin(workerId, recordId) {
         .eq('tipo', 'salida_temprana')
         .is('usado', false)
         .limit(1)
-        maybeSingle()
+        .maybeSingle();
 
       if (error || !data) {
         pinError.style.display = 'block';
