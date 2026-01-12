@@ -60,6 +60,38 @@ function updateDateTime() {
   currentDateEl.textContent = `${formattedDate} · ${time}`;
 }
 
+
+// ===============================
+// MODAL CHECADAS PENDIENTES
+// ===============================
+const openOfflineModalBtn = document.getElementById('openOfflineModal');
+const offlineModal = document.getElementById('offlineModal');
+const closeOfflineModalBtn = document.getElementById('closeOfflineModal');
+
+// Abrir modal
+if (openOfflineModalBtn) {
+  openOfflineModalBtn.addEventListener('click', () => {
+    offlineModal.classList.remove('oculto');
+    clearTimeout(inactivityTimer); // pausa auto modal
+  });
+}
+
+// Cerrar modal con botón ✕
+if (closeOfflineModalBtn) {
+  closeOfflineModalBtn.addEventListener('click', () => {
+    offlineModal.classList.add('oculto');
+    startInactivityTimer(); // reanuda auto modal
+  });
+}
+
+// Cerrar modal al hacer clic fuera del contenido
+offlineModal.addEventListener('click', (e) => {
+  if (e.target === offlineModal) {
+    offlineModal.classList.add('oculto');
+    startInactivityTimer();
+  }
+});
+
 // ===== MODO MANUAL =====
 actionButtons.forEach(btn => {
   const action = btn.dataset.action;
