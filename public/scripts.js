@@ -230,21 +230,21 @@ function formatActionTitle(action) {
 }
 
 // Reutilizar processQR para modo manual
-const originalProcessQR = processQR; // guardamos referencia
+//const originalProcessQR = processQR; // guardamos referencia
 
-processQR = function(token) {
-  const manualAction = autoOverlay.dataset.manualAction || null;
+//processQR = function(token) {
+  //const manualAction = autoOverlay.dataset.manualAction || null;
 
-  if (manualAction) {
+  //if (manualAction) {
     // Override temporal del paso según acción manual
-    processManualQR(token, manualAction);
-    delete autoOverlay.dataset.manualAction;
-    return;
-  }
+    //processManualQR(token, manualAction);
+    //delete autoOverlay.dataset.manualAction;
+    //return;
+  //}
 
   // Si no es manual, sigue la lógica automática
-  originalProcessQR(token);
-}
+  //originalProcessQR(token);
+//}
 
 // Procesar QR en modo manual
 async function processManualQR(token, action) {
@@ -608,9 +608,23 @@ if (scannerInput) {
       return;
     }
 
+    // 🔑 DETECTAR SI ESTAMOS EN MODO MANUAL
+    const manualAction = autoOverlay?.dataset?.manualAction || null;
+
+    if (manualAction) {
+      // 👉 AQUÍ VA EXACTAMENTE ESTA LÍNEA
+      processManualQR(token, manualAction);
+
+      // limpiar flag para evitar contaminación
+      delete autoOverlay.dataset.manualAction;
+      return;
+    }
+
+    // 👉 MODO AUTOMÁTICO NORMAL
     processQR(token);
   });
 }
+
 
 function processQR(token) {
 
