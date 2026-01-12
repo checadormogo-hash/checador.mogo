@@ -802,22 +802,22 @@ switch (step) {
 
   // ✅ MODALES CORRECTOS
   switch (step) {
-    case 0:
+    case 1:
       showSuccessModal(
         'Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`
       );
       break;
-    case 1:
+    case 2:
       showSuccessModal(
         'Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>.`
       );
       break;
-    case 2:
+    case 3:
       showSuccessModal(
         'Entrada de comida', `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`
       );
       break;
-    case 3:
+    case 4:
       showSuccessModal(
         'Salida registrada', `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo, nos vemos pronto...`
       );
