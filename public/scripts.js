@@ -63,11 +63,11 @@ const LOCATION_MESSAGES = {
   },
   blocked: {
     title: 'Ubicación bloqueada',
-    message: 'Bloqueaste el acceso a tu ubicación. Es obligatorio permitirla para poder registrar tus checadas.'
+    message: 'Obligatorio permitir la Ubicación del dispositivo para poder registrar checadas.'
   },
   outOfRange: {
-    title: 'Fuera de zona autorizada',
-    message: 'Debes encontrarte dentro del establecimiento para registrar asistencia.'
+    title: 'Fuera de zona',
+    message: 'Debes encontrarte dentro del establecimiento para continuar....'
   }
 };
 
@@ -482,7 +482,11 @@ async function registerStepManual(employee, action, todayRecord) {
       .insert([{ worker_id: employee.id, fecha: getTodayISO(), ...recordData }]);
 
     if (insertError) {
-      showCriticalModal('Error', 'No se pudo guardar la entrada');
+      console.error('SUPABASE INSERT ERROR:', insertError);
+      showCriticalModal(
+        'Error Supabase',
+        insertError.message || 'No se pudo guardar la entrada'
+      );
       return;
     }
   } else {
@@ -493,7 +497,11 @@ async function registerStepManual(employee, action, todayRecord) {
       .eq('id', todayRecord.id);
 
     if (updateError) {
-      showCriticalModal('Error', 'No se pudo guardar la checada');
+      console.error('SUPABASE UPDATE ERROR:', updateError);
+      showCriticalModal(
+        'Error Supabase',
+        updateError.message || 'No se pudo guardar la checada'
+      );
       return;
     }
   }
@@ -862,7 +870,11 @@ async function registerStep(employee) {
       }]);
 
     if (insertError) {
-      showCriticalModal('Error', 'No se pudo guardar la entrada');
+      console.error('SUPABASE INSERT ERROR:', insertError);
+      showCriticalModal(
+        'Error Supabase',
+        insertError.message || 'No se pudo guardar la entrada'
+      );
       return;
     }
   }
