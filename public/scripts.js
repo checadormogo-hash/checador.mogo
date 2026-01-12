@@ -31,7 +31,7 @@ const STORE_LOCATION = {
   lng: -100.08711844709858  // 👈 CAMBIA por la real
 };
 
-const ALLOWED_RADIUS_METERS = 120; // rango permitido
+const ALLOWED_RADIUS_METERS = 200; // rango permitido
 
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000; // radio tierra en metros
@@ -335,17 +335,19 @@ async function processManualQR(token, action) {
   }
 
   // Registrar el paso según acción
-  await registerStepManual(employee, action, todayRecord);
-
-  // Cerrar modal manual al finalizar
+const saved = await registerStepManual(employee, action, todayRecord);
+if (saved) {
   hideAutoModal();
+}
+
 }
 // Registrar paso manual (reutilizando registerStep)
 async function registerStepManual(employee, action, todayRecord) {
     // 📍 VALIDAR GEOLOCALIZACIÓN ANTES DE TODO
   const ubicacionValida = await validarUbicacionObligatoria();
-  if (!ubicacionValida) return;
-
+  if (!ubicacionValida) {
+    return false; // 👈 CLAVE
+  }
   recentScans.set(employee.id, Date.now());
 
   const nowTime = new Date().toLocaleTimeString('es-MX', {
@@ -371,7 +373,7 @@ async function registerStepManual(employee, action, todayRecord) {
     case 'salida':
       // 🔒 Antes de registrar salida, solicitar PIN
       const pinValidado = await solicitarPin(employee.id, todayRecord?.id);
-      if (!pinValidado) return; // si canceló o PIN incorrecto, salir
+      if (!pinValidado) return false; // si canceló o PIN incorrecto, salir
 
       recordData.salida = nowTime;
       recordData.step = 4;
@@ -406,6 +408,7 @@ async function registerStepManual(employee, action, todayRecord) {
     `${formatActionTitle(action)} registrada`,
     `Hola <span class="employee-name">${employee.name}</span>, ${action.includes('salida') ? '¡Hasta luego!' : 'registro exitoso'}`
   );
+  return true;
 }
 
 function isBlocked(workerId) {
@@ -626,7 +629,7 @@ if (scannerInput) {
 }
 
 
-function processQR(token) {
+async function processQR(token) {
 
   if (!employeesReady) {
     showWarningModal(
@@ -668,8 +671,9 @@ function processQR(token) {
     );
     return;
   }
+  const saved = await registerStep(employee);
+  if (!saved) return;
 
-  registerStep(employee);
 }
 function getStepFromRecord(record) {
   if (!record) return 0;
@@ -689,7 +693,7 @@ function showSuccessModal(title, message) {
 async function registerStep(employee) {
     // 📍 VALIDAR GEOLOCALIZACIÓN ANTES DE TODO
   const ubicacionValida = await validarUbicacionObligatoria();
-  if (!ubicacionValida) return;
+  if (!ubicacionValida) return false;
 
   recentScans.set(employee.id, Date.now());
 
@@ -819,6 +823,7 @@ switch (step) {
       );
       break;
   }
+  return true;
 }
 
 // ===== MODALES =====
