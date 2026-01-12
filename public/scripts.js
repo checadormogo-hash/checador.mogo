@@ -649,8 +649,8 @@ function processQR(token) {
 
   if (isBlocked(employee.id)) {
     showWarningModal(
-      'Checada reciente',
-      'Ya registraste una checada hace unos momentos'
+      'Checaste Recientemente',
+      'Espera unos minutos más para volver a checar...'
     );
     return;
   }
