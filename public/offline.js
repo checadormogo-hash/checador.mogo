@@ -131,18 +131,21 @@ async function savePendingRecord(data) {
         r.fecha === data.fecha
       );
 
-      if (!record) {
-        record = {
-          worker_id: data.worker_id,
-          nombre: data.worker_name,
-          fecha: data.fecha,
-          entrada: null,
-          salidaComida: null,
-          entradaComida: null,
-          salida: null,
-          estado: "Pendiente"
-        };
-      }
+    if (!record) {
+      record = {
+        worker_id: data.worker_id,
+        nombre: data.worker_name,
+        fecha: data.fecha,
+        entrada: null,
+        salidaComida: null,
+        entradaComida: null,
+        salida: null,
+        estado: "Pendiente",
+        lat: null,
+        lng: null
+     };
+    }
+
 
       // 🔧 normalizar tipos
       const map = {
@@ -151,27 +154,29 @@ async function savePendingRecord(data) {
         "entrada-comida": "entradaComida",
         "salida": "salida"
       };
-
       // 🔒 Ignorar registros automáticos sin paso definido
-      if (data.tipo === 'auto') {
-          store.put(record);
-          return;
-      }
+let field = null;
 
-      const field = map[data.tipo];
-      if (!field) return;
+if (data.tipo !== 'auto') {
+  field = map[data.tipo];
+  if (field && data.hora) {
+    record[field] = data.hora;
+  }
+}
 
-record[field] = data.hora;
-
-// 👇 GUARDAR UBICACIÓN SI VIENE
-if (data.lat) record.lat = data.lat;
-if (data.lng) record.lng = data.lng;
+// 📍 Guardar coordenadas si existen
+if (data.lat !== undefined) record.lat = data.lat;
+if (data.lng !== undefined) record.lng = data.lng;
 
 // 👇 MARCAR QUE ESTE CAMPO ES OFFLINE
-if (!record._offlineFields) record._offlineFields = {};
-record._offlineFields[field] = true;
+if (field) {
+  if (!record._offlineFields) record._offlineFields = {};
+  record._offlineFields[field] = true;
+}
 
+// 💾 guardar SIEMPRE el registro completo (AL FINAL)
 store.put(record);
+
 
     };
 
