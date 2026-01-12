@@ -6,192 +6,24 @@ const supabaseClient = window.supabase.createClient(
 let employees = [];
 let employeesReady = false;
 async function loadEmployees() {
+  const { data, error } = await supabaseClient
+    .from('workers')
+    .select('id, nombre, activo, qr_token');
 
-  // ================= ONLINE =================
-  if (navigator.onLine) {
-    const { data, error } = await supabaseClient
-      .from('workers')
-      .select('id, nombre, activo, qr_token');
-
-    if (error) {
-      console.error('ERROR CARGANDO TRABAJADORES:', error);
-      return;
-    }
-
-    employees = data.map(w => ({
-      id: w.id,
-      name: w.nombre,
-      activo: w.activo ? 'SI' : 'NO',
-      token: w.qr_token
-    }));
-
-    employeesReady = true;
-
-    // 🔴 AQUÍ VA EXACTAMENTE ESTO
-    //await saveWorkers(employees);
-
+  if (error) {
+    console.error('ERROR CARGANDO TRABAJADORES:', error);
     return;
   }
 
-  // ================= OFFLINE =================
-  //const offlineWorkers = await getOfflineWorkers();
+  employees = data.map(w => ({
+    id: w.id,
+    name: w.nombre,
+    activo: w.activo ? 'SI' : 'NO',
+    token: w.qr_token
+  }));
 
- // if (!offlineWorkers || offlineWorkers.length === 0) {
-   // console.warn('No hay trabajadores guardados offline');
-    //employeesReady = false;
-    //return;
-  //}
-
-  //employees = offlineWorkers;
-  //employeesReady = true;
+  employeesReady = true;
 }
-
-// ================== GEOLOCALIZACIÓN ==================
-const STORE_LOCATION = {
-  lat: 25.821034737584974,   // 👈 CAMBIA por tu ubicación real
-  lng: -100.08712245322982, // 👈 CAMBIA por tu ubicación real
-  radius: 120        // metros permitidos
-};
-const LOCATION_MESSAGES = {
-  notSupported: {
-    title: 'Ubicación no disponible',
-    message: 'Este dispositivo no soporta geolocalización.'
-  },
-  permissionRequired: {
-    title: 'Permiso de ubicación requerido',
-    message: 'Para registrar asistencia es obligatorio compartir tu ubicación y estar dentro del establecimiento.'
-  },
-  blocked: {
-    title: 'Ubicación bloqueada',
-    message: 'Obligatorio permitir la Ubicación del dispositivo para poder registrar checadas.'
-  },
-  outOfRange: {
-    title: 'Fuera de zona',
-    message: 'Debes encontrarte dentro del establecimiento para continuar....'
-  }
-};
-
-let locationAllowed = false;
-let currentCoords = null;
-let locationPermissionState = 'pending';
-// pending | blocked | allowed
-
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function canProceedWithLocation() {
-
-  // 1️⃣ El dispositivo no soporta geolocalización
-  if (!navigator.geolocation) {
-    showCriticalModal(
-      LOCATION_MESSAGES.notSupported.title,
-      LOCATION_MESSAGES.notSupported.message
-    );
-    return false;
-  }
-
-  // 2️⃣ Permiso nunca otorgado aún
-  if (locationPermissionState === 'pending') {
-    showCriticalModal(
-      LOCATION_MESSAGES.permissionRequired.title,
-      LOCATION_MESSAGES.permissionRequired.message
-    );
-    return false;
-  }
-
-  // 3️⃣ Permiso bloqueado explícitamente
-  if (locationPermissionState === 'blocked') {
-    showCriticalModal(
-      LOCATION_MESSAGES.blocked.title,
-      LOCATION_MESSAGES.blocked.message
-    );
-    return false;
-  }
-
-  // 4️⃣ Permiso OK, pero fuera del radio
-  if (locationPermissionState === 'allowed' && !locationAllowed) {
-    showCriticalModal(
-      LOCATION_MESSAGES.outOfRange.title,
-      LOCATION_MESSAGES.outOfRange.message
-    );
-    return false;
-  }
-  // 5️⃣ Todo correcto
-  return true;
-}
-
-async function validateGeolocation() {
-  return new Promise(resolve => {
-    locationAllowed = false;
-    currentCoords = null;
-
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        locationPermissionState = 'allowed';
-
-        const { latitude, longitude } = pos.coords;
-        currentCoords = { latitude, longitude };
-
-        const distance = calculateDistance(
-          latitude,
-          longitude,
-          STORE_LOCATION.lat,
-          STORE_LOCATION.lng
-        );
-
-        const accuracy = pos.coords.accuracy || 0;
-        locationAllowed = distance <= (STORE_LOCATION.radius + accuracy);
-
-        closeCriticalModal();
-        resolve(locationAllowed);
-      },
-      error => {
-        locationAllowed = false;
-
-        if (error.code === error.PERMISSION_DENIED) {
-          locationPermissionState = 'blocked';
-          showCriticalModal(
-            LOCATION_MESSAGES.blocked.title,
-            LOCATION_MESSAGES.blocked.message
-          );
-        } else {
-          locationPermissionState = 'pending';
-          showCriticalModal(
-            LOCATION_MESSAGES.permissionRequired.title,
-            LOCATION_MESSAGES.permissionRequired.message
-          );
-        }
-
-        resolve(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 0
-      }
-    );
-  });
-}
-
-function updateCriticalModal(title, message) {
-  document.getElementById('criticalTitle').textContent = title;
-  document.getElementById('criticalMessage').textContent = message;
-}
-function closeCriticalModal() {
-  document.querySelector('.critical-overlay')?.remove();
-}
-
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
 const recentScans = new Map();
 const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
@@ -288,10 +120,6 @@ processQR = function(token) {
 
 // Procesar QR en modo manual
 async function processManualQR(token, action) {
-  await validateGeolocation();
-
-  if (!canProceedWithLocation()) return;
-
   if (!employeesReady) {
     showWarningModal('Sistema iniciando', 'Espera un momento e intenta nuevamente');
     return;
@@ -317,67 +145,6 @@ async function processManualQR(token, action) {
     hideAutoModal();
     return;
   }
-
-  // ⛔ SI NO HAY INTERNET → SOLO OFFLINE
-if (!navigator.onLine) {
-
-  const today = getTodayISO();
-  const lastPending = await getLastPendingForWorker(employee.id, today);
-
-  // 🧠 VALIDAR SECUENCIA OFFLINE
-  if (lastPending) {
-    const lastType = lastPending.tipo;
-
-    if (action === 'entrada' && lastType === 'entrada') {
-      showWarningModal('Entrada ya registrada', 'Ya habías checado entrada');
-      hideAutoModal();
-      return;
-    }
-    if (action === 'salida-comida' && lastType !== 'entrada') {
-      showWarningModal('Secuencia inválida', 'Primero debes registrar entrada');
-      hideAutoModal();
-      return;
-    }
-    if (action === 'entrada-comida' && lastType !== 'salida-comida') {
-      showWarningModal('Secuencia inválida', 'Primero debes salir a comida');
-      hideAutoModal();
-      return;
-    }
-    if (action === 'salida' && lastType !== 'entrada-comida') {
-      showWarningModal('Secuencia inválida', 'No puedes salir aún');
-      hideAutoModal();
-      return;
-    }
-  }
-
-  // ✅ GUARDAR OFFLINE
-  await savePendingRecord({
-    worker_id: employee.id,
-    worker_name: employee.name,
-    fecha: today,
-    tipo: action,
-    hora: new Date().toLocaleTimeString('es-MX', {
-      hour12: false,
-      timeZone: 'America/Monterrey'
-    }),
-    lat: currentCoords?.latitude ?? null,
-    lng: currentCoords?.longitude ?? null
-  });
-
-  await updateOfflineButton();
-  recentScans.set(employee.id, Date.now());
-
-hideAutoModal();
-
-setTimeout(() => {
-  showSuccessModal(
-    `${formatActionTitle(action)} registrada (offline)`,
-    `Hola <span class="employee-name">${employee.name}</span>, tu checada quedó guardada`
-  );
-}, 300);
-
-  return;
-}
 
   // Validar secuencia de pasos según acción manual
   const today = getTodayISO();
@@ -447,7 +214,7 @@ setTimeout(() => {
 }
 // Registrar paso manual (reutilizando registerStep)
 async function registerStepManual(employee, action, todayRecord) {
-  
+  recentScans.set(employee.id, Date.now());
 
   const nowTime = new Date().toLocaleTimeString('es-MX', {
     hour12: false,
@@ -482,11 +249,7 @@ async function registerStepManual(employee, action, todayRecord) {
       .insert([{ worker_id: employee.id, fecha: getTodayISO(), ...recordData }]);
 
     if (insertError) {
-      console.error('SUPABASE INSERT ERROR:', insertError);
-      showCriticalModal(
-        'Error Supabase',
-        insertError.message || 'No se pudo guardar la entrada'
-      );
+      showCriticalModal('Error', 'No se pudo guardar la entrada');
       return;
     }
   } else {
@@ -497,15 +260,11 @@ async function registerStepManual(employee, action, todayRecord) {
       .eq('id', todayRecord.id);
 
     if (updateError) {
-      console.error('SUPABASE UPDATE ERROR:', updateError);
-      showCriticalModal(
-        'Error Supabase',
-        updateError.message || 'No se pudo guardar la checada'
-      );
+      showCriticalModal('Error', 'No se pudo guardar la checada');
       return;
     }
   }
-  recentScans.set(employee.id, Date.now());
+
   // Mensaje de éxito
   showSuccessModal(
     `${formatActionTitle(action)} registrada`,
@@ -681,9 +440,8 @@ function startCameraScanner() {
       cameraId,
       { fps: 10, qrbox: 250 },
       (decodedText) => {
-      if (processingQR) return;
-        stopCameraScanner(); // 👈 frena inmediatamente la cámara
         processQR(decodedText);
+        resetCameraInactivity();
       }
     );
 
@@ -717,64 +475,52 @@ if (scannerInput) {
     processQR(token);
   });
 }
-let processingQR = false;
-async function processQR(token) {
-  if (processingQR) return;
-  processingQR = true;
 
-  try {
-    await validateGeolocation();
+function processQR(token) {
 
-    if (!canProceedWithLocation()) return;
-
-    if (!employeesReady) {
-      showWarningModal(
-        'Sistema iniciando',
-        'Espera un momento e intenta nuevamente'
-      );
-      return;
-    }
-
-    const tokenNormalized = token
-      .trim()
-      .replace(/['"]/g, '-')
-      .toLowerCase();
-
-    const employee = employees.find(e =>
-      e.token?.trim().toLowerCase() === tokenNormalized
+  if (!employeesReady) {
+    showWarningModal(
+      'Sistema iniciando',
+      'Espera un momento e intenta nuevamente'
     );
-
-    if (!employee) {
-      showCriticalModal(
-        'QR no válido',
-        'Este código no pertenece a ningún trabajador'
-      );
-      return;
-    }
-
-    if (employee.activo !== 'SI') {
-      showCriticalModal(
-        'Acceso denegado',
-        'El trabajador está desactivado'
-      );
-      return;
-    }
-
-    if (isBlocked(employee.id)) {
-      showWarningModal(
-        'Checada reciente',
-        'Ya registraste una checada hace unos momentos'
-      );
-      return;
-    }
-
-    await registerStep(employee);
-
-  } finally {
-    processingQR = false;
+    return;
   }
-}
 
+  const tokenNormalized = token
+    .trim()
+    .replace(/['"]/g, '-') // scanners raros
+    .toLowerCase();
+
+  const employee = employees.find(e =>
+    e.token?.trim().toLowerCase() === tokenNormalized
+  );
+
+  if (!employee) {
+    showCriticalModal(
+      'QR no válido',
+      'Este código no pertenece a ningún trabajador'
+    );
+    return;
+  }
+
+  if (employee.activo !== 'SI') {
+    showCriticalModal(
+      'Acceso denegado',
+      'El trabajador está desactivado'
+    );
+    return;
+  }
+
+  if (isBlocked(employee.id)) {
+    showWarningModal(
+      'Checada reciente',
+      'Ya registraste una checada hace unos momentos'
+    );
+    return;
+  }
+
+  registerStep(employee);
+}
 
 function getStepFromRecord(record) {
   if (!record) return 0;
@@ -792,6 +538,7 @@ function showSuccessModal(title, message) {
 
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
+  recentScans.set(employee.id, Date.now());
 
   const today = getTodayISO();
 
@@ -799,15 +546,6 @@ async function registerStep(employee) {
     hour12: false,
     timeZone: 'America/Monterrey'
   });
-
-  // =================================================
-  // 🔴 OFFLINE PRIMERO (NUNCA tocar Supabase aquí)
-  // =================================================
-
-
-  // =================================================
-  // 🟢 ONLINE (solo si HAY internet)
-  // =================================================
 
   // 🔎 Buscar registro del día
   const { data: todayRecord, error: findError } = await supabaseClient
@@ -824,7 +562,6 @@ async function registerStep(employee) {
 
   // 🧠 STEP REAL DESDE BD
   const step = getStepFromRecord(todayRecord);
-
   if (!todayRecord && step !== 0) {
     showCriticalModal(
       'Error de secuencia',
@@ -832,7 +569,6 @@ async function registerStep(employee) {
     );
     return;
   }
-
   // 🛑 Día ya completo
   if (step === 4) {
     showWarningModal(
@@ -844,41 +580,40 @@ async function registerStep(employee) {
 
   const recordData = {};
 
-  switch (step) {
-    case 0:
-      recordData.entrada = nowTime;
-      break;
-    case 1:
-      recordData.salida_comida = nowTime;
-      break;
-    case 2:
-      recordData.entrada_comida = nowTime;
-      break;
-    case 3:
-      recordData.salida = nowTime;
-      break;
-  }
+switch (step) {
+  case 0:
+    recordData.entrada = nowTime;
+    recordData.step = 1;
+    break;
+  case 1:
+    recordData.salida_comida = nowTime;
+    recordData.step = 2;
+    break;
+  case 2:
+    recordData.entrada_comida = nowTime;
+    recordData.step = 3;
+    break;
+  case 3:
+    recordData.salida = nowTime;
+    recordData.step = 3; // día completo
+    break;
+}
 
-  // 🆕 INSERT
+  // 🆕 INSERT (solo entrada)
   if (!todayRecord) {
     const { error: insertError } = await supabaseClient
       .from('records')
       .insert([{
         worker_id: employee.id,
         fecha: today,
-        step: step,
         ...recordData
       }]);
 
     if (insertError) {
-      console.error('SUPABASE INSERT ERROR:', insertError);
-      showCriticalModal(
-        'Error Supabase',
-        insertError.message || 'No se pudo guardar la entrada'
-      );
+      showCriticalModal('Error', 'No se pudo guardar la entrada');
       return;
     }
-  }
+  } 
   // 🔁 UPDATE
   else {
     const { error: updateError } = await supabaseClient
@@ -892,32 +627,26 @@ async function registerStep(employee) {
     }
   }
 
-  recentScans.set(employee.id, Date.now());
-
-  // ✅ MODALES CORRECTOS ONLINE
+  // ✅ MODALES CORRECTOS
   switch (step) {
     case 0:
       showSuccessModal(
-        'Entrada registrada',
-        `Hola <span class="employee-name">${employee.name}</span> bienvenido`
+        'Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`
       );
       break;
     case 1:
       showSuccessModal(
-        'Salida a comida',
-        `Buen provecho <span class="employee-name">${employee.name}</span>.`
+        'Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>.`
       );
       break;
     case 2:
       showSuccessModal(
-        'Entrada de comida',
-        `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`
+        'Entrada de comida', `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`
       );
       break;
     case 3:
       showSuccessModal(
-        'Salida registrada',
-        `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo`
+        'Salida registrada', `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo, nos vemos pronto...`
       );
       break;
   }
@@ -968,7 +697,6 @@ setInterval(updateDateTime, 1000);
 let pinModal, workerPinInput, submitPinBtn, cancelPinBtn, pinError;
 document.addEventListener('DOMContentLoaded', async () => {
   await loadEmployees();
-  await validateGeolocation();
   showAutoModal();
   switchToScannerTab();
 
@@ -978,32 +706,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   submitPinBtn = document.getElementById('submitPinBtn');
   cancelPinBtn = document.getElementById('cancelPinBtn');
   pinError = document.getElementById('pinError');
-
-  const btn = document.getElementById('openOfflineModal');
-  const modal = document.getElementById('offlineModal');
-
-if (btn) {
-    btn.classList.remove('oculto'); // ⬅ elimina la clase que lo oculta
-    btn.style.display = 'flex';     // opcional
-    btn.addEventListener('click', async () => {
-      if (modal) modal.classList.remove('oculto');
-      if (typeof renderOfflineTable === 'function') {
-        await renderOfflineTable();
-      } else {
-        console.warn('renderOfflineTable no está disponible');
-      }
-
-    });
-}
-const closeOfflineModalBtn = document.getElementById('closeOfflineModal');
-const offlineModal = document.getElementById('offlineModal');
-
-if (closeOfflineModalBtn && offlineModal) {
-  closeOfflineModalBtn.addEventListener('click', () => {
-    offlineModal.classList.add('oculto'); // vuelve a ocultar el modal
-  });
-}
-
+});
 
 let deferredPrompt;
 const installBtn = document.getElementById('installAppBtn');
@@ -1059,7 +762,7 @@ async function solicitarPin(workerId, recordId) {
         .eq('tipo', 'salida_temprana')
         .is('usado', false)
         .limit(1)
-        .maybeSingle();
+        maybeSingle()
 
       if (error || !data) {
         pinError.style.display = 'block';
@@ -1105,5 +808,3 @@ if(closePolicies){
   });
 }
 
-
-});
