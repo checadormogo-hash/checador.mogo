@@ -24,6 +24,100 @@ async function loadEmployees() {
 
   employeesReady = true;
 }
+
+// ===== GEOLOCALIZACIÓN CONFIG =====
+const STORE_LOCATION = {
+  lat: 25.82105601479065,   // 👈 CAMBIA por la real
+  lng: -100.08711844709858  // 👈 CAMBIA por la real
+};
+
+const ALLOWED_RADIUS_METERS = 50; // rango permitido
+
+function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // radio tierra en metros
+  const toRad = x => x * Math.PI / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+async function validarUbicacionObligatoria() {
+  if (!('geolocation' in navigator)) {
+    showCriticalModal(
+      'Ubicación no disponible',
+      'Este dispositivo no soporta geolocalización'
+    );
+    return false;
+  }
+
+  return new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude } = position.coords;
+
+        const distancia = calcularDistanciaMetros(
+          latitude,
+          longitude,
+          STORE_LOCATION.lat,
+          STORE_LOCATION.lng
+        );
+
+        if (distancia > ALLOWED_RADIUS_METERS) {
+          showCriticalModal(
+            'Fuera del establecimiento',
+            'Debes estar dentro del establecimiento para realizar la checada'
+          );
+          resolve(false);
+          return;
+        }
+
+        // ✅ Todo bien
+        resolve(true);
+      },
+      error => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            showCriticalModal(
+              'Activa Ubicación',
+              'Para poder continuar...'
+            );
+            break;
+          case error.POSITION_UNAVAILABLE:
+            showCriticalModal(
+              'Ubicación no disponible',
+              'Activa tu ubicación e inténtalo nuevamente'
+            );
+            break;
+          case error.TIMEOUT:
+            showCriticalModal(
+              'Tiempo de espera agotado',
+              'No se pudo obtener tu ubicación'
+            );
+            break;
+          default:
+            showCriticalModal(
+              'Error de ubicación',
+              'No se pudo validar tu ubicación'
+            );
+        }
+        resolve(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  });
+}
+
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
 const recentScans = new Map();
 const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
@@ -246,6 +340,10 @@ async function processManualQR(token, action) {
 }
 // Registrar paso manual (reutilizando registerStep)
 async function registerStepManual(employee, action, todayRecord) {
+    // 📍 VALIDAR GEOLOCALIZACIÓN ANTES DE TODO
+  const ubicacionValida = await validarUbicacionObligatoria();
+  if (!ubicacionValida) return;
+
   recentScans.set(employee.id, Date.now());
 
   const nowTime = new Date().toLocaleTimeString('es-MX', {
@@ -570,6 +668,10 @@ function showSuccessModal(title, message) {
 
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
+    // 📍 VALIDAR GEOLOCALIZACIÓN ANTES DE TODO
+  const ubicacionValida = await validarUbicacionObligatoria();
+  if (!ubicacionValida) return;
+
   recentScans.set(employee.id, Date.now());
 
   const today = getTodayISO();
