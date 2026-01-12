@@ -31,7 +31,7 @@ const STORE_LOCATION = {
   lng: -100.08711844709858  // 👈 CAMBIA por la real
 };
 
-const ALLOWED_RADIUS_METERS = 50; // rango permitido
+const ALLOWED_RADIUS_METERS = 80; // rango permitido
 
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000; // radio tierra en metros
@@ -49,6 +49,8 @@ function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 async function validarUbicacionObligatoria() {
+  console.log('📍 Distancia calculada:', Math.round(distancia), 'metros');
+  
   if (!('geolocation' in navigator)) {
     showCriticalModal(
       'Ubicación no disponible',
@@ -112,7 +114,7 @@ async function validarUbicacionObligatoria() {
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 0
+        maximumAge: 15000
       }
     );
   });
@@ -682,12 +684,21 @@ async function registerStep(employee) {
   });
 
   // 🔎 Buscar registro del día
-  const { data: todayRecord, error: findError } = await supabaseClient
-    .from('records')
-    .select('id, entrada, salida_comida, entrada_comida, salida')
-    .eq('worker_id', employee.id)
-    .eq('fecha', today)
-    .maybeSingle();
+const { data: records, error: findError } = await supabaseClient
+  .from('records')
+  .select('id, entrada, salida_comida, entrada_comida, salida')
+  .eq('worker_id', employee.id)
+  .eq('fecha', today)
+  .order('id', { ascending: false })
+  .limit(1);
+
+if (findError) {
+  showCriticalModal('Error', 'No se pudo validar la checada');
+  return;
+}
+
+const todayRecord = records?.[0] || null;
+
 
   if (findError && findError.code !== 'PGRST116') {
     showCriticalModal('Error', 'No se pudo validar la checada');
