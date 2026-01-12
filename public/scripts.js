@@ -851,7 +851,10 @@ async function registerStep(employee) {
     return;
   }
 
-  const recordData = {};
+  const recordData = {
+  lat: currentCoords?.latitude ?? null,
+  lng: currentCoords?.longitude ?? null
+};
 
   switch (step) {
     case 0:
