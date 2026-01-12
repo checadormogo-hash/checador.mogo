@@ -374,7 +374,7 @@ async function registerStepManual(employee, action, todayRecord) {
       if (!pinValidado) return; // si canceló o PIN incorrecto, salir
 
       recordData.salida = nowTime;
-      recordData.step = 3;
+      recordData.step = 4;
       break;
   }
 
