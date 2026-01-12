@@ -866,6 +866,7 @@ async function registerStep(employee) {
       .insert([{
         worker_id: employee.id,
         fecha: today,
+        step: step,
         ...recordData
       }]);
 
