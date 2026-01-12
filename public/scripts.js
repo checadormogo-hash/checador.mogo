@@ -269,7 +269,7 @@ async function processManualQR(token, action) {
   }
 
   if (isBlocked(employee.id)) {
-    showWarningModal('Checada reciente', 'Ya registraste una checada hace unos momentos');
+    showWarningModal('Checaste Recientemente', 'Espera unos minutos más para volver a checar...');
     hideAutoModal();
     return;
   }
