@@ -657,10 +657,10 @@ async function registerStep(employee) {
   const recordData = {};
   let actionReal = null;
 
-  const hasEntrada = !!todayRecord?.entrada;
-  const hasSalidaComida = !!todayRecord?.salida_comida;
-  const hasEntradaComida = !!todayRecord?.entrada_comida;
-  const hasSalida = !!todayRecord?.salida;
+  const hasEntrada = todayRecord?.entrada != null && String(todayRecord.entrada).trim() !== '';
+  const hasSalidaComida = todayRecord?.salida_comida != null && String(todayRecord.salida_comida).trim() !== '';
+  const hasEntradaComida = todayRecord?.entrada_comida != null && String(todayRecord.entrada_comida).trim() !== '';
+  const hasSalida = todayRecord?.salida != null && String(todayRecord.salida).trim() !== '';
 
   // ✅ Determinar step actual (prioridad al step; si no, derivarlo)
   let currentStep = Number(todayRecord?.step ?? 0);
@@ -673,11 +673,6 @@ async function registerStep(employee) {
     else if (!hasEntradaComida) currentStep = 2;
     else if (!hasSalida) currentStep = 3;
     else currentStep = 4;
-  }
-
-  // ✅ Blindaje anti “salida-comida primero”
-  if (todayRecord && currentStep > 0 && !hasEntrada) {
-    currentStep = 0;
   }
 
   // ✅ Secuencia estricta
