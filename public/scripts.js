@@ -656,14 +656,6 @@ async function registerStep(employee) {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-console.log('DEBUG', {
-  entrada: todayRecord?.entrada,
-  salida_comida: todayRecord?.salida_comida,
-  entrada_comida: todayRecord?.entrada_comida,
-  salida: todayRecord?.salida,
-  flags: { hasEntrada, hasSalidaComida, hasEntradaComida, hasSalida }
-});
-
 
   if (error) {
     showCriticalModal('Error', 'No se pudo validar la checada');
@@ -679,6 +671,13 @@ const hasSalidaComida = hasTime(todayRecord?.salida_comida);
 const hasEntradaComida = hasTime(todayRecord?.entrada_comida);
 const hasSalida = hasTime(todayRecord?.salida);
 
+console.log('DEBUG', {
+  entrada: todayRecord?.entrada,
+  salida_comida: todayRecord?.salida_comida,
+  entrada_comida: todayRecord?.entrada_comida,
+  salida: todayRecord?.salida,
+  flags: { hasEntrada, hasSalidaComida, hasEntradaComida, hasSalida }
+});
 // Secuencia estricta SOLO por campos (esto NO falla nunca)
 if (!todayRecord || !hasEntrada) {
   recordData.entrada = nowTime;
