@@ -118,7 +118,6 @@ function getTodayISO() {
   return mx.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-
 function updateDateTime() {
   const now = new Date();
 
@@ -140,7 +139,6 @@ function updateDateTime() {
   const formattedDate = date.charAt(0).toUpperCase() + date.slice(1);
   currentDateEl.textContent = `${formattedDate} · ${time}`;
 }
-
 
 // ===============================
 // MODAL CHECADAS PENDIENTES
@@ -213,23 +211,6 @@ function formatActionTitle(action) {
     default: return '';
   }
 }
-
-// Reutilizar processQR para modo manual
-//const originalProcessQR = processQR; // guardamos referencia
-
-//processQR = function(token) {
-  //const manualAction = autoOverlay.dataset.manualAction || null;
-
-  //if (manualAction) {
-    // Override temporal del paso según acción manual
-    //processManualQR(token, manualAction);
-    //delete autoOverlay.dataset.manualAction;
-    //return;
-  //}
-
-  // Si no es manual, sigue la lógica automática
-  //originalProcessQR(token);
-//}
 
 // Procesar QR en modo manual
 async function processManualQR(token, action) {
@@ -320,19 +301,17 @@ async function processManualQR(token, action) {
   }
 
   // Registrar el paso según acción
-const saved = await registerStepManual(employee, action, todayRecord);
-if (saved) {
-  hideAutoModal();
+  const saved = await registerStepManual(employee, action, todayRecord);
+  if (saved) {
+    hideAutoModal();
+  }
 }
 
-}
-// Registrar paso manual (reutilizando registerStep)
+// Registrar paso manual
 async function registerStepManual(employee, action, todayRecord) {
-    // 📍 VALIDAR GEOLOCALIZACIÓN ANTES DE TODO
   const ubicacionValida = await validarUbicacionObligatoria();
-  if (!ubicacionValida) {
-    return false; // 👈 CLAVE
-  }
+  if (!ubicacionValida) return false;
+
   recentScans.set(employee.id, Date.now());
 
   const nowTime = new Date().toLocaleTimeString('es-MX', {
@@ -356,9 +335,8 @@ async function registerStepManual(employee, action, todayRecord) {
       recordData.step = 3;
       break;
     case 'salida':
-      // 🔒 Antes de registrar salida, solicitar PIN
       const pinValidado = await solicitarPin(employee.id, todayRecord?.id);
-      if (!pinValidado) return false; // si canceló o PIN incorrecto, salir
+      if (!pinValidado) return false;
 
       recordData.salida = nowTime;
       recordData.step = 4;
@@ -366,17 +344,15 @@ async function registerStepManual(employee, action, todayRecord) {
   }
 
   if (!todayRecord) {
-    // Insertar nuevo registro si no existe
     const { error: insertError } = await supabaseClient
       .from('records')
       .insert([{ worker_id: employee.id, fecha: getTodayISO(), ...recordData }]);
 
     if (insertError) {
       showCriticalModal('Error', 'No se pudo guardar la entrada');
-      return;
+      return false;
     }
   } else {
-    // Actualizar registro existente
     const { error: updateError } = await supabaseClient
       .from('records')
       .update(recordData)
@@ -384,11 +360,10 @@ async function registerStepManual(employee, action, todayRecord) {
 
     if (updateError) {
       showCriticalModal('Error', 'No se pudo guardar la checada');
-      return;
+      return false;
     }
   }
 
-  // Mensaje de éxito
   showSuccessModal(
     `${formatActionTitle(action)} registrada`,
     `Hola <span class="employee-name">${employee.name}</span>, ${action.includes('salida') ? '¡Hasta luego!' : 'registro exitoso'}`
@@ -401,11 +376,8 @@ function isBlocked(workerId) {
   if (!lastTime) return false;
 
   const now = Date.now();
-  if (now - lastTime < BLOCK_TIME) {
-    return true;
-  }
+  if (now - lastTime < BLOCK_TIME) return true;
 
-  // Si ya pasó el tiempo, liberar
   recentScans.delete(workerId);
   return false;
 }
@@ -419,19 +391,15 @@ const INACTIVITY_TIME = 15000;
 function showAutoModal() {
   clearTimeout(inactivityTimer);
 
-  // Mostrar overlay
   autoOverlay.style.display = 'flex';
 
-  // 🔹 Limpiar cualquier acción manual previa
   if (autoOverlay.dataset.manualAction) {
     delete autoOverlay.dataset.manualAction;
   }
 
-  // 🔹 Resetear título del header al modo automático
   const headerTitle = autoOverlay.querySelector('.auto-header h3');
   if (headerTitle) headerTitle.textContent = 'Checador Automático';
 
-  // 🔹 Forzar que sea modo automático (scanner activo)
   autoTabs.forEach(tab => tab.classList.remove('active'));
   autoPanels.forEach(panel => panel.classList.remove('active'));
 
@@ -441,22 +409,18 @@ function showAutoModal() {
   scannerTab.classList.add('active');
   scannerPanel.classList.add('active');
 
-  // Limpiar input del scanner
   if (scannerInput) scannerInput.value = '';
-  
-  // Foco en el input
-  setTimeout(() => { 
-    if (scannerInput) scannerInput.focus(); 
+
+  setTimeout(() => {
+    if (scannerInput) scannerInput.focus();
   }, 100);
 
-  // Reiniciar temporizador
   startInactivityTimer();
 }
 
 function hideAutoModal() {
   stopCameraScanner();
   autoOverlay.style.display = 'none';
-    // 🔹 Limpiar flag de acción manual al cerrar
   if (autoOverlay.dataset.manualAction) {
     delete autoOverlay.dataset.manualAction;
   }
@@ -486,7 +450,6 @@ if (openAutoModalBtn) {
   });
 }
 
-
 function switchToScannerTab() {
   autoTabs.forEach(t => t.classList.remove('active'));
   autoPanels.forEach(p => p.classList.remove('active'));
@@ -506,7 +469,7 @@ const autoPanels = document.querySelectorAll('.auto-panel');
 
 autoTabs.forEach(tab => {
   tab.addEventListener('click', () => {
-        if (tab.dataset.mode === 'camera') {
+    if (tab.dataset.mode === 'camera') {
       startCameraScanner();
     } else {
       stopCameraScanner();
@@ -524,6 +487,7 @@ autoTabs.forEach(tab => {
     }
   });
 });
+
 // ===== QR POR CÁMARA =====
 let html5QrCode = null;
 let cameraActive = false;
@@ -588,7 +552,7 @@ function stopCameraScanner() {
 // ===== ESCANEAR QR =====
 if (scannerInput) {
   scannerInput.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter') return;
+    if (e.key !== 'Enter') return;
     const token = scannerInput.value.trim();
     scannerInput.value = '';
 
@@ -597,44 +561,33 @@ if (scannerInput) {
       return;
     }
 
-    // 🔑 DETECTAR SI ESTAMOS EN MODO MANUAL
     const manualAction = autoOverlay?.dataset?.manualAction || null;
 
     if (manualAction) {
-      // 👉 AQUÍ VA EXACTAMENTE ESTA LÍNEA
       processManualQR(token, manualAction);
-
-      // limpiar flag para evitar contaminación
       delete autoOverlay.dataset.manualAction;
       return;
     }
 
-    // 👉 MODO AUTOMÁTICO NORMAL
     processQR(token);
   });
 }
 
-
 let processingQR = false; // 🔒 LOCK GLOBAL
 
 async function processQR(token) {
-  // 🔒 EVITA DOBLE EJECUCIÓN
   if (processingQR) return;
   processingQR = true;
 
   try {
-
     if (!employeesReady) {
-      showWarningModal(
-        'Sistema iniciando',
-        'Espera un momento e intenta nuevamente'
-      );
+      showWarningModal('Sistema iniciando', 'Espera un momento e intenta nuevamente');
       return;
     }
 
     const tokenNormalized = token
       .trim()
-      .replace(/['"]/g, '-') // scanners raros
+      .replace(/['"]/g, '-')
       .toLowerCase();
 
     const employee = employees.find(e =>
@@ -642,66 +595,42 @@ async function processQR(token) {
     );
 
     if (!employee) {
-      showCriticalModal(
-        'QR no válido',
-        'Este código no pertenece a ningún trabajador'
-      );
+      showCriticalModal('QR no válido', 'Este código no pertenece a ningún trabajador');
       return;
     }
 
     if (employee.activo !== 'SI') {
-      showCriticalModal(
-        'Acceso denegado',
-        'El trabajador está desactivado'
-      );
+      showCriticalModal('Acceso denegado', 'El trabajador está desactivado');
       return;
     }
 
     if (isBlocked(employee.id)) {
-      showWarningModal(
-        'Checaste recientemente',
-        'Espera unos minutos más para volver a checar...'
-      );
+      showWarningModal('Checaste recientemente', 'Espera unos minutos más para volver a checar...');
       return;
     }
 
-    // 🔒 BLOQUEO TEMPORAL ANTI-REBOTE
     recentScans.set(employee.id, Date.now());
 
     const saved = await registerStep(employee);
 
-    // 🔁 ROLLBACK SI FALLÓ
     if (!saved) {
       recentScans.delete(employee.id);
     }
 
   } catch (err) {
     console.error('❌ Error en processQR:', err);
-    showCriticalModal(
-      'Error inesperado',
-      'Ocurrió un problema al procesar la checada'
-    );
+    showCriticalModal('Error inesperado', 'Ocurrió un problema al procesar la checada');
   } finally {
-    // 🔓 LIBERAR LOCK SIEMPRE
     processingQR = false;
   }
 }
 
-//function getStepFromRecord(record) {
-  //if (!record) return 0;
-  //if (!record.entrada) return 0;
-  //if (!record.entrada && !record.salida_comida) return 1;
-  //if (!record.salida_comida && !record.entrada_comida) return 2;
-  //if (!record.entrada_comida && !record.salida) return 3;
-  //return 4; // día completo
-//}
-
 function showSuccessModal(title, message) {
-  setConfirmStyle('#16a34a'); // 🟢 verde
+  setConfirmStyle('#16a34a');
   showConfirmModal(title, message, 2500);
 }
 
-// ===== REGISTRAR CHECADA =====
+// ===== REGISTRAR CHECADA (AUTO) =====
 async function registerStep(employee) {
   const ubicacionValida = await validarUbicacionObligatoria();
   if (!ubicacionValida) return false;
@@ -712,10 +641,10 @@ async function registerStep(employee) {
     timeZone: 'America/Monterrey'
   });
 
-  // 🔎 Buscar registro del día
+  // 🔎 Buscar registro del día (AHORA TRAEMOS step)
   const { data: todayRecord, error } = await supabaseClient
     .from('records')
-    .select('id, entrada, salida_comida, entrada_comida, salida')
+    .select('id, entrada, salida_comida, entrada_comida, salida, step')
     .eq('worker_id', employee.id)
     .eq('fecha', today)
     .maybeSingle();
@@ -728,44 +657,57 @@ async function registerStep(employee) {
   const recordData = {};
   let actionReal = null;
 
-  // ✅ NORMALIZACIÓN CORRECTA
-  const hasEntrada = todayRecord?.entrada !== null && todayRecord?.entrada !== '';
-  const hasSalidaComida = todayRecord?.salida_comida !== null && todayRecord?.salida_comida !== '';
-  const hasEntradaComida = todayRecord?.entrada_comida !== null && todayRecord?.entrada_comida !== '';
-  const hasSalida = todayRecord?.salida !== null && todayRecord?.salida !== '';
+  const hasEntrada = !!todayRecord?.entrada;
+  const hasSalidaComida = !!todayRecord?.salida_comida;
+  const hasEntradaComida = !!todayRecord?.entrada_comida;
+  const hasSalida = !!todayRecord?.salida;
 
-  // 🧠 LÓGICA REAL
+  // ✅ Determinar step actual (prioridad al step; si no, derivarlo)
+  let currentStep = Number(todayRecord?.step ?? 0);
+
   if (!todayRecord) {
+    currentStep = 0;
+  } else if (todayRecord.step == null) {
+    if (!hasEntrada) currentStep = 0;
+    else if (!hasSalidaComida) currentStep = 1;
+    else if (!hasEntradaComida) currentStep = 2;
+    else if (!hasSalida) currentStep = 3;
+    else currentStep = 4;
+  }
+
+  // ✅ Blindaje anti “salida-comida primero”
+  if (todayRecord && currentStep > 0 && !hasEntrada) {
+    currentStep = 0;
+  }
+
+  // ✅ Secuencia estricta
+  if (currentStep === 0) {
     recordData.entrada = nowTime;
+    recordData.step = 1;
     actionReal = 'entrada';
 
-  } else if (!hasEntrada) {
-    recordData.entrada = nowTime;
-    actionReal = 'entrada';
-
-  } else if (!hasSalidaComida) {
+  } else if (currentStep === 1) {
     recordData.salida_comida = nowTime;
+    recordData.step = 2;
     actionReal = 'salida-comida';
 
-  } else if (!hasEntradaComida) {
+  } else if (currentStep === 2) {
     recordData.entrada_comida = nowTime;
+    recordData.step = 3;
     actionReal = 'entrada-comida';
 
-  } else if (!hasSalida) {
+  } else if (currentStep === 3) {
     recordData.salida = nowTime;
+    recordData.step = 4;
     actionReal = 'salida';
 
   } else {
-    showWarningModal(
-      'Jornada finalizada',
-      'Ya completaste todas las checadas del día'
-    );
+    showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
     return false;
   }
 
   console.log('➡️ ACCIÓN REAL:', actionReal);
 
-  // 🆙 INSERT o UPDATE (id UUID se respeta)
   const { error: saveError } = await supabaseClient
     .from('records')
     .upsert(
@@ -778,11 +720,11 @@ async function registerStep(employee) {
     );
 
   if (saveError) {
+    console.error('❌ SAVE ERROR:', saveError);
     showCriticalModal('Error', 'No se pudo guardar la checada');
     return false;
   }
 
-  // ✅ MENSAJE CORRECTO
   switch (actionReal) {
     case 'entrada':
       showSuccessModal('Entrada registrada', `Bienvenido <span class="employee-name">${employee.name}</span>`);
@@ -800,7 +742,6 @@ async function registerStep(employee) {
 
   return true;
 }
-
 
 // ===== MODALES =====
 const confirmModal = document.getElementById('confirmModal');
@@ -850,7 +791,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   showAutoModal();
   switchToScannerTab();
 
-  // ✅ Asignaciones a las variables globales
   pinModal = document.getElementById('pinModal');
   workerPinInput = document.getElementById('workerPinInput');
   submitPinBtn = document.getElementById('submitPinBtn');
@@ -861,23 +801,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 let deferredPrompt;
 const installBtn = document.getElementById('installAppBtn');
 
-// Si ya está instalada → nunca mostrar
 if (window.matchMedia('(display-mode: standalone)').matches) {
   installBtn.style.display = 'none';
 }
 
-// Detectar posibilidad de instalación
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
 
-  // Mostrar solo si NO está instalada
   if (!window.matchMedia('(display-mode: standalone)').matches) {
     installBtn.style.display = 'flex';
   }
 });
 
-// Click instalar
 installBtn.addEventListener('click', async () => {
   if (!deferredPrompt) return;
 
@@ -903,7 +839,6 @@ async function solicitarPin(workerId, recordId) {
       const pin = workerPinInput.value.trim();
       if (!pin) return;
 
-      // Verificamos en Supabase
       const { data, error } = await supabaseClient
         .from('auth_pins')
         .select('id')
@@ -917,11 +852,7 @@ async function solicitarPin(workerId, recordId) {
         pinError.style.display = 'block';
         return;
       }
-      if (!data) {
-        pinError.style.display = 'block';
-        return;
-      }
-      // Marcamos PIN como usado
+
       await supabaseClient
         .from('auth_pins')
         .update({ usado: true })
@@ -935,7 +866,6 @@ async function solicitarPin(workerId, recordId) {
       pinModal.classList.add('oculto');
       resolve(false);
     };
-
   });
 }
 
@@ -943,17 +873,16 @@ const openPolicies = document.getElementById('openPolicies');
 const policiesModal = document.getElementById('policiesModal');
 const closePolicies = document.getElementById('closePolicies');
 
-if(openPolicies){
-  openPolicies.addEventListener('click',()=>{
+if (openPolicies) {
+  openPolicies.addEventListener('click', () => {
     policiesModal.classList.remove('oculto');
     clearTimeout(inactivityTimer);
   });
 }
 
-if(closePolicies){
-  closePolicies.addEventListener('click',()=>{
+if (closePolicies) {
+  closePolicies.addEventListener('click', () => {
     policiesModal.classList.add('oculto');
     startInactivityTimer();
   });
 }
-
