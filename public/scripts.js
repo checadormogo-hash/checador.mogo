@@ -656,14 +656,14 @@ async function processQR(token) {
   if (!saved) return;
 
 }
-function getStepFromRecord(record) {
-  if (!record) return 0;
-  if (!record.entrada) return 0;
-  if (!record.entrada && !record.salida_comida) return 1;
-  if (!record.salida_comida && !record.entrada_comida) return 2;
-  if (!record.entrada_comida && !record.salida) return 3;
-  return 4; // día completo
-}
+//function getStepFromRecord(record) {
+  //if (!record) return 0;
+  //if (!record.entrada) return 0;
+  //if (!record.entrada && !record.salida_comida) return 1;
+  //if (!record.salida_comida && !record.entrada_comida) return 2;
+  //if (!record.entrada_comida && !record.salida) return 3;
+  //return 4; // día completo
+//}
 
 function showSuccessModal(title, message) {
   setConfirmStyle('#16a34a'); // 🟢 verde
@@ -696,44 +696,40 @@ if (findError) {
   return;
 }
 
-const step = getStepFromRecord(todayRecord);
 const recordData = {};
-  // 🧠 STEP REAL DESDE BD
-  let actionReal = null;
+let actionReal = null;
 
-switch (step) {
-  case 0:
-    recordData.entrada = nowTime;
-    recordData.step = 1;
-    actionReal = 'entrada';
-    break;
+// 🔥 LÓGICA CORRECTA DE FLUJO
+if (!todayRecord || !todayRecord.entrada) {
+  recordData.entrada = nowTime;
+  recordData.step = 1;
+  actionReal = 'entrada';
 
-  case 1:
-    recordData.salida_comida = nowTime;
-    recordData.step = 2;
-    actionReal = 'salida-comida';
-    break;
+} else if (!todayRecord.salida_comida) {
+  recordData.salida_comida = nowTime;
+  recordData.step = 2;
+  actionReal = 'salida-comida';
 
-  case 2:
-    recordData.entrada_comida = nowTime;
-    recordData.step = 3;
-    actionReal = 'entrada-comida';
-    break;
+} else if (!todayRecord.entrada_comida) {
+  recordData.entrada_comida = nowTime;
+  recordData.step = 3;
+  actionReal = 'entrada-comida';
 
-  case 3:
-    recordData.salida = nowTime;
-    recordData.step = 4;
-    actionReal = 'salida';
-    break;
+} else if (!todayRecord.salida) {
+  recordData.salida = nowTime;
+  recordData.step = 4;
+  actionReal = 'salida';
 
-  default:
-    showWarningModal(
-      'Jornada finalizada',
-      'Ya completaste todas las checadas del día'
-    );
-    return false;
+} else {
+  showWarningModal(
+    'Jornada finalizada',
+    'Ya completaste todas las checadas del día'
+  );
+  return false;
 }
-console.log('🧠 STEP ACTUAL:', step, '→ ACCIÓN:', actionReal);
+
+console.log('🧠 STEP CORRECTO → ACCIÓN:', actionReal);
+
   // 🆕 INSERT (solo entrada)
 const { error: upsertError } = await supabaseClient
   .from('records')
