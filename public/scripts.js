@@ -751,32 +751,20 @@ if (!todayRecord) {
 
 
   // 🆕 INSERT (solo entrada)
-  if (!todayRecord) {
-    const { error: insertError } = await supabaseClient
-      .from('records')
-      .insert([{
-        worker_id: employee.id,
-        fecha: today,
-        ...recordData
-      }]);
+const { error: upsertError } = await supabaseClient
+  .from('records')
+  .upsert({
+    worker_id: employee.id,
+    fecha: today,
+    ...recordData
+  }, {
+    onConflict: 'worker_id,fecha'
+  });
 
-    if (insertError) {
-      showCriticalModal('Error', 'No se pudo guardar la entrada');
-      return;
-    }
-  } 
-  // 🔁 UPDATE
-  else {
-    const { error: updateError } = await supabaseClient
-      .from('records')
-      .update(recordData)
-      .eq('id', todayRecord.id);
-
-    if (updateError) {
-      showCriticalModal('Error', 'No se pudo guardar la checada');
-      return;
-    }
-  }
+if (upsertError) {
+  showCriticalModal('Error', 'No se pudo guardar la checada');
+  return false;
+}
 
   // ✅ MODALES CORRECTOS
 switch (actionReal) {
