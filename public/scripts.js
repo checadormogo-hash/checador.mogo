@@ -111,9 +111,13 @@ const currentDateEl = document.getElementById('currentDate');
 
 // ===== FECHA Y HORA =====
 function getTodayISO() {
-  return new Date()
-    .toLocaleDateString('en-CA', { timeZone: 'America/Monterrey' });
+  const now = new Date();
+  const mx = new Date(
+    now.toLocaleString('en-US', { timeZone: 'America/Monterrey' })
+  );
+  return mx.toISOString().slice(0, 10); // YYYY-MM-DD
 }
+
 
 function updateDateTime() {
   const now = new Date();
@@ -745,47 +749,41 @@ if (!todayRecord) {
 
 console.log('🧠 STEP CALCULADO (NO BD):', currentStep);
 
+// 🧠 FUENTE DE VERDAD REAL
+const hasEntrada        = !!todayRecord?.entrada;
+const hasSalidaComida   = !!todayRecord?.salida_comida;
+const hasEntradaComida  = !!todayRecord?.entrada_comida;
+const hasSalida         = !!todayRecord?.salida;
 
 // 🔒 PROTECCIÓN TOTAL CONTRA REESCRITURA
-switch (currentStep) {
-  case 0:
-    recordData.entrada = nowTime;
-    recordData.step = 1;
-    actionReal = 'entrada';
-    break;
+if (!todayRecord || !hasEntrada) {
+  recordData.entrada = nowTime;
+  recordData.step = 1;
+  actionReal = 'entrada';
 
-  case 1:
-    recordData.salida_comida = nowTime;
-    recordData.step = 2;
-    actionReal = 'salida-comida';
-    break;
+} else if (hasEntrada && !hasSalidaComida) {
+  recordData.salida_comida = nowTime;
+  recordData.step = 2;
+  actionReal = 'salida-comida';
 
-  case 2:
-    recordData.entrada_comida = nowTime;
-    recordData.step = 3;
-    actionReal = 'entrada-comida';
-    break;
+} else if (hasSalidaComida && !hasEntradaComida) {
+  recordData.entrada_comida = nowTime;
+  recordData.step = 3;
+  actionReal = 'entrada-comida';
 
-  case 3:
-    recordData.salida = nowTime;
-    recordData.step = 4;
-    actionReal = 'salida';
-    break;
+} else if (hasEntradaComida && !hasSalida) {
+  recordData.salida = nowTime;
+  recordData.step = 4;
+  actionReal = 'salida';
 
-  case 4:
-    showWarningModal(
-      'Jornada finalizada',
-      'Ya completaste todas las checadas del día'
-    );
-    return false;
-
-  default:
-    showCriticalModal(
-      'Estado inválido',
-      'El registro tiene un step desconocido'
-    );
-    return false;
+} else {
+  showWarningModal(
+    'Jornada finalizada',
+    'Ya completaste todas las checadas del día'
+  );
+  return false;
 }
+
 
 console.log('➡️ ACCIÓN PERMITIDA:', actionReal);
 
