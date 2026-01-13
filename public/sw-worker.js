@@ -1,4 +1,4 @@
-const CACHE_NAME = 'checador-v1';
+const CACHE_NAME = 'checador-v2';
 
 // Archivos que queremos actualizar siempre si hay internet
 const DYNAMIC_ASSETS = [
@@ -43,7 +43,7 @@ self.addEventListener('fetch', event => {
   // Network-first para archivos dinámicos
   if (DYNAMIC_ASSETS.includes(url.pathname)) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: 'no-store' })
         .then(response => {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));

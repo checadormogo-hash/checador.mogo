@@ -648,60 +648,49 @@ async function registerStep(employee) {
     .eq('worker_id', employee.id)
     .eq('fecha', today)
     .maybeSingle();
+console.log('DEBUG record', todayRecord);
 
   if (error) {
     showCriticalModal('Error', 'No se pudo validar la checada');
     return false;
   }
 
-  const recordData = {};
-  let actionReal = null;
+const recordData = {};
+let actionReal = null;
 
-  const hasEntrada = todayRecord?.entrada != null && String(todayRecord.entrada).trim() !== '';
-  const hasSalidaComida = todayRecord?.salida_comida != null && String(todayRecord.salida_comida).trim() !== '';
-  const hasEntradaComida = todayRecord?.entrada_comida != null && String(todayRecord.entrada_comida).trim() !== '';
-  const hasSalida = todayRecord?.salida != null && String(todayRecord.salida).trim() !== '';
+// Normalización fuerte
+const hasEntrada = todayRecord?.entrada != null && String(todayRecord.entrada).trim() !== '';
+const hasSalidaComida = todayRecord?.salida_comida != null && String(todayRecord.salida_comida).trim() !== '';
+const hasEntradaComida = todayRecord?.entrada_comida != null && String(todayRecord.entrada_comida).trim() !== '';
+const hasSalida = todayRecord?.salida != null && String(todayRecord.salida).trim() !== '';
 
-  // ✅ Determinar step actual (prioridad al step; si no, derivarlo)
-  let currentStep = Number(todayRecord?.step ?? 0);
+// Secuencia estricta SOLO por campos (esto NO falla nunca)
+if (!todayRecord || !hasEntrada) {
+  recordData.entrada = nowTime;
+  recordData.step = 1;
+  actionReal = 'entrada';
 
-  if (!todayRecord) {
-    currentStep = 0;
-  } else if (todayRecord.step == null) {
-    if (!hasEntrada) currentStep = 0;
-    else if (!hasSalidaComida) currentStep = 1;
-    else if (!hasEntradaComida) currentStep = 2;
-    else if (!hasSalida) currentStep = 3;
-    else currentStep = 4;
-  }
+} else if (!hasSalidaComida) {
+  recordData.salida_comida = nowTime;
+  recordData.step = 2;
+  actionReal = 'salida-comida';
 
-  // ✅ Secuencia estricta
-  if (currentStep === 0) {
-    recordData.entrada = nowTime;
-    recordData.step = 1;
-    actionReal = 'entrada';
+} else if (!hasEntradaComida) {
+  recordData.entrada_comida = nowTime;
+  recordData.step = 3;
+  actionReal = 'entrada-comida';
 
-  } else if (currentStep === 1) {
-    recordData.salida_comida = nowTime;
-    recordData.step = 2;
-    actionReal = 'salida-comida';
+} else if (!hasSalida) {
+  recordData.salida = nowTime;
+  recordData.step = 4;
+  actionReal = 'salida';
 
-  } else if (currentStep === 2) {
-    recordData.entrada_comida = nowTime;
-    recordData.step = 3;
-    actionReal = 'entrada-comida';
+} else {
+  showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
+  return false;
+}
 
-  } else if (currentStep === 3) {
-    recordData.salida = nowTime;
-    recordData.step = 4;
-    actionReal = 'salida';
-
-  } else {
-    showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
-    return false;
-  }
-
-  console.log('➡️ ACCIÓN REAL:', actionReal);
+console.log('➡️ ACCIÓN REAL:', actionReal);
 
   const { error: saveError } = await supabaseClient
     .from('records')
