@@ -659,9 +659,9 @@ async function processQR(token) {
 function getStepFromRecord(record) {
   if (!record) return 0;
   if (!record.entrada) return 0;
-  if (!record.salida_comida) return 1;
-  if (!record.entrada_comida) return 2;
-  if (!record.salida) return 3;
+  if (!record.entrada && !record.salida_comida) return 1;
+  if (!record.salida_comida && !record.entrada_comida) return 2;
+  if (!record.entrada_comida && !record.salida) return 3;
   return 4; // día completo
 }
 
