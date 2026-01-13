@@ -686,7 +686,7 @@ async function registerStep(employee) {
   });
 
   // 🔎 Buscar registro del día
-const { data: records, error: findError } = await supabaseClient
+const { data: todayRecord, error: findError } = await supabaseClient
   .from('records')
   .select('id, entrada, salida_comida, entrada_comida, salida, step')
   .eq('worker_id', employee.id)
