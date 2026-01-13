@@ -703,124 +703,104 @@ function showSuccessModal(title, message) {
 
 // ===== REGISTRAR CHECADA =====
 async function registerStep(employee) {
-    // 📍 VALIDAR GEOLOCALIZACIÓN ANTES DE TODO
   const ubicacionValida = await validarUbicacionObligatoria();
   if (!ubicacionValida) return false;
 
   const today = getTodayISO();
-
   const nowTime = new Date().toLocaleTimeString('es-MX', {
     hour12: false,
     timeZone: 'America/Monterrey'
   });
-console.log('🚨 registerStep ejecutado', Date.now());
 
   // 🔎 Buscar registro del día
-const { data: todayRecord, error: findError } = await supabaseClient
-  .from('records')
-  .select('id, entrada, salida_comida, entrada_comida, salida')
-  .eq('worker_id', employee.id)
-  .eq('fecha', today)
-  .maybeSingle();
+  const { data: todayRecord, error } = await supabaseClient
+    .from('records')
+    .select('id, entrada, salida_comida, entrada_comida, salida')
+    .eq('worker_id', employee.id)
+    .eq('fecha', today)
+    .maybeSingle();
 
-if (findError) {
-  showCriticalModal('Error', 'No se pudo validar la checada');
-  return;
-}
+  if (error) {
+    showCriticalModal('Error', 'No se pudo validar la checada');
+    return false;
+  }
 
-const recordData = {};
-let actionReal = null;
+  const recordData = {};
+  let actionReal = null;
 
-// 🧠 step actual desde BD (fuente de verdad)
-let currentStep = 0;
+  // ✅ NORMALIZACIÓN CORRECTA
+  const hasEntrada = todayRecord?.entrada !== null && todayRecord?.entrada !== '';
+  const hasSalidaComida = todayRecord?.salida_comida !== null && todayRecord?.salida_comida !== '';
+  const hasEntradaComida = todayRecord?.entrada_comida !== null && todayRecord?.entrada_comida !== '';
+  const hasSalida = todayRecord?.salida !== null && todayRecord?.salida !== '';
 
-// 🧠 FUENTE DE VERDAD: CAMPOS DE TIEMPO
-if (!todayRecord) {
-  currentStep = 0;
-} else if (todayRecord.entrada && !todayRecord.salida_comida) {
-  currentStep = 1;
-} else if (todayRecord.salida_comida && !todayRecord.entrada_comida) {
-  currentStep = 2;
-} else if (todayRecord.entrada_comida && !todayRecord.salida) {
-  currentStep = 3;
-} else if (todayRecord.salida) {
-  currentStep = 4;
-}
+  // 🧠 LÓGICA REAL
+  if (!todayRecord) {
+    recordData.entrada = nowTime;
+    actionReal = 'entrada';
 
-console.log('🧠 STEP CALCULADO (NO BD):', currentStep);
+  } else if (!hasEntrada) {
+    recordData.entrada = nowTime;
+    actionReal = 'entrada';
 
-// 🧠 FUENTE DE VERDAD REAL
-const hasEntrada        = !!todayRecord?.entrada;
-const hasSalidaComida   = !!todayRecord?.salida_comida;
-const hasEntradaComida  = !!todayRecord?.entrada_comida;
-const hasSalida         = !!todayRecord?.salida;
+  } else if (!hasSalidaComida) {
+    recordData.salida_comida = nowTime;
+    actionReal = 'salida-comida';
 
-// 🔒 PROTECCIÓN TOTAL CONTRA REESCRITURA
-if (!todayRecord || !hasEntrada) {
-  recordData.entrada = nowTime;
-  recordData.step = 1;
-  actionReal = 'entrada';
+  } else if (!hasEntradaComida) {
+    recordData.entrada_comida = nowTime;
+    actionReal = 'entrada-comida';
 
-} else if (hasEntrada && !hasSalidaComida) {
-  recordData.salida_comida = nowTime;
-  recordData.step = 2;
-  actionReal = 'salida-comida';
+  } else if (!hasSalida) {
+    recordData.salida = nowTime;
+    actionReal = 'salida';
 
-} else if (hasSalidaComida && !hasEntradaComida) {
-  recordData.entrada_comida = nowTime;
-  recordData.step = 3;
-  actionReal = 'entrada-comida';
+  } else {
+    showWarningModal(
+      'Jornada finalizada',
+      'Ya completaste todas las checadas del día'
+    );
+    return false;
+  }
 
-} else if (hasEntradaComida && !hasSalida) {
-  recordData.salida = nowTime;
-  recordData.step = 4;
-  actionReal = 'salida';
+  console.log('➡️ ACCIÓN REAL:', actionReal);
 
-} else {
-  showWarningModal(
-    'Jornada finalizada',
-    'Ya completaste todas las checadas del día'
-  );
-  return false;
-}
+  // 🆙 INSERT o UPDATE (id UUID se respeta)
+  const { error: saveError } = await supabaseClient
+    .from('records')
+    .upsert(
+      {
+        worker_id: employee.id,
+        fecha: today,
+        ...recordData
+      },
+      { onConflict: 'worker_id,fecha' }
+    );
 
+  if (saveError) {
+    showCriticalModal('Error', 'No se pudo guardar la checada');
+    return false;
+  }
 
-console.log('➡️ ACCIÓN PERMITIDA:', actionReal);
+  // ✅ MENSAJE CORRECTO
+  switch (actionReal) {
+    case 'entrada':
+      showSuccessModal('Entrada registrada', `Bienvenido <span class="employee-name">${employee.name}</span>`);
+      break;
+    case 'salida-comida':
+      showSuccessModal('Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>`);
+      break;
+    case 'entrada-comida':
+      showSuccessModal('Entrada de comida', `De regreso <span class="employee-name">${employee.name}</span>`);
+      break;
+    case 'salida':
+      showSuccessModal('Salida registrada', `Hasta luego <span class="employee-name">${employee.name}</span>`);
+      break;
+  }
 
-
-  // 🆕 INSERT (solo entrada)
-const { error: upsertError } = await supabaseClient
-  .from('records')
-  .upsert({
-    worker_id: employee.id,
-    fecha: today,
-    ...recordData
-  }, {
-    onConflict: 'worker_id,fecha'
-  });
-
-if (upsertError) {
-  showCriticalModal('Error', 'No se pudo guardar la checada');
-  return false;
-}
-
-  // ✅ MODALES CORRECTOS
-switch (actionReal) {
-  case 'entrada':
-    showSuccessModal('Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`);
-    break;
-  case 'salida-comida':
-    showSuccessModal('Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>`);
-    break;
-  case 'entrada-comida':
-    showSuccessModal('Entrada de comida', `De regreso <span class="employee-name">${employee.name}</span>`);
-    break;
-  case 'salida':
-    showSuccessModal('Salida registrada', `Gracias <span class="employee-name">${employee.name}</span>`);
-    break;
-}
   return true;
 }
+
 
 // ===== MODALES =====
 const confirmModal = document.getElementById('confirmModal');
