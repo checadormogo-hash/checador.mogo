@@ -7,6 +7,41 @@ const supabaseClient = window.supabase.createClient(
 );
 
 /* ======================================================
+   ESTADO ONLINE / OFFLINE
+====================================================== */
+function isOnline() {
+  return navigator.onLine === true;
+}
+
+window.addEventListener('online', () => {
+  console.log('🟢 Conectado a internet');
+});
+
+window.addEventListener('offline', () => {
+  console.log('🔴 Sin conexión a internet');
+});
+
+/* ======================================================
+   GEOLOCALIZACIÓN (SOLO VALIDAR)
+====================================================== */
+let geoAllowed = false;
+
+function checkGeolocation() {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    () => {
+      geoAllowed = true;
+      console.log('📍 Geolocalización permitida');
+    },
+    () => {
+      geoAllowed = false;
+      console.warn('📍 Geolocalización denegada');
+    }
+  );
+}
+
+/* ======================================================
    EMPLEADOS
 ====================================================== */
 let employees = [];
@@ -25,7 +60,7 @@ async function loadEmployees() {
   employees = data.map(w => ({
     id: w.id,
     name: w.nombre,
-    activo: w.activo ? 'SI' : 'NO',
+    activo: w.activo,
     token: w.qr_token?.trim().toLowerCase()
   }));
 
@@ -33,7 +68,7 @@ async function loadEmployees() {
 }
 
 /* ======================================================
-   BLOQUEO ANTI DOBLE CHECADA
+   BLO BLOQUEO ANTI DOBLE CHECADA
 ====================================================== */
 const recentScans = new Map();
 const BLOCK_TIME = 3 * 60 * 1000;
@@ -41,9 +76,7 @@ const BLOCK_TIME = 3 * 60 * 1000;
 function isBlocked(workerId) {
   const last = recentScans.get(workerId);
   if (!last) return false;
-
   if (Date.now() - last < BLOCK_TIME) return true;
-
   recentScans.delete(workerId);
   return false;
 }
@@ -54,7 +87,9 @@ function isBlocked(workerId) {
 const currentDateEl = document.getElementById('currentDate');
 
 function getTodayISO() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Monterrey' });
+  return new Date().toLocaleDateString('en-CA', {
+    timeZone: 'America/Monterrey'
+  });
 }
 
 function updateDateTime() {
@@ -82,10 +117,7 @@ const INACTIVITY_TIME = 15000;
 function showAutoModal() {
   autoOverlay.style.display = 'flex';
   delete autoOverlay.dataset.manualAction;
-
-  const h3 = autoOverlay.querySelector('.auto-header h3');
-  if (h3) h3.textContent = 'Checador Automático';
-
+  autoOverlay.querySelector('.auto-header h3').textContent = 'Checador Automático';
   switchToScannerTab();
   startInactivityTimer();
 }
@@ -103,35 +135,7 @@ function startInactivityTimer() {
 }
 
 closeAutoModal?.addEventListener('click', hideAutoModal);
-
-openAutoModalBtn?.addEventListener('click', () => {
-  showAutoModal();
-  clearTimeout(inactivityTimer);
-});
-
-/* ======================================================
-   MODAL CHECADAS PENDIENTES
-====================================================== */
-const openOfflineModalBtn = document.getElementById('openOfflineModal');
-const offlineModal = document.getElementById('offlineModal');
-const closeOfflineModalBtn = document.getElementById('closeOfflineModal');
-
-openOfflineModalBtn?.addEventListener('click', () => {
-  offlineModal.classList.remove('oculto');
-  clearTimeout(inactivityTimer);
-});
-
-closeOfflineModalBtn?.addEventListener('click', () => {
-  offlineModal.classList.add('oculto');
-  startInactivityTimer();
-});
-
-offlineModal?.addEventListener('click', e => {
-  if (e.target === offlineModal) {
-    offlineModal.classList.add('oculto');
-    startInactivityTimer();
-  }
-});
+openAutoModalBtn?.addEventListener('click', showAutoModal);
 
 /* ======================================================
    MODO MANUAL
@@ -149,10 +153,8 @@ function openManualModal(action) {
   clearTimeout(inactivityTimer);
   autoOverlay.style.display = 'flex';
   autoOverlay.dataset.manualAction = action;
-
-  const h3 = autoOverlay.querySelector('.auto-header h3');
-  if (h3) h3.textContent = `Manual | ${formatActionTitle(action)}`;
-
+  autoOverlay.querySelector('.auto-header h3').textContent =
+    `Manual | ${formatActionTitle(action)}`;
   switchToScannerTab();
 }
 
@@ -162,11 +164,11 @@ function formatActionTitle(action) {
     'salida-comida': 'Salida Comida',
     'entrada-comida': 'Entrada Comida',
     'salida': 'Salida'
-  }[action] || '';
+  }[action];
 }
 
 /* ======================================================
-   ROUTER ÚNICO DE QR (SCANNER Y CÁMARA)
+   ROUTER ÚNICO QR
 ====================================================== */
 async function handleQR(token) {
   if (!employeesReady) return;
@@ -174,18 +176,30 @@ async function handleQR(token) {
   const normalized = token.trim().toLowerCase();
   const employee = employees.find(e => e.token === normalized);
 
-  if (!employee || employee.activo !== 'SI') return;
+  if (!employee) return;
+  if (!employee.activo) return;
   if (isBlocked(employee.id)) return;
+
+  // OFFLINE
+  if (!isOnline()) {
+    console.warn('📴 OFFLINE → guardar en IndexedDB (pendiente)');
+    return;
+  }
+
+  // ONLINE
+  if (!geoAllowed) {
+    console.warn('📍 Sin geolocalización permitida');
+    return;
+  }
 
   const manualAction = autoOverlay.dataset.manualAction || null;
 
   if (manualAction) {
     await registerStepManual(employee, manualAction);
     delete autoOverlay.dataset.manualAction;
-    return;
+  } else {
+    await registerStep(employee);
   }
-
-  await registerStep(employee);
 }
 
 /* ======================================================
@@ -202,7 +216,6 @@ scannerInput?.addEventListener('change', () => {
 ====================================================== */
 function getStepFromRecord(r) {
   if (!r) return 0;
-  if (!r.entrada) return 0;
   if (!r.salida_comida) return 1;
   if (!r.entrada_comida) return 2;
   if (!r.salida) return 3;
@@ -246,58 +259,23 @@ async function registerStepManual(employee, action) {
   const today = getTodayISO();
   const now = new Date().toLocaleTimeString('es-MX', { hour12: false });
 
-  const { data: record } = await supabaseClient
-    .from('records')
-    .select('*')
-    .eq('worker_id', employee.id)
-    .eq('fecha', today)
-    .maybeSingle();
+  const data = {
+    worker_id: employee.id,
+    fecha: today
+  };
 
-  const data = {};
   if (action === 'entrada') data.entrada = now;
   if (action === 'salida-comida') data.salida_comida = now;
   if (action === 'entrada-comida') data.entrada_comida = now;
   if (action === 'salida') data.salida = now;
 
-  await supabaseClient.from('records').upsert({
-    worker_id: employee.id,
-    fecha: today,
-    ...data
-  }, { onConflict: 'worker_id,fecha' });
+  await supabaseClient.from('records').upsert(data, {
+    onConflict: 'worker_id,fecha'
+  });
 
   recentScans.set(employee.id, Date.now());
   hideAutoModal();
 }
-
-/* ======================================================
-   TABS SCANNER / CÁMARA
-====================================================== */
-const autoTabs = document.querySelectorAll('.auto-tab');
-const autoPanels = document.querySelectorAll('.auto-panel');
-
-function switchToScannerTab() {
-  autoTabs.forEach(t => t.classList.remove('active'));
-  autoPanels.forEach(p => p.classList.remove('active'));
-
-  document.querySelector('[data-mode="scanner"]').classList.add('active');
-  document.getElementById('autoScanner').classList.add('active');
-
-  setTimeout(() => scannerInput?.focus(), 100);
-}
-
-autoTabs.forEach(tab => {
-  tab.addEventListener('click', () => {
-    autoTabs.forEach(t => t.classList.remove('active'));
-    autoPanels.forEach(p => p.classList.remove('active'));
-
-    tab.classList.add('active');
-    document.getElementById(
-      tab.dataset.mode === 'camera' ? 'autoCamera' : 'autoScanner'
-    ).classList.add('active');
-
-    tab.dataset.mode === 'camera' ? startCameraScanner() : stopCameraScanner();
-  });
-});
 
 /* ======================================================
    CÁMARA QR
@@ -316,7 +294,7 @@ function startCameraScanner() {
     html5QrCode.start(
       devices[0].id,
       { fps: 10, qrbox: 250 },
-      decodedText => handleQR(decodedText)
+      decoded => handleQR(decoded)
     );
 
     cameraActive = true;
@@ -336,6 +314,7 @@ function stopCameraScanner() {
    INIT
 ====================================================== */
 document.addEventListener('DOMContentLoaded', async () => {
+  checkGeolocation();
   await loadEmployees();
   updateDateTime();
   setInterval(updateDateTime, 1000);
