@@ -630,6 +630,12 @@ function showSuccessModal(title, message) {
   showConfirmModal(title, message, 2500);
 }
 
+function hasTime(v) {
+  if (v === null || v === undefined) return false;
+  const s = String(v).trim();
+  return s !== '' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined';
+}
+
 // ===== REGISTRAR CHECADA (AUTO) =====
 async function registerStep(employee) {
   const ubicacionValida = await validarUbicacionObligatoria();
@@ -647,8 +653,17 @@ async function registerStep(employee) {
     .select('id, entrada, salida_comida, entrada_comida, salida, step')
     .eq('worker_id', employee.id)
     .eq('fecha', today)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
-console.log('DEBUG record', todayRecord);
+console.log('DEBUG', {
+  entrada: todayRecord?.entrada,
+  salida_comida: todayRecord?.salida_comida,
+  entrada_comida: todayRecord?.entrada_comida,
+  salida: todayRecord?.salida,
+  flags: { hasEntrada, hasSalidaComida, hasEntradaComida, hasSalida }
+});
+
 
   if (error) {
     showCriticalModal('Error', 'No se pudo validar la checada');
@@ -659,10 +674,10 @@ const recordData = {};
 let actionReal = null;
 
 // Normalización fuerte
-const hasEntrada = todayRecord?.entrada != null && String(todayRecord.entrada).trim() !== '';
-const hasSalidaComida = todayRecord?.salida_comida != null && String(todayRecord.salida_comida).trim() !== '';
-const hasEntradaComida = todayRecord?.entrada_comida != null && String(todayRecord.entrada_comida).trim() !== '';
-const hasSalida = todayRecord?.salida != null && String(todayRecord.salida).trim() !== '';
+const hasEntrada = hasTime(todayRecord?.entrada);
+const hasSalidaComida = hasTime(todayRecord?.salida_comida);
+const hasEntradaComida = hasTime(todayRecord?.entrada_comida);
+const hasSalida = hasTime(todayRecord?.salida);
 
 // Secuencia estricta SOLO por campos (esto NO falla nunca)
 if (!todayRecord || !hasEntrada) {
