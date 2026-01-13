@@ -1,5 +1,5 @@
 /*************************************************
- * 1. SUPABASE
+ * SUPABASE
  *************************************************/
 const supabaseClient = window.supabase.createClient(
   "https://akgbqsfkehqlpxtrjsnw.supabase.co",
@@ -7,8 +7,33 @@ const supabaseClient = window.supabase.createClient(
 );
 
 /*************************************************
- * 2. GEOLOCALIZACIÓN (OBLIGATORIA)
+ * EMPLEADOS
  *************************************************/
+let employees = [];
+let employeesReady = false;
+
+async function loadEmployees() {
+  const { data, error } = await supabaseClient
+    .from('workers')
+    .select('id, nombre, activo, qr_token');
+
+  if (error) return;
+
+  employees = data.map(w => ({
+    id: w.id,
+    name: w.nombre,
+    activo: w.activo ? 'SI' : 'NO',
+    token: w.qr_token
+  }));
+
+  employeesReady = true;
+}
+
+/*************************************************
+ * GEOLOCALIZACIÓN
+ *************************************************/
+const IS_DESKTOP_TEST = true;
+
 const STORE_LOCATION = {
   lat: 25.82105601479065,
   lng: -100.08711844709858
@@ -18,6 +43,7 @@ const ALLOWED_RADIUS_METERS = 400;
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = x => x * Math.PI / 180;
+
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
 
@@ -30,14 +56,8 @@ function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-async function validarUbicacion() {
-  if (!('geolocation' in navigator)) {
-    showCriticalModal(
-      'Ubicación no disponible',
-      'Este dispositivo no soporta geolocalización'
-    );
-    return false;
-  }
+async function validarUbicacionObligatoria() {
+  if (IS_DESKTOP_TEST) return true;
 
   return new Promise(resolve => {
     navigator.geolocation.getCurrentPosition(
@@ -48,22 +68,15 @@ async function validarUbicacion() {
           STORE_LOCATION.lat,
           STORE_LOCATION.lng
         );
-
         if (d > ALLOWED_RADIUS_METERS) {
-          showCriticalModal(
-            'Fuera del establecimiento',
-            'Debes estar dentro del establecimiento para checar'
-          );
+          showCriticalModal('Fuera del establecimiento','Debes estar dentro del establecimiento');
           resolve(false);
           return;
         }
         resolve(true);
       },
       () => {
-        showCriticalModal(
-          'Ubicación requerida',
-          'Debes permitir el acceso a tu ubicación'
-        );
+        showCriticalModal('Ubicación requerida','Debes permitir ubicación');
         resolve(false);
       }
     );
@@ -71,108 +84,113 @@ async function validarUbicacion() {
 }
 
 /*************************************************
- * 3. FECHA / HORA
+ * FECHA / HORA
  *************************************************/
 function getTodayISO() {
-  return new Date()
-    .toLocaleDateString('en-CA', { timeZone: 'America/Monterrey' });
-}
-
-function getNowTime() {
-  return new Date().toLocaleTimeString('es-MX', {
-    hour12: false,
-    timeZone: 'America/Monterrey'
-  });
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Monterrey' });
 }
 
 /*************************************************
- * 4. EMPLEADOS
- *************************************************/
-let employees = [];
-let employeesReady = false;
-
-async function loadEmployees() {
-  const { data } = await supabaseClient
-    .from('workers')
-    .select('id, nombre, activo, qr_token');
-
-  employees = (data || []).map(w => ({
-    id: w.id,
-    name: w.nombre,
-    activo: w.activo ? 'SI' : 'NO',
-    token: w.qr_token
-  }));
-
-  employeesReady = true;
-}
-
-/*************************************************
- * 5. BLOQUEO ANTI DOBLE SCAN
+ * BLOQUEO ANTI DOBLE CHECADA
  *************************************************/
 const recentScans = new Map();
 const BLOCK_TIME = 3 * 60 * 1000;
 
-function isBlocked(id) {
-  const t = recentScans.get(id);
-  if (!t) return false;
-  if (Date.now() - t < BLOCK_TIME) return true;
-  recentScans.delete(id);
+function isBlocked(workerId) {
+  const last = recentScans.get(workerId);
+  if (!last) return false;
+  if (Date.now() - last < BLOCK_TIME) return true;
+  recentScans.delete(workerId);
   return false;
 }
 
 /*************************************************
- * 6. SCANNER INPUT
+ * ELEMENTOS DOM
  *************************************************/
 const scannerInput = document.querySelector('.scanner-input');
+const actionButtons = document.querySelectorAll('.action-btn');
 
+/*************************************************
+ * MODO MANUAL
+ *************************************************/
+actionButtons.forEach(btn => {
+  const action = btn.dataset.action;
+  if (!action || action === 'abrirscanner') return;
+
+  btn.addEventListener('click', () => openManualModal(action));
+});
+
+function openManualModal(action) {
+  clearTimeout(inactivityTimer);
+  autoOverlay.style.display = 'flex';
+
+  const title = autoOverlay.querySelector('.auto-header h3');
+  title.textContent = `Manual | ${formatActionTitle(action)}`;
+
+  autoOverlay.dataset.manualAction = action;
+  switchToScannerTab();
+
+  setTimeout(() => scannerInput?.focus(), 100);
+}
+
+function formatActionTitle(action) {
+  return {
+    'entrada': 'Entrada',
+    'salida-comida': 'Salida Comida',
+    'entrada-comida': 'Entrada Comida',
+    'salida': 'Salida'
+  }[action] || '';
+}
+
+/*************************************************
+ * ESCANEO INPUT
+ *************************************************/
 if (scannerInput) {
   scannerInput.addEventListener('change', () => {
     const token = scannerInput.value.trim();
     scannerInput.value = '';
-    if (token) processQR(token);
+    if (!token) return;
+
+    const manualAction = autoOverlay.dataset.manualAction || null;
+
+    if (manualAction) {
+      processManualQR(token, manualAction);
+      delete autoOverlay.dataset.manualAction;
+      return;
+    }
+
+    processQR(token);
   });
 }
 
 /*************************************************
- * 7. PROCESAR QR (AUTOMÁTICO)
+ * PROCESAR QR AUTOMÁTICO
  *************************************************/
 async function processQR(token) {
-  if (!employeesReady) {
-    showWarningModal('Sistema iniciando', 'Espera un momento');
-    return;
-  }
+  if (!employeesReady) return;
 
   const employee = employees.find(e =>
-    e.token?.trim().toLowerCase() === token.trim().toLowerCase()
+    e.token?.trim().toLowerCase() === token.toLowerCase()
   );
 
-  if (!employee) {
-    showCriticalModal('QR no válido', 'No pertenece a ningún trabajador');
-    return;
-  }
-
-  if (employee.activo !== 'SI') {
-    showCriticalModal('Acceso denegado', 'Trabajador desactivado');
+  if (!employee || employee.activo !== 'SI') {
+    showCriticalModal('QR inválido','Acceso denegado');
     return;
   }
 
   if (isBlocked(employee.id)) {
-    showWarningModal(
-      'Checada reciente',
-      'Espera unos minutos para volver a checar'
-    );
+    showWarningModal('Checada reciente','Espera unos minutos');
     return;
   }
 
-  const ubicacionOK = await validarUbicacion();
-  if (!ubicacionOK) return;
+  const saved = await registerStep(employee);
+  if (!saved) return;
 
-  const saved = await registerAutomatic(employee);
-  if (saved) recentScans.set(employee.id, Date.now());
+  recentScans.set(employee.id, Date.now());
 }
 
 /*************************************************
- * 8. LÓGICA AUTOMÁTICA (CLAVE)
+ * REGISTRO AUTOMÁTICO
  *************************************************/
 function getStepFromRecord(r) {
   if (!r) return 0;
@@ -183,9 +201,11 @@ function getStepFromRecord(r) {
   return 4;
 }
 
-async function registerAutomatic(employee) {
+async function registerStep(employee) {
+  if (!(await validarUbicacionObligatoria())) return false;
+
   const today = getTodayISO();
-  const now = getNowTime();
+  const now = new Date().toLocaleTimeString('es-MX',{hour12:false,timeZone:'America/Monterrey'});
 
   const { data: record } = await supabaseClient
     .from('records')
@@ -196,20 +216,12 @@ async function registerAutomatic(employee) {
 
   const step = getStepFromRecord(record);
   if (step === 4) {
-    showWarningModal(
-      'Jornada finalizada',
-      'Ya completaste tus checadas del día'
-    );
+    showWarningModal('Jornada finalizada','Ya completaste el día');
     return false;
   }
 
-  const data = {
-    worker_id: employee.id,
-    fecha: today
-  };
-
-  let title = '';
-  let msg = '';
+  const data = { worker_id: employee.id, fecha: today };
+  let title = '', msg = '';
 
   if (step === 0) {
     data.entrada = now;
@@ -231,19 +243,124 @@ async function registerAutomatic(employee) {
 
   const { error } = await supabaseClient
     .from('records')
-    .upsert(data, { onConflict: 'worker_id,fecha' });
+    .upsert(data,{ onConflict:'worker_id,fecha' });
 
   if (error) {
-    showCriticalModal('Error', 'No se pudo guardar la checada');
+    showCriticalModal('Error','No se pudo guardar');
     return false;
   }
 
-  showSuccessModal(title, msg);
+  showSuccessModal(title,msg);
   return true;
 }
 
 /*************************************************
- * 9. MODALES (SIN CAMBIOS)
+ * PROCESAR QR MANUAL
+ *************************************************/
+async function processManualQR(token, action) {
+  if (!employeesReady) return;
+
+  const employee = employees.find(e =>
+    e.token?.trim().toLowerCase() === token.toLowerCase()
+  );
+
+  if (!employee || employee.activo !== 'SI') {
+    showCriticalModal('QR inválido','Acceso denegado');
+    hideAutoModal();
+    return;
+  }
+
+  if (isBlocked(employee.id)) {
+    showWarningModal('Checada reciente','Espera unos minutos');
+    hideAutoModal();
+    return;
+  }
+
+  const today = getTodayISO();
+  const { data: record } = await supabaseClient
+    .from('records')
+    .select('*')
+    .eq('worker_id', employee.id)
+    .eq('fecha', today)
+    .maybeSingle();
+
+  const saved = await registerStepManual(employee, action, record);
+  if (saved) {
+    recentScans.set(employee.id, Date.now());
+    hideAutoModal();
+  }
+}
+
+async function registerStepManual(employee, action, record) {
+  if (!(await validarUbicacionObligatoria())) return false;
+
+  const now = new Date().toLocaleTimeString('es-MX',{hour12:false,timeZone:'America/Monterrey'});
+  const data = {};
+
+  if (action === 'entrada' && record?.entrada) return false;
+  if (action === 'salida-comida' && !record?.entrada) return false;
+  if (action === 'entrada-comida' && !record?.salida_comida) return false;
+  if (action === 'salida' && !record?.entrada) return false;
+
+  if (action === 'entrada') data.entrada = now;
+  if (action === 'salida-comida') data.salida_comida = now;
+  if (action === 'entrada-comida') data.entrada_comida = now;
+  if (action === 'salida') data.salida = now;
+
+  const { error } = await supabaseClient
+    .from('records')
+    .upsert({
+      worker_id: employee.id,
+      fecha: getTodayISO(),
+      ...data
+    },{ onConflict:'worker_id,fecha' });
+
+  if (error) {
+    showCriticalModal('Error','No se pudo guardar');
+    return false;
+  }
+
+  showSuccessModal(
+    `${formatActionTitle(action)} registrada`,
+    `Hola <span class="employee-name">${employee.name}</span>`
+  );
+  return true;
+}
+
+/*************************************************
+ * MODALES (SIN CAMBIOS)
+ *************************************************/
+const autoOverlay = document.getElementById('autoOverlay');
+const closeAutoModal = document.getElementById('closeAutoModal');
+let inactivityTimer = null;
+const INACTIVITY_TIME = 15000;
+
+function showAutoModal() {
+  clearTimeout(inactivityTimer);
+  autoOverlay.style.display = 'flex';
+
+  delete autoOverlay.dataset.manualAction;
+  autoOverlay.querySelector('.auto-header h3').textContent = 'Registro automático';
+
+  switchToScannerTab();
+  startInactivityTimer();
+}
+
+function hideAutoModal() {
+  autoOverlay.style.display = 'none';
+  delete autoOverlay.dataset.manualAction;
+  startInactivityTimer();
+}
+
+function startInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(showAutoModal, INACTIVITY_TIME);
+}
+
+closeAutoModal.addEventListener('click', hideAutoModal);
+
+/*************************************************
+ * CONFIRMACIÓN
  *************************************************/
 const confirmModal = document.getElementById('confirmModal');
 const confirmTitle = document.getElementById('confirmTitle');
@@ -266,61 +383,17 @@ function closeConfirmation() {
 
 closeConfirmModal.addEventListener('click', closeConfirmation);
 
-function showWarningModal(t, m) {
-  setConfirmStyle('#d97706');
-  showConfirmModal(t, m);
-}
+function showWarningModal(t,m){ setConfirmStyle('#d97706'); showConfirmModal(t,m); }
+function showCriticalModal(t,m){ setConfirmStyle('#dc2626'); showConfirmModal(t,m,3000); }
+function showSuccessModal(t,m){ setConfirmStyle('#16a34a'); showConfirmModal(t,m); }
 
-function showCriticalModal(t, m) {
-  setConfirmStyle('#dc2626');
-  showConfirmModal(t, m, 3000);
-}
-
-function showSuccessModal(t, m) {
-  setConfirmStyle('#16a34a');
-  showConfirmModal(t, m);
-}
-
-function setConfirmStyle(color) {
+function setConfirmStyle(color){
   const box = document.querySelector('.confirm-box');
   if (box) box.style.background = color;
 }
 
 /*************************************************
- * 10. AUTO MODAL POR INACTIVIDAD
- *************************************************/
-const autoOverlay = document.getElementById('autoOverlay');
-const closeAutoModal = document.getElementById('closeAutoModal');
-let inactivityTimer = null;
-const INACTIVITY_TIME = 15000;
-
-function showAutoModal() {
-  clearTimeout(inactivityTimer);
-  autoOverlay.style.display = 'flex';
-  if (scannerInput) setTimeout(() => scannerInput.focus(), 100);
-  startInactivityTimer();
-}
-
-function hideAutoModal() {
-  autoOverlay.style.display = 'none';
-  startInactivityTimer();
-}
-
-function startInactivityTimer() {
-  clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(showAutoModal, INACTIVITY_TIME);
-}
-
-closeAutoModal.addEventListener('click', hideAutoModal);
-
-['click', 'keydown', 'touchstart'].forEach(e => {
-  document.addEventListener(e, () => {
-    if (autoOverlay.style.display === 'none') startInactivityTimer();
-  });
-});
-
-/*************************************************
- * 11. INIT
+ * INIT
  *************************************************/
 document.addEventListener('DOMContentLoaded', async () => {
   await loadEmployees();
