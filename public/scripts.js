@@ -583,7 +583,8 @@ function stopCameraScanner() {
 
 // ===== ESCANEAR QR =====
 if (scannerInput) {
-  scannerInput.addEventListener('change', () => {
+  scannerInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
     const token = scannerInput.value.trim();
     scannerInput.value = '';
 
@@ -652,8 +653,12 @@ async function processQR(token) {
     );
     return;
   }
+// 🔒 BLOQUEO INMEDIATO (ANTES DE SUPABASE)
+recentScans.set(employee.id, Date.now());
   const saved = await registerStep(employee);
-  if (!saved) return;
+if (!saved) {
+  recentScans.delete(employee.id); // rollback si falló
+}
 
 }
 //function getStepFromRecord(record) {
@@ -690,10 +695,6 @@ const { data: todayRecord, error: findError } = await supabaseClient
   .eq('worker_id', employee.id)
   .eq('fecha', today)
   .maybeSingle();
-// 🔥 LIMPIEZA TOTAL SI ES DÍA NUEVO
-if (!todayRecord) {
-  recentScans.delete(employee.id);
-}
 
 if (findError) {
   showCriticalModal('Error', 'No se pudo validar la checada');
@@ -798,7 +799,6 @@ switch (actionReal) {
     showSuccessModal('Salida registrada', `Gracias <span class="employee-name">${employee.name}</span>`);
     break;
 }
-  recentScans.set(employee.id, Date.now());
   return true;
 }
 
