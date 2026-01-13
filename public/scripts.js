@@ -700,6 +700,7 @@ if (findError) {
 }
 
 const todayRecord = records?.[0] || null;
+const step = getStepFromRecord(todayRecord);
 
 
   if (findError && findError.code !== 'PGRST116') {
@@ -708,14 +709,7 @@ const todayRecord = records?.[0] || null;
   }
 
   // 🧠 STEP REAL DESDE BD
-  const step = getStepFromRecord(todayRecord);
-  if (!todayRecord && step !== 0) {
-    showCriticalModal(
-      'Error de secuencia',
-      'El registro del día no es válido'
-    );
-    return;
-  }
+  let actionReal = null;
   // 🛑 Día ya completo
   if (step === 4) {
     showWarningModal(
@@ -726,32 +720,35 @@ const todayRecord = records?.[0] || null;
   }
 // 🛑 BLOQUEO ANTI SOBREESCRITURA (REFRESH / DOBLE ENVÍO)
 if (todayRecord) {
-  if (step === 0 && todayRecord.entrada) return;
-  if (step === 1 && todayRecord.salida_comida) return;
-  if (step === 2 && todayRecord.entrada_comida) return;
-  if (step === 3 && todayRecord.salida) return;
+  if (step === 0 && todayRecord.entrada) return false;
+  if (step === 1 && todayRecord.salida_comida) return false;
+  if (step === 2 && todayRecord.entrada_comida) return false;
+  if (step === 3 && todayRecord.salida) return false;
 }
 
   const recordData = {};
 
-switch (step) {
-  case 0:
-    recordData.entrada = nowTime;
-    recordData.step = 1;
-    break;
-  case 1:
-    recordData.salida_comida = nowTime;
-    recordData.step = 2;
-    break;
-  case 2:
-    recordData.entrada_comida = nowTime;
-    recordData.step = 3;
-    break;
-  case 3:
-    recordData.salida = nowTime;
-    recordData.step = 4; // día completo
-    break;
+if (!todayRecord) {
+  recordData.entrada = nowTime;
+  recordData.step = 1;
+  actionReal = 'entrada';
+} else if (!todayRecord.salida_comida) {
+  recordData.salida_comida = nowTime;
+  recordData.step = 2;
+  actionReal = 'salida-comida';
+} else if (!todayRecord.entrada_comida) {
+  recordData.entrada_comida = nowTime;
+  recordData.step = 3;
+  actionReal = 'entrada-comida';
+} else if (!todayRecord.salida) {
+  recordData.salida = nowTime;
+  recordData.step = 4;
+  actionReal = 'salida';
+} else {
+  showWarningModal('Jornada finalizada','Ya completaste el día');
+  return false;
 }
+
 
   // 🆕 INSERT (solo entrada)
   if (!todayRecord) {
@@ -782,28 +779,21 @@ switch (step) {
   }
 
   // ✅ MODALES CORRECTOS
-  switch (step) {
-    case 1:
-      showSuccessModal(
-        'Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`
-      );
-      break;
-    case 2:
-      showSuccessModal(
-        'Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>.`
-      );
-      break;
-    case 3:
-      showSuccessModal(
-        'Entrada de comida', `De regreso con toda la actitud <span class="employee-name">${employee.name}</span>`
-      );
-      break;
-    case 4:
-      showSuccessModal(
-        'Salida registrada', `Gracias <span class="employee-name">${employee.name}</span> por tu esfuerzo, nos vemos pronto...`
-      );
-      break;
-  }
+switch (actionReal) {
+  case 'entrada':
+    showSuccessModal('Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`);
+    break;
+  case 'salida-comida':
+    showSuccessModal('Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>`);
+    break;
+  case 'entrada-comida':
+    showSuccessModal('Entrada de comida', `De regreso <span class="employee-name">${employee.name}</span>`);
+    break;
+  case 'salida':
+    showSuccessModal('Salida registrada', `Gracias <span class="employee-name">${employee.name}</span>`);
+    break;
+}
+
   return true;
 }
 
