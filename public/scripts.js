@@ -699,36 +699,54 @@ if (findError) {
 const recordData = {};
 let actionReal = null;
 
-// 🔥 LÓGICA CORRECTA DE FLUJO
-if (!todayRecord || !todayRecord.entrada) {
-  recordData.entrada = nowTime;
-  recordData.step = 1;
-  actionReal = 'entrada';
+// 🧠 step actual desde BD (fuente de verdad)
+const currentStep = todayRecord?.step ?? 0;
 
-} else if (!todayRecord.salida_comida) {
-  recordData.salida_comida = nowTime;
-  recordData.step = 2;
-  actionReal = 'salida-comida';
+console.log('🧠 STEP EN BD:', currentStep);
 
-} else if (!todayRecord.entrada_comida) {
-  recordData.entrada_comida = nowTime;
-  recordData.step = 3;
-  actionReal = 'entrada-comida';
+// 🔒 PROTECCIÓN TOTAL CONTRA REESCRITURA
+switch (currentStep) {
+  case 0:
+    recordData.entrada = nowTime;
+    recordData.step = 1;
+    actionReal = 'entrada';
+    break;
 
-} else if (!todayRecord.salida) {
-  recordData.salida = nowTime;
-  recordData.step = 4;
-  actionReal = 'salida';
+  case 1:
+    recordData.salida_comida = nowTime;
+    recordData.step = 2;
+    actionReal = 'salida-comida';
+    break;
 
-} else {
-  showWarningModal(
-    'Jornada finalizada',
-    'Ya completaste todas las checadas del día'
-  );
-  return false;
+  case 2:
+    recordData.entrada_comida = nowTime;
+    recordData.step = 3;
+    actionReal = 'entrada-comida';
+    break;
+
+  case 3:
+    recordData.salida = nowTime;
+    recordData.step = 4;
+    actionReal = 'salida';
+    break;
+
+  case 4:
+    showWarningModal(
+      'Jornada finalizada',
+      'Ya completaste todas las checadas del día'
+    );
+    return false;
+
+  default:
+    showCriticalModal(
+      'Estado inválido',
+      'El registro tiene un step desconocido'
+    );
+    return false;
 }
 
-console.log('🧠 STEP CORRECTO → ACCIÓN:', actionReal);
+console.log('➡️ ACCIÓN PERMITIDA:', actionReal);
+
 
   // 🆕 INSERT (solo entrada)
 const { error: upsertError } = await supabaseClient
