@@ -259,7 +259,7 @@ async function processManualQR(token, action) {
   const today = getTodayISO();
   const { data: todayRecord } = await supabaseClient
     .from('records')
-    .select('id, entrada, salida_comida, entrada_comida, salida, step')
+    .select('id, entrada, salida_comida, entrada_comida, salida')
     .eq('worker_id', employee.id)
     .eq('fecha', today)
     .maybeSingle();
@@ -714,7 +714,7 @@ console.log('🚨 registerStep ejecutado', Date.now());
   // 🔎 Buscar registro del día
 const { data: todayRecord, error: findError } = await supabaseClient
   .from('records')
-  .select('id, entrada, salida_comida, entrada_comida, salida, step')
+  .select('id, entrada, salida_comida, entrada_comida, salida')
   .eq('worker_id', employee.id)
   .eq('fecha', today)
   .maybeSingle();
@@ -730,22 +730,21 @@ let actionReal = null;
 // 🧠 step actual desde BD (fuente de verdad)
 let currentStep = 0;
 
+// 🧠 FUENTE DE VERDAD: CAMPOS DE TIEMPO
 if (!todayRecord) {
   currentStep = 0;
-} else if (!todayRecord.entrada) {
-  currentStep = 0;
-} else if (!todayRecord.salida_comida) {
+} else if (todayRecord.entrada && !todayRecord.salida_comida) {
   currentStep = 1;
-} else if (!todayRecord.entrada_comida) {
+} else if (todayRecord.salida_comida && !todayRecord.entrada_comida) {
   currentStep = 2;
-} else if (!todayRecord.salida) {
+} else if (todayRecord.entrada_comida && !todayRecord.salida) {
   currentStep = 3;
-} else {
+} else if (todayRecord.salida) {
   currentStep = 4;
 }
 
+console.log('🧠 STEP CALCULADO (NO BD):', currentStep);
 
-console.log('🧠 STEP EN BD:', currentStep);
 
 // 🔒 PROTECCIÓN TOTAL CONTRA REESCRITURA
 switch (currentStep) {
