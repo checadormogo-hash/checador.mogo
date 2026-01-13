@@ -700,29 +700,9 @@ if (findError) {
 }
 
 const step = getStepFromRecord(todayRecord);
-
+const recordData = {};
   // 🧠 STEP REAL DESDE BD
   let actionReal = null;
-  // 🛑 Día ya completo
-  if (step === 4) {
-    showWarningModal(
-      'Jornada finalizada',
-      'Ya registraste todas tus checadas del día'
-    );
-    return;
-  }
-// 🛑 BLOQUEO ANTI SOBREESCRITURA (REFRESH / DOBLE ENVÍO)
-
-
-// 🔒 SI EXISTE REGISTRO Y YA TIENE ENTRADA, NUNCA VOLVER A REGISTRARLA
-if (todayRecord && todayRecord.entrada && step === 0) {
-  showWarningModal(
-    'Entrada ya registrada',
-    'Ya tienes una entrada registrada hoy'
-  );
-  return false;
-}
-const recordData = {};
 
 switch (step) {
   case 0:
