@@ -690,6 +690,10 @@ const { data: todayRecord, error: findError } = await supabaseClient
   .eq('worker_id', employee.id)
   .eq('fecha', today)
   .maybeSingle();
+// 🔥 LIMPIEZA TOTAL SI ES DÍA NUEVO
+if (!todayRecord) {
+  recentScans.delete(employee.id);
+}
 
 if (findError) {
   showCriticalModal('Error', 'No se pudo validar la checada');
@@ -702,12 +706,20 @@ let actionReal = null;
 // 🧠 step actual desde BD (fuente de verdad)
 let currentStep = 0;
 
-if (todayRecord) {
-  if (!todayRecord.entrada) {
-    currentStep = 0; // 👈 FORZAR DÍA NUEVO REAL
-  } else {
-    currentStep = todayRecord.step ?? 0;
-  }
+let currentStep = 0;
+
+if (!todayRecord) {
+  currentStep = 0;
+} else if (!todayRecord.entrada) {
+  currentStep = 0;
+} else if (!todayRecord.salida_comida) {
+  currentStep = 1;
+} else if (!todayRecord.entrada_comida) {
+  currentStep = 2;
+} else if (!todayRecord.salida) {
+  currentStep = 3;
+} else {
+  currentStep = 4;
 }
 
 
