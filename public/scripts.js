@@ -1,304 +1,575 @@
-/* ======================================================
-   SUPABASE
-====================================================== */
 const supabaseClient = window.supabase.createClient(
   "https://akgbqsfkehqlpxtrjsnw.supabase.co",
   "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
 );
 
-/* ======================================================
-   ESTADO ONLINE / OFFLINE
-====================================================== */
-function isOnline() {
-  return navigator.onLine === true;
-}
-
-window.addEventListener('online', () => {
-  console.log('🟢 Conectado a internet');
-});
-
-window.addEventListener('offline', () => {
-  console.log('🔴 Sin conexión a internet');
-});
-
-/* ======================================================
-   GEOLOCALIZACIÓN (SOLO VALIDAR)
-====================================================== */
-let geoAllowed = false;
-
-function checkGeolocation() {
-  if (!navigator.geolocation) return;
-
-  navigator.geolocation.getCurrentPosition(
-    () => {
-      geoAllowed = true;
-      console.log('📍 Geolocalización permitida');
-    },
-    () => {
-      geoAllowed = false;
-      console.warn('📍 Geolocalización denegada');
-    }
-  );
-}
-
-/* ======================================================
-   EMPLEADOS
-====================================================== */
 let employees = [];
 let employeesReady = false;
-
 async function loadEmployees() {
   const { data, error } = await supabaseClient
     .from('workers')
     .select('id, nombre, activo, qr_token');
 
   if (error) {
-    console.error(error);
+    console.error('ERROR CARGANDO TRABAJADORES:', error);
     return;
   }
 
   employees = data.map(w => ({
     id: w.id,
     name: w.nombre,
-    activo: w.activo,
-    token: w.qr_token?.trim().toLowerCase()
+    activo: w.activo ? 'SI' : 'NO',
+    token: w.qr_token
   }));
 
   employeesReady = true;
 }
+const IS_DESKTOP_TEST = true; // ⚠️ SOLO PARA PRUEBAS
 
-/* ======================================================
-   BLO BLOQUEO ANTI DOBLE CHECADA
-====================================================== */
-const recentScans = new Map();
-const BLOCK_TIME = 3 * 60 * 1000;
+// ===== GEOLOCALIZACIÓN CONFIG =====
+const STORE_LOCATION = {
+  lat: 25.82105601479065,   // 👈 CAMBIA por la real
+  lng: -100.08711844709858  // 👈 CAMBIA por la real
+};
 
-function isBlocked(workerId) {
-  const last = recentScans.get(workerId);
-  if (!last) return false;
-  if (Date.now() - last < BLOCK_TIME) return true;
-  recentScans.delete(workerId);
-  return false;
+const ALLOWED_RADIUS_METERS = 400; // rango permitido
+
+function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // radio tierra en metros
+  const toRad = x => x * Math.PI / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+async function validarUbicacionObligatoria() {
+
+  // 🧪 BYPASS SOLO EN DESARROLLO PC
+  if (IS_DESKTOP_TEST) {
+    console.warn('⚠️ Geolocalización ignorada (modo pruebas en PC)');
+    return true;
+  }
+
+  if (!('geolocation' in navigator)) {
+    showCriticalModal(
+      'Ubicación no disponible',
+      'Este dispositivo no soporta geolocalización'
+    );
+    return false;
+  }
+
+  return new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const { latitude, longitude } = position.coords;
+
+        const distancia = calcularDistanciaMetros(
+          latitude,
+          longitude,
+          STORE_LOCATION.lat,
+          STORE_LOCATION.lng
+        );
+
+        console.log('📍 Distancia calculada:', Math.round(distancia), 'm');
+
+        if (distancia > ALLOWED_RADIUS_METERS) {
+          showCriticalModal(
+            'Fuera del establecimiento',
+            'Debes estar dentro del establecimiento para realizar la checada'
+          );
+          resolve(false);
+          return;
+        }
+
+        resolve(true);
+      },
+      error => {
+        showCriticalModal(
+          'Ubicación requerida',
+          'Debes permitir el acceso a tu ubicación'
+        );
+        resolve(false);
+      }
+    );
+  });
 }
 
-/* ======================================================
-   FECHA Y HORA
-====================================================== */
+// ===== BLOQUEO ANTI DOBLE CHECADA =====
+const recentScans = new Map();
+const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
+
+const actionButtons = document.querySelectorAll('.action-btn');
+const scannerInput = document.querySelector('.scanner-input');
 const currentDateEl = document.getElementById('currentDate');
 
+// ===== FECHA Y HORA =====
 function getTodayISO() {
-  return new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/Monterrey'
-  });
+  return new Date()
+    .toLocaleDateString('en-CA', { timeZone: 'America/Monterrey' });
 }
 
 function updateDateTime() {
   const now = new Date();
-  currentDateEl.textContent = now.toLocaleString('es-MX', {
+
+  const dateFormatter = new Intl.DateTimeFormat('es-MX', {
     weekday: 'long',
     day: '2-digit',
-    month: 'long',
+    month: 'long'
+  });
+
+  const timeFormatter = new Intl.DateTimeFormat('es-MX', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
   });
+
+  const date = dateFormatter.format(now);
+  const time = timeFormatter.format(now);
+
+  const formattedDate = date.charAt(0).toUpperCase() + date.slice(1);
+  currentDateEl.textContent = `${formattedDate} · ${time}`;
 }
 
-/* ======================================================
-   MODAL AUTOMÁTICO
-====================================================== */
+
+// ===============================
+// MODAL CHECADAS PENDIENTES
+// ===============================
+const openOfflineModalBtn = document.getElementById('openOfflineModal');
+const offlineModal = document.getElementById('offlineModal');
+const closeOfflineModalBtn = document.getElementById('closeOfflineModal');
+
+// Abrir modal
+if (openOfflineModalBtn) {
+  openOfflineModalBtn.addEventListener('click', () => {
+    offlineModal.classList.remove('oculto');
+    clearTimeout(inactivityTimer); // pausa auto modal
+  });
+}
+
+// Cerrar modal con botón ✕
+if (closeOfflineModalBtn) {
+  closeOfflineModalBtn.addEventListener('click', () => {
+    offlineModal.classList.add('oculto');
+    startInactivityTimer(); // reanuda auto modal
+  });
+}
+
+// Cerrar modal al hacer clic fuera del contenido
+offlineModal.addEventListener('click', (e) => {
+  if (e.target === offlineModal) {
+    offlineModal.classList.add('oculto');
+    startInactivityTimer();
+  }
+});
+
+// ===== MODO MANUAL =====
+actionButtons.forEach(btn => {
+  const action = btn.dataset.action;
+  if (!action || action === 'abrirscanner') return; // ignorar el botón de automático
+
+  btn.addEventListener('click', () => {
+    openManualModal(action);
+  });
+});
+
+// Abrir modal manual con acción específica
+function openManualModal(action) {
+  clearTimeout(inactivityTimer); // pausa el auto-modal
+  autoOverlay.style.display = 'flex';
+
+  // Cambiar título dinámicamente
+  const headerTitle = autoOverlay.querySelector('.auto-header h3');
+  headerTitle.textContent = `Manual | ${formatActionTitle(action)}`;
+
+  // Activar scanner por defecto
+  switchToScannerTab();
+
+  // Flag de acción manual actual
+  autoOverlay.dataset.manualAction = action;
+
+  setTimeout(() => {
+    if (scannerInput) scannerInput.focus();
+  }, 100);
+}
+
+// Formatear título bonito
+function formatActionTitle(action) {
+  switch (action) {
+    case 'entrada': return 'Entrada';
+    case 'salida-comida': return 'Salida Comida';
+    case 'entrada-comida': return 'Entrada Comida';
+    case 'salida': return 'Salida';
+    default: return '';
+  }
+}
+
+// Reutilizar processQR para modo manual
+//const originalProcessQR = processQR; // guardamos referencia
+
+//processQR = function(token) {
+  //const manualAction = autoOverlay.dataset.manualAction || null;
+
+  //if (manualAction) {
+    // Override temporal del paso según acción manual
+    //processManualQR(token, manualAction);
+    //delete autoOverlay.dataset.manualAction;
+    //return;
+  //}
+
+  // Si no es manual, sigue la lógica automática
+  //originalProcessQR(token);
+//}
+
+// Procesar QR en modo manual
+async function processManualQR(token, action) {
+  if (!employeesReady) {
+    showWarningModal('Sistema iniciando', 'Espera un momento e intenta nuevamente');
+    return;
+  }
+
+  const tokenNormalized = token.trim().replace(/['"]/g, '-').toLowerCase();
+  const employee = employees.find(e => e.token?.trim().toLowerCase() === tokenNormalized);
+
+  if (!employee) {
+    showCriticalModal('QR no válido', 'Este código no pertenece a ningún trabajador');
+    hideAutoModal();
+    return;
+  }
+
+  if (employee.activo !== 'SI') {
+    showCriticalModal('Acceso denegado', 'El trabajador está desactivado');
+    hideAutoModal();
+    return;
+  }
+
+  if (isBlocked(employee.id)) {
+    showWarningModal('Checaste Recientemente', 'Espera unos minutos más para volver a checar...');
+    hideAutoModal();
+    return;
+  }
+
+  // Validar secuencia de pasos según acción manual
+  const today = getTodayISO();
+  const { data: todayRecord } = await supabaseClient
+    .from('records')
+    .select('id, entrada, salida_comida, entrada_comida, salida, step')
+    .eq('worker_id', employee.id)
+    .eq('fecha', today)
+    .maybeSingle();
+
+  // Validar si la acción ya fue registrada
+  if (todayRecord) {
+    switch (action) {
+      case 'entrada':
+        if (todayRecord.entrada) {
+          showWarningModal('Entrada ya registrada', 'Ya habías checado entrada');
+          hideAutoModal();
+          return;
+        }
+        break;
+      case 'salida-comida':
+        if (todayRecord.salida_comida) {
+          showWarningModal('Salida comida ya registrada', 'Ya habías checado salida comida');
+          hideAutoModal();
+          return;
+        }
+        break;
+      case 'entrada-comida':
+        if (todayRecord.entrada_comida) {
+          showWarningModal('Entrada comida ya registrada', 'Ya habías checado entrada comida');
+          hideAutoModal();
+          return;
+        }
+        break;
+      case 'salida':
+        if (todayRecord.salida) {
+          showWarningModal('Salida ya registrada', 'Ya habías checado salida');
+          hideAutoModal();
+          return;
+        }
+        break;
+    }
+  }
+
+  // Reglas de secuencia manual
+  if (action === 'salida-comida' && !todayRecord?.entrada) {
+    showWarningModal('Secuencia inválida', 'No puedes registrar salida a comida antes de entrada');
+    hideAutoModal();
+    return;
+  }
+  if (action === 'entrada-comida' && !todayRecord?.salida_comida) {
+    showWarningModal('Secuencia inválida', 'No puedes registrar entrada de comida antes de salir a comida');
+    hideAutoModal();
+    return;
+  }
+  if (action === 'salida' && !todayRecord?.entrada) {
+    showWarningModal('Secuencia inválida', 'No puedes registrar salida antes de entrada');
+    hideAutoModal();
+    return;
+  }
+
+  // Registrar el paso según acción
+const saved = await registerStepManual(employee, action, todayRecord);
+if (saved) {
+  hideAutoModal();
+}
+
+}
+// Registrar paso manual (reutilizando registerStep)
+async function registerStepManual(employee, action, todayRecord) {
+    // 📍 VALIDAR GEOLOCALIZACIÓN ANTES DE TODO
+  const ubicacionValida = await validarUbicacionObligatoria();
+  if (!ubicacionValida) {
+    return false; // 👈 CLAVE
+  }
+  recentScans.set(employee.id, Date.now());
+
+  const nowTime = new Date().toLocaleTimeString('es-MX', {
+    hour12: false,
+    timeZone: 'America/Monterrey'
+  });
+
+  const recordData = {};
+
+  switch (action) {
+    case 'entrada':
+      recordData.entrada = nowTime;
+      recordData.step = 1;
+      break;
+    case 'salida-comida':
+      recordData.salida_comida = nowTime;
+      recordData.step = 2;
+      break;
+    case 'entrada-comida':
+      recordData.entrada_comida = nowTime;
+      recordData.step = 3;
+      break;
+    case 'salida':
+      // 🔒 Antes de registrar salida, solicitar PIN
+      const pinValidado = await solicitarPin(employee.id, todayRecord?.id);
+      if (!pinValidado) return false; // si canceló o PIN incorrecto, salir
+
+      recordData.salida = nowTime;
+      recordData.step = 4;
+      break;
+  }
+
+  if (!todayRecord) {
+    // Insertar nuevo registro si no existe
+    const { error: insertError } = await supabaseClient
+      .from('records')
+      .insert([{ worker_id: employee.id, fecha: getTodayISO(), ...recordData }]);
+
+    if (insertError) {
+      showCriticalModal('Error', 'No se pudo guardar la entrada');
+      return;
+    }
+  } else {
+    // Actualizar registro existente
+    const { error: updateError } = await supabaseClient
+      .from('records')
+      .update(recordData)
+      .eq('id', todayRecord.id);
+
+    if (updateError) {
+      showCriticalModal('Error', 'No se pudo guardar la checada');
+      return;
+    }
+  }
+
+  // Mensaje de éxito
+  showSuccessModal(
+    `${formatActionTitle(action)} registrada`,
+    `Hola <span class="employee-name">${employee.name}</span>, ${action.includes('salida') ? '¡Hasta luego!' : 'registro exitoso'}`
+  );
+  return true;
+}
+
+function isBlocked(workerId) {
+  const lastTime = recentScans.get(workerId);
+  if (!lastTime) return false;
+
+  const now = Date.now();
+  if (now - lastTime < BLOCK_TIME) {
+    return true;
+  }
+
+  // Si ya pasó el tiempo, liberar
+  recentScans.delete(workerId);
+  return false;
+}
+
+// ===== MODAL AUTOMÁTICO =====
 const autoOverlay = document.getElementById('autoOverlay');
 const closeAutoModal = document.getElementById('closeAutoModal');
-const openAutoModalBtn = document.getElementById('openAutoModal');
-
 let inactivityTimer = null;
 const INACTIVITY_TIME = 15000;
 
 function showAutoModal() {
+  clearTimeout(inactivityTimer);
+
+  // Mostrar overlay
   autoOverlay.style.display = 'flex';
-  delete autoOverlay.dataset.manualAction;
-  autoOverlay.querySelector('.auto-header h3').textContent = 'Checador Automático';
-  switchToScannerTab();
+
+  // 🔹 Limpiar cualquier acción manual previa
+  if (autoOverlay.dataset.manualAction) {
+    delete autoOverlay.dataset.manualAction;
+  }
+
+  // 🔹 Resetear título del header al modo automático
+  const headerTitle = autoOverlay.querySelector('.auto-header h3');
+  if (headerTitle) headerTitle.textContent = 'Checador Automático';
+
+  // 🔹 Forzar que sea modo automático (scanner activo)
+  autoTabs.forEach(tab => tab.classList.remove('active'));
+  autoPanels.forEach(panel => panel.classList.remove('active'));
+
+  const scannerTab = document.querySelector('.auto-tab[data-mode="scanner"]');
+  const scannerPanel = document.getElementById('autoScanner');
+
+  scannerTab.classList.add('active');
+  scannerPanel.classList.add('active');
+
+  // Limpiar input del scanner
+  if (scannerInput) scannerInput.value = '';
+  
+  // Foco en el input
+  setTimeout(() => { 
+    if (scannerInput) scannerInput.focus(); 
+  }, 100);
+
+  // Reiniciar temporizador
   startInactivityTimer();
 }
 
 function hideAutoModal() {
   stopCameraScanner();
   autoOverlay.style.display = 'none';
-  delete autoOverlay.dataset.manualAction;
+    // 🔹 Limpiar flag de acción manual al cerrar
+  if (autoOverlay.dataset.manualAction) {
+    delete autoOverlay.dataset.manualAction;
+  }
   startInactivityTimer();
 }
-
 function startInactivityTimer() {
   clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(showAutoModal, INACTIVITY_TIME);
+  inactivityTimer = setTimeout(() => {
+    showAutoModal();
+  }, INACTIVITY_TIME);
 }
 
-closeAutoModal?.addEventListener('click', hideAutoModal);
-openAutoModalBtn?.addEventListener('click', showAutoModal);
+closeAutoModal.addEventListener('click', hideAutoModal);
 
-/* ======================================================
-   MODO MANUAL
-====================================================== */
-const actionButtons = document.querySelectorAll('.action-btn');
-const scannerInput = document.querySelector('.scanner-input');
-
-actionButtons.forEach(btn => {
-  const action = btn.dataset.action;
-  if (!action || action === 'abrirscanner') return;
-  btn.addEventListener('click', () => openManualModal(action));
-});
-
-function openManualModal(action) {
-  clearTimeout(inactivityTimer);
-  autoOverlay.style.display = 'flex';
-  autoOverlay.dataset.manualAction = action;
-  autoOverlay.querySelector('.auto-header h3').textContent =
-    `Manual | ${formatActionTitle(action)}`;
-  switchToScannerTab();
-}
-
-function formatActionTitle(action) {
-  return {
-    'entrada': 'Entrada',
-    'salida-comida': 'Salida Comida',
-    'entrada-comida': 'Entrada Comida',
-    'salida': 'Salida'
-  }[action];
-}
-
-/* ======================================================
-   ROUTER ÚNICO QR
-====================================================== */
-async function handleQR(token) {
-  if (!employeesReady) return;
-
-  const normalized = token.trim().toLowerCase();
-  const employee = employees.find(e => e.token === normalized);
-
-  if (!employee) return;
-  if (!employee.activo) return;
-  if (isBlocked(employee.id)) return;
-
-  // OFFLINE
-  if (!isOnline()) {
-    console.warn('📴 OFFLINE → guardar en IndexedDB (pendiente)');
-    return;
-  }
-
-  // ONLINE
-  if (!geoAllowed) {
-    console.warn('📍 Sin geolocalización permitida');
-    return;
-  }
-
-  const manualAction = autoOverlay.dataset.manualAction || null;
-
-  if (manualAction) {
-    await registerStepManual(employee, manualAction);
-    delete autoOverlay.dataset.manualAction;
-  } else {
-    await registerStep(employee);
-  }
-}
-
-/* ======================================================
-   SCANNER INPUT
-====================================================== */
-scannerInput?.addEventListener('change', () => {
-  const token = scannerInput.value.trim();
-  scannerInput.value = '';
-  if (token) handleQR(token);
-});
-
-/* ======================================================
-   PROCESO AUTOMÁTICO
-====================================================== */
-function getStepFromRecord(r) {
-  if (!r) return 0;
-  if (!r.salida_comida) return 1;
-  if (!r.entrada_comida) return 2;
-  if (!r.salida) return 3;
-  return 4;
-}
-
-async function registerStep(employee) {
-  const today = getTodayISO();
-  const now = new Date().toLocaleTimeString('es-MX', { hour12: false });
-
-  const { data: record } = await supabaseClient
-    .from('records')
-    .select('*')
-    .eq('worker_id', employee.id)
-    .eq('fecha', today)
-    .maybeSingle();
-
-  const step = getStepFromRecord(record);
-  if (step === 4) return;
-
-  const data = {};
-  if (!record) data.entrada = now;
-  else if (!record.salida_comida) data.salida_comida = now;
-  else if (!record.entrada_comida) data.entrada_comida = now;
-  else data.salida = now;
-
-  await supabaseClient.from('records').upsert({
-    worker_id: employee.id,
-    fecha: today,
-    ...data
-  }, { onConflict: 'worker_id,fecha' });
-
-  recentScans.set(employee.id, Date.now());
-  showAutoModal();
-}
-
-/* ======================================================
-   PROCESO MANUAL
-====================================================== */
-async function registerStepManual(employee, action) {
-  const today = getTodayISO();
-  const now = new Date().toLocaleTimeString('es-MX', { hour12: false });
-
-  const data = {
-    worker_id: employee.id,
-    fecha: today
-  };
-
-  if (action === 'entrada') data.entrada = now;
-  if (action === 'salida-comida') data.salida_comida = now;
-  if (action === 'entrada-comida') data.entrada_comida = now;
-  if (action === 'salida') data.salida = now;
-
-  await supabaseClient.from('records').upsert(data, {
-    onConflict: 'worker_id,fecha'
+['click', 'touchstart', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (autoOverlay.style.display === 'none') startInactivityTimer();
   });
+});
 
-  recentScans.set(employee.id, Date.now());
-  hideAutoModal();
+// ===== BOTÓN MANUAL =====
+const openAutoModalBtn = document.getElementById('openAutoModal');
+if (openAutoModalBtn) {
+  openAutoModalBtn.addEventListener('click', () => {
+    showAutoModal();
+    clearTimeout(inactivityTimer);
+  });
 }
 
-/* ======================================================
-   CÁMARA QR
-====================================================== */
+
+function switchToScannerTab() {
+  autoTabs.forEach(t => t.classList.remove('active'));
+  autoPanels.forEach(p => p.classList.remove('active'));
+
+  const scannerTab = document.querySelector('.auto-tab[data-mode="scanner"]');
+  const scannerPanel = document.getElementById('autoScanner');
+
+  scannerTab.classList.add('active');
+  scannerPanel.classList.add('active');
+
+  setTimeout(() => scannerInput.focus(), 100);
+}
+
+// ===== CAMBIO DE TAB CAMERA / SCANNER =====
+const autoTabs = document.querySelectorAll('.auto-tab');
+const autoPanels = document.querySelectorAll('.auto-panel');
+
+autoTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+        if (tab.dataset.mode === 'camera') {
+      startCameraScanner();
+    } else {
+      stopCameraScanner();
+    }
+    autoTabs.forEach(t => t.classList.remove('active'));
+    autoPanels.forEach(p => p.classList.remove('active'));
+
+    tab.classList.add('active');
+    document
+      .getElementById(tab.dataset.mode === 'camera' ? 'autoCamera' : 'autoScanner')
+      .classList.add('active');
+
+    if (tab.dataset.mode === 'scanner') {
+      setTimeout(() => { scannerInput.focus(); }, 100);
+    }
+  });
+});
+// ===== QR POR CÁMARA =====
 let html5QrCode = null;
 let cameraActive = false;
+let cameraInactivityTimer = null;
+const CAMERA_INACTIVITY_TIME = 15000; // 15 segundos
+function resetCameraInactivity() {
+  clearTimeout(cameraInactivityTimer);
+
+  cameraInactivityTimer = setTimeout(() => {
+    stopCameraScanner();
+    switchToScannerTab();
+  }, CAMERA_INACTIVITY_TIME);
+}
 
 function startCameraScanner() {
   if (cameraActive) return;
 
+  const cameraContainer = document.getElementById('autoCamera');
+
+  cameraContainer.innerHTML = `
+    <div id="qr-reader" style="width:100%;"></div>
+    <p style="text-align:center; margin-top:10px;">
+      Apunta la cámara al QR del gafete
+    </p>
+  `;
+
   html5QrCode = new Html5Qrcode("qr-reader");
 
   Html5Qrcode.getCameras().then(devices => {
-    if (!devices.length) return;
+    if (!devices || devices.length === 0) {
+      showCriticalModal('Cámara no disponible', 'No se detectó ninguna cámara');
+      return;
+    }
+
+    const cameraId = devices[0].id;
 
     html5QrCode.start(
-      devices[0].id,
+      cameraId,
       { fps: 10, qrbox: 250 },
-      decoded => handleQR(decoded)
+      (decodedText) => {
+        processQR(decodedText);
+        resetCameraInactivity();
+      }
     );
 
     cameraActive = true;
+  }).catch(err => {
+    showCriticalModal('Error de cámara', 'No se pudo acceder a la cámara');
   });
+  resetCameraInactivity();
 }
 
 function stopCameraScanner() {
@@ -310,13 +581,356 @@ function stopCameraScanner() {
   }
 }
 
-/* ======================================================
-   INIT
-====================================================== */
-document.addEventListener('DOMContentLoaded', async () => {
-  checkGeolocation();
-  await loadEmployees();
-  updateDateTime();
-  setInterval(updateDateTime, 1000);
+// ===== ESCANEAR QR =====
+if (scannerInput) {
+  scannerInput.addEventListener('change', () => {
+    const token = scannerInput.value.trim();
+    scannerInput.value = '';
+
+    if (!token) {
+      showWarningModal('QR inválido', 'Código no reconocido');
+      return;
+    }
+
+    // 🔑 DETECTAR SI ESTAMOS EN MODO MANUAL
+    const manualAction = autoOverlay?.dataset?.manualAction || null;
+
+    if (manualAction) {
+      // 👉 AQUÍ VA EXACTAMENTE ESTA LÍNEA
+      processManualQR(token, manualAction);
+
+      // limpiar flag para evitar contaminación
+      delete autoOverlay.dataset.manualAction;
+      return;
+    }
+
+    // 👉 MODO AUTOMÁTICO NORMAL
+    processQR(token);
+  });
+}
+
+
+async function processQR(token) {
+
+  if (!employeesReady) {
+    showWarningModal(
+      'Sistema iniciando',
+      'Espera un momento e intenta nuevamente'
+    );
+    return;
+  }
+
+  const tokenNormalized = token
+    .trim()
+    .replace(/['"]/g, '-') // scanners raros
+    .toLowerCase();
+
+  const employee = employees.find(e =>
+    e.token?.trim().toLowerCase() === tokenNormalized
+  );
+
+  if (!employee) {
+    showCriticalModal(
+      'QR no válido',
+      'Este código no pertenece a ningún trabajador'
+    );
+    return;
+  }
+
+  if (employee.activo !== 'SI') {
+    showCriticalModal(
+      'Acceso denegado',
+      'El trabajador está desactivado'
+    );
+    return;
+  }
+
+  if (isBlocked(employee.id)) {
+    showWarningModal(
+      'Checaste Recientemente',
+      'Espera unos minutos más para volver a checar...'
+    );
+    return;
+  }
+  const saved = await registerStep(employee);
+  if (!saved) return;
+
+}
+function getStepFromRecord(record) {
+  if (!record) return 0;
+  if (!record.entrada) return 0;
+  if (!record.salida_comida) return 1;
+  if (!record.entrada_comida) return 2;
+  if (!record.salida) return 3;
+  return 4; // día completo
+}
+
+function showSuccessModal(title, message) {
+  setConfirmStyle('#16a34a'); // 🟢 verde
+  showConfirmModal(title, message, 2500);
+}
+
+// ===== REGISTRAR CHECADA =====
+async function registerStep(employee) {
+    // 📍 VALIDAR GEOLOCALIZACIÓN ANTES DE TODO
+  const ubicacionValida = await validarUbicacionObligatoria();
+  if (!ubicacionValida) return false;
+
+  recentScans.set(employee.id, Date.now());
+
+  const today = getTodayISO();
+
+  const nowTime = new Date().toLocaleTimeString('es-MX', {
+    hour12: false,
+    timeZone: 'America/Monterrey'
+  });
+
+  // 🔎 Buscar registro del día
+const { data: records, error: findError } = await supabaseClient
+  .from('records')
+  .select('id, entrada, salida_comida, entrada_comida, salida, step')
+  .eq('worker_id', employee.id)
+  .eq('fecha', today)
+  .maybeSingle();
+
+if (findError) {
+  showCriticalModal('Error', 'No se pudo validar la checada');
+  return;
+}
+
+const step = getStepFromRecord(todayRecord);
+
+  // 🧠 STEP REAL DESDE BD
+  let actionReal = null;
+  // 🛑 Día ya completo
+  if (step === 4) {
+    showWarningModal(
+      'Jornada finalizada',
+      'Ya registraste todas tus checadas del día'
+    );
+    return;
+  }
+// 🛑 BLOQUEO ANTI SOBREESCRITURA (REFRESH / DOBLE ENVÍO)
+
+  const recordData = {};
+// 🔒 SI EXISTE REGISTRO Y YA TIENE ENTRADA, NUNCA VOLVER A REGISTRARLA
+if (todayRecord && todayRecord.entrada && step === 0) {
+  showWarningModal(
+    'Entrada ya registrada',
+    'Ya tienes una entrada registrada hoy'
+  );
+  return false;
+}
+
+if (!todayRecord) {
+  recordData.entrada = nowTime;
+  recordData.step = 1;
+  actionReal = 'entrada';
+} else if (!todayRecord.salida_comida) {
+  recordData.salida_comida = nowTime;
+  recordData.step = 2;
+  actionReal = 'salida-comida';
+} else if (!todayRecord.entrada_comida) {
+  recordData.entrada_comida = nowTime;
+  recordData.step = 3;
+  actionReal = 'entrada-comida';
+} else if (!todayRecord.salida) {
+  recordData.salida = nowTime;
+  recordData.step = 4;
+  actionReal = 'salida';
+} else {
+  showWarningModal('Jornada finalizada','Ya completaste el día');
+  return false;
+}
+
+
+  // 🆕 INSERT (solo entrada)
+const { error: upsertError } = await supabaseClient
+  .from('records')
+  .upsert({
+    worker_id: employee.id,
+    fecha: today,
+    ...recordData
+  }, {
+    onConflict: 'worker_id,fecha'
+  });
+
+if (upsertError) {
+  showCriticalModal('Error', 'No se pudo guardar la checada');
+  return false;
+}
+
+  // ✅ MODALES CORRECTOS
+switch (actionReal) {
+  case 'entrada':
+    showSuccessModal('Entrada registrada', `Hola <span class="employee-name">${employee.name}</span> bienvenido`);
+    break;
+  case 'salida-comida':
+    showSuccessModal('Salida a comida', `Buen provecho <span class="employee-name">${employee.name}</span>`);
+    break;
+  case 'entrada-comida':
+    showSuccessModal('Entrada de comida', `De regreso <span class="employee-name">${employee.name}</span>`);
+    break;
+  case 'salida':
+    showSuccessModal('Salida registrada', `Gracias <span class="employee-name">${employee.name}</span>`);
+    break;
+}
+
+  return true;
+}
+
+// ===== MODALES =====
+const confirmModal = document.getElementById('confirmModal');
+const confirmTitle = document.getElementById('confirmTitle');
+const confirmMessage = document.getElementById('confirmMessage');
+const closeConfirmModal = document.getElementById('closeConfirmModal');
+let confirmTimeout = null;
+
+function showConfirmModal(title, message, duration = 2500) {
+  confirmTitle.textContent = title;
+  confirmMessage.innerHTML = message;
+  confirmModal.classList.remove('oculto');
+
+  confirmTimeout = setTimeout(() => { closeConfirmation(); }, duration);
+}
+
+function closeConfirmation() {
+  clearTimeout(confirmTimeout);
+  confirmModal.classList.add('oculto');
   showAutoModal();
+}
+
+closeConfirmModal.addEventListener('click', closeConfirmation);
+
+function showWarningModal(title, message) {
+  setConfirmStyle('#d97706');
+  showConfirmModal(title, message, 2500);
+}
+
+function showCriticalModal(title, message) {
+  setConfirmStyle('#dc2626');
+  showConfirmModal(title, message, 3000);
+}
+
+function setConfirmStyle(color) {
+  const box = document.querySelector('.confirm-box');
+  if (box) box.style.background = color;
+}
+
+// ===== INICIAR RELOJ =====
+updateDateTime();
+setInterval(updateDateTime, 1000);
+
+let pinModal, workerPinInput, submitPinBtn, cancelPinBtn, pinError;
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadEmployees();
+  showAutoModal();
+  switchToScannerTab();
+
+  // ✅ Asignaciones a las variables globales
+  pinModal = document.getElementById('pinModal');
+  workerPinInput = document.getElementById('workerPinInput');
+  submitPinBtn = document.getElementById('submitPinBtn');
+  cancelPinBtn = document.getElementById('cancelPinBtn');
+  pinError = document.getElementById('pinError');
 });
+
+let deferredPrompt;
+const installBtn = document.getElementById('installAppBtn');
+
+// Si ya está instalada → nunca mostrar
+if (window.matchMedia('(display-mode: standalone)').matches) {
+  installBtn.style.display = 'none';
+}
+
+// Detectar posibilidad de instalación
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // Mostrar solo si NO está instalada
+  if (!window.matchMedia('(display-mode: standalone)').matches) {
+    installBtn.style.display = 'flex';
+  }
+});
+
+// Click instalar
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+
+  deferredPrompt = null;
+  installBtn.style.display = 'none';
+});
+
+async function solicitarPin(workerId, recordId) {
+  if (!workerPinInput || !pinError || !pinModal) {
+    console.error('El modal o los inputs del PIN no existen en el DOM');
+    return false;
+  }
+
+  workerPinInput.value = '';
+  pinError.style.display = 'none';
+  pinModal.classList.remove('oculto');
+
+  return new Promise(resolve => {
+    submitPinBtn.onclick = async () => {
+      const pin = workerPinInput.value.trim();
+      if (!pin) return;
+
+      // Verificamos en Supabase
+      const { data, error } = await supabaseClient
+        .from('auth_pins')
+        .select('id')
+        .eq('worker_id', workerId)
+        .eq('pin', pin)
+        .eq('tipo', 'salida_temprana')
+        .is('usado', false)
+        .maybeSingle();
+
+      if (error || !data) {
+        pinError.style.display = 'block';
+        return;
+      }
+      if (!data) {
+        pinError.style.display = 'block';
+        return;
+      }
+      // Marcamos PIN como usado
+      await supabaseClient
+        .from('auth_pins')
+        .update({ usado: true })
+        .eq('id', data.id);
+
+      pinModal.classList.add('oculto');
+      resolve(true);
+    };
+
+    cancelPinBtn.onclick = () => {
+      pinModal.classList.add('oculto');
+      resolve(false);
+    };
+
+  });
+}
+
+const openPolicies = document.getElementById('openPolicies');
+const policiesModal = document.getElementById('policiesModal');
+const closePolicies = document.getElementById('closePolicies');
+
+if(openPolicies){
+  openPolicies.addEventListener('click',()=>{
+    policiesModal.classList.remove('oculto');
+    clearTimeout(inactivityTimer);
+  });
+}
+
+if(closePolicies){
+  closePolicies.addEventListener('click',()=>{
+    policiesModal.classList.add('oculto');
+    startInactivityTimer();
+  });
+}
+
