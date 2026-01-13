@@ -677,7 +677,6 @@ async function registerStep(employee) {
   if (!ubicacionValida) return false;
 
   recentScans.set(employee.id, Date.now());
-console.log('🧠 STEP ACTUAL:', step, '→ ACCIÓN:', actionReal);
 
   const today = getTodayISO();
 
@@ -736,7 +735,7 @@ switch (step) {
     );
     return false;
 }
-
+console.log('🧠 STEP ACTUAL:', step, '→ ACCIÓN:', actionReal);
   // 🆕 INSERT (solo entrada)
 const { error: upsertError } = await supabaseClient
   .from('records')
