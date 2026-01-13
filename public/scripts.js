@@ -706,8 +706,6 @@ let actionReal = null;
 // 🧠 step actual desde BD (fuente de verdad)
 let currentStep = 0;
 
-let currentStep = 0;
-
 if (!todayRecord) {
   currentStep = 0;
 } else if (!todayRecord.entrada) {
