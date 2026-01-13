@@ -677,6 +677,7 @@ async function registerStep(employee) {
   if (!ubicacionValida) return false;
 
   recentScans.set(employee.id, Date.now());
+console.log('🧠 STEP ACTUAL:', step, '→ ACCIÓN:', actionReal);
 
   const today = getTodayISO();
 
@@ -712,7 +713,7 @@ const step = getStepFromRecord(todayRecord);
   }
 // 🛑 BLOQUEO ANTI SOBREESCRITURA (REFRESH / DOBLE ENVÍO)
 
-  const recordData = {};
+
 // 🔒 SI EXISTE REGISTRO Y YA TIENE ENTRADA, NUNCA VOLVER A REGISTRARLA
 if (todayRecord && todayRecord.entrada && step === 0) {
   showWarningModal(
@@ -721,28 +722,40 @@ if (todayRecord && todayRecord.entrada && step === 0) {
   );
   return false;
 }
+const recordData = {};
 
-if (!todayRecord) {
-  recordData.entrada = nowTime;
-  recordData.step = 1;
-  actionReal = 'entrada';
-} else if (!todayRecord.salida_comida) {
-  recordData.salida_comida = nowTime;
-  recordData.step = 2;
-  actionReal = 'salida-comida';
-} else if (!todayRecord.entrada_comida) {
-  recordData.entrada_comida = nowTime;
-  recordData.step = 3;
-  actionReal = 'entrada-comida';
-} else if (!todayRecord.salida) {
-  recordData.salida = nowTime;
-  recordData.step = 4;
-  actionReal = 'salida';
-} else {
-  showWarningModal('Jornada finalizada','Ya completaste el día');
-  return false;
+switch (step) {
+  case 0:
+    recordData.entrada = nowTime;
+    recordData.step = 1;
+    actionReal = 'entrada';
+    break;
+
+  case 1:
+    recordData.salida_comida = nowTime;
+    recordData.step = 2;
+    actionReal = 'salida-comida';
+    break;
+
+  case 2:
+    recordData.entrada_comida = nowTime;
+    recordData.step = 3;
+    actionReal = 'entrada-comida';
+    break;
+
+  case 3:
+    recordData.salida = nowTime;
+    recordData.step = 4;
+    actionReal = 'salida';
+    break;
+
+  default:
+    showWarningModal(
+      'Jornada finalizada',
+      'Ya completaste todas las checadas del día'
+    );
+    return false;
 }
-
 
   // 🆕 INSERT (solo entrada)
 const { error: upsertError } = await supabaseClient
