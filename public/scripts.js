@@ -700,7 +700,16 @@ const recordData = {};
 let actionReal = null;
 
 // 🧠 step actual desde BD (fuente de verdad)
-const currentStep = todayRecord?.step ?? 0;
+let currentStep = 0;
+
+if (todayRecord) {
+  if (!todayRecord.entrada) {
+    currentStep = 0; // 👈 FORZAR DÍA NUEVO REAL
+  } else {
+    currentStep = todayRecord.step ?? 0;
+  }
+}
+
 
 console.log('🧠 STEP EN BD:', currentStep);
 
