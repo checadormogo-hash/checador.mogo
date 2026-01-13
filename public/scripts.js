@@ -676,8 +676,6 @@ async function registerStep(employee) {
   const ubicacionValida = await validarUbicacionObligatoria();
   if (!ubicacionValida) return false;
 
-  recentScans.set(employee.id, Date.now());
-
   const today = getTodayISO();
 
   const nowTime = new Date().toLocaleTimeString('es-MX', {
@@ -767,7 +765,7 @@ switch (actionReal) {
     showSuccessModal('Salida registrada', `Gracias <span class="employee-name">${employee.name}</span>`);
     break;
 }
-
+  recentScans.set(employee.id, Date.now());
   return true;
 }
 
