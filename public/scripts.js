@@ -611,56 +611,78 @@ if (scannerInput) {
 }
 
 
+let processingQR = false; // 🔒 LOCK GLOBAL
+
 async function processQR(token) {
+  // 🔒 EVITA DOBLE EJECUCIÓN
+  if (processingQR) return;
+  processingQR = true;
 
-  if (!employeesReady) {
-    showWarningModal(
-      'Sistema iniciando',
-      'Espera un momento e intenta nuevamente'
+  try {
+
+    if (!employeesReady) {
+      showWarningModal(
+        'Sistema iniciando',
+        'Espera un momento e intenta nuevamente'
+      );
+      return;
+    }
+
+    const tokenNormalized = token
+      .trim()
+      .replace(/['"]/g, '-') // scanners raros
+      .toLowerCase();
+
+    const employee = employees.find(e =>
+      e.token?.trim().toLowerCase() === tokenNormalized
     );
-    return;
-  }
 
-  const tokenNormalized = token
-    .trim()
-    .replace(/['"]/g, '-') // scanners raros
-    .toLowerCase();
+    if (!employee) {
+      showCriticalModal(
+        'QR no válido',
+        'Este código no pertenece a ningún trabajador'
+      );
+      return;
+    }
 
-  const employee = employees.find(e =>
-    e.token?.trim().toLowerCase() === tokenNormalized
-  );
+    if (employee.activo !== 'SI') {
+      showCriticalModal(
+        'Acceso denegado',
+        'El trabajador está desactivado'
+      );
+      return;
+    }
 
-  if (!employee) {
+    if (isBlocked(employee.id)) {
+      showWarningModal(
+        'Checaste recientemente',
+        'Espera unos minutos más para volver a checar...'
+      );
+      return;
+    }
+
+    // 🔒 BLOQUEO TEMPORAL ANTI-REBOTE
+    recentScans.set(employee.id, Date.now());
+
+    const saved = await registerStep(employee);
+
+    // 🔁 ROLLBACK SI FALLÓ
+    if (!saved) {
+      recentScans.delete(employee.id);
+    }
+
+  } catch (err) {
+    console.error('❌ Error en processQR:', err);
     showCriticalModal(
-      'QR no válido',
-      'Este código no pertenece a ningún trabajador'
+      'Error inesperado',
+      'Ocurrió un problema al procesar la checada'
     );
-    return;
+  } finally {
+    // 🔓 LIBERAR LOCK SIEMPRE
+    processingQR = false;
   }
-
-  if (employee.activo !== 'SI') {
-    showCriticalModal(
-      'Acceso denegado',
-      'El trabajador está desactivado'
-    );
-    return;
-  }
-
-  if (isBlocked(employee.id)) {
-    showWarningModal(
-      'Checaste Recientemente',
-      'Espera unos minutos más para volver a checar...'
-    );
-    return;
-  }
-// 🔒 BLOQUEO INMEDIATO (ANTES DE SUPABASE)
-recentScans.set(employee.id, Date.now());
-  const saved = await registerStep(employee);
-if (!saved) {
-  recentScans.delete(employee.id); // rollback si falló
 }
 
-}
 //function getStepFromRecord(record) {
   //if (!record) return 0;
   //if (!record.entrada) return 0;
@@ -687,6 +709,7 @@ async function registerStep(employee) {
     hour12: false,
     timeZone: 'America/Monterrey'
   });
+console.log('🚨 registerStep ejecutado', Date.now());
 
   // 🔎 Buscar registro del día
 const { data: todayRecord, error: findError } = await supabaseClient
