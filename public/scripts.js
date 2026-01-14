@@ -1,5 +1,5 @@
 // ✅ COPIA Y REEMPLAZA TODO TU ARCHIVO POR ESTE
-// (Con las modificaciones: TEST SELECT + "upsert base" que NO pisa campos + update por ID)
+// (Fix: MANUAL ahora hace el mismo "upsert base" que AUTO para evitar falsos positivos)
 
 const supabaseClient = window.supabase.createClient(
   "https://akgbqsfkehqlpxtrjsnw.supabase.co",
@@ -189,6 +189,60 @@ offlineModal.addEventListener('click', (e) => {
   }
 });
 
+// ===== HELPERS =====
+function hasTime(v) {
+  if (v === null || v === undefined) return false;
+  const s = String(v).trim();
+  return s !== '' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined';
+}
+
+function isBlocked(workerId) {
+  const lastTime = recentScans.get(workerId);
+  if (!lastTime) return false;
+
+  const now = Date.now();
+  if (now - lastTime < BLOCK_TIME) return true;
+
+  recentScans.delete(workerId);
+  return false;
+}
+
+// ✅ NUEVO: obtiene el registro del día con fallback "upsert base" (igual que en AUTO)
+async function getOrCreateTodayRecord(workerId, today) {
+  // 1) Intento de lectura normal
+  const { data: rows, error: readError } = await supabaseClient
+    .from('records')
+    .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
+    .eq('worker_id', workerId)
+    .eq('fecha', today)
+    .order('created_at', { ascending: true });
+
+  if (readError) {
+    console.warn('⚠️ MANUAL readError (puede ser RLS):', readError);
+  }
+
+  let todayRecord = rows?.[0] ?? null;
+
+  // 2) Fallback: si no se ve nada, hacemos UPSERT BASE (no pisa campos)
+  if (!todayRecord) {
+    const basePayload = { worker_id: workerId, fecha: today };
+
+    const { data: baseRow, error: baseErr } = await supabaseClient
+      .from('records')
+      .upsert(basePayload, { onConflict: 'worker_id,fecha' })
+      .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
+      .maybeSingle();
+
+    if (baseErr) {
+      console.warn('⚠️ MANUAL baseErr:', baseErr);
+    }
+
+    if (baseRow) todayRecord = baseRow;
+  }
+
+  return todayRecord; // puede venir con campos null si es nuevo
+}
+
 // ===== MODO MANUAL =====
 actionButtons.forEach(btn => {
   const action = btn.dataset.action;
@@ -256,38 +310,35 @@ async function processManualQR(token, action) {
 
   const today = getTodayISO();
 
-  const { data: todayRecord } = await supabaseClient
-    .from('records')
-    .select('id, entrada, salida_comida, entrada_comida, salida')
-    .eq('worker_id', workerId)
-    .eq('fecha', today)
-    .maybeSingle();
+  // ✅ FIX: Obtener estado REAL del día (con fallback upsert base)
+  const todayRecord = await getOrCreateTodayRecord(workerId, today);
 
+  // Validar si la acción ya fue registrada (usando hasTime para no confundir null/"")
   if (todayRecord) {
     switch (action) {
       case 'entrada':
-        if (todayRecord.entrada) {
+        if (hasTime(todayRecord.entrada)) {
           showWarningModal('Entrada ya registrada', 'Ya habías checado entrada');
           hideAutoModal();
           return;
         }
         break;
       case 'salida-comida':
-        if (todayRecord.salida_comida) {
+        if (hasTime(todayRecord.salida_comida)) {
           showWarningModal('Salida comida ya registrada', 'Ya habías checado salida comida');
           hideAutoModal();
           return;
         }
         break;
       case 'entrada-comida':
-        if (todayRecord.entrada_comida) {
+        if (hasTime(todayRecord.entrada_comida)) {
           showWarningModal('Entrada comida ya registrada', 'Ya habías checado entrada comida');
           hideAutoModal();
           return;
         }
         break;
       case 'salida':
-        if (todayRecord.salida) {
+        if (hasTime(todayRecord.salida)) {
           showWarningModal('Salida ya registrada', 'Ya habías checado salida');
           hideAutoModal();
           return;
@@ -296,12 +347,13 @@ async function processManualQR(token, action) {
     }
   }
 
-  if (action === 'salida-comida' && !todayRecord?.entrada) {
+  // Reglas de secuencia manual (con hasTime)
+  if (action === 'salida-comida' && !hasTime(todayRecord?.entrada)) {
     showWarningModal('Secuencia inválida', 'No puedes registrar salida a comida antes de entrada');
     hideAutoModal();
     return;
   }
-  if (action === 'entrada-comida' && !todayRecord?.salida_comida) {
+  if (action === 'entrada-comida' && !hasTime(todayRecord?.salida_comida)) {
     showWarningModal('Secuencia inválida', 'No puedes registrar entrada de comida antes de salir a comida');
     hideAutoModal();
     return;
@@ -345,49 +397,44 @@ async function registerStepManual(employee, action, todayRecord) {
       recordData.step = 3;
       break;
     case 'salida': {
-      // ✅ Si ya pasó por comida (entrada + salida_comida + entrada_comida),
-      // entonces la salida es normal y NO pide PIN.
       const yaPasoPorComida =
         hasTime(todayRecord?.entrada) &&
         hasTime(todayRecord?.salida_comida) &&
         hasTime(todayRecord?.entrada_comida);
 
-      // ✅ Si NO pasó por comida pero sí tiene entrada, es salida temprana y requiere PIN
       const salidaTemprana =
         hasTime(todayRecord?.entrada) &&
         !hasTime(todayRecord?.salida_comida) &&
         !hasTime(todayRecord?.entrada_comida);
-  
+
       if (salidaTemprana) {
         const pinValidado = await solicitarPin(employee.id, todayRecord?.id);
         if (!pinValidado) return false;
       }
 
-      // Si ya pasó por comida -> sin PIN
-      // Si es salida temprana -> con PIN
       recordData.salida = nowTime;
       recordData.step = 4;
       break;
     }
-
   }
 
-  if (!todayRecord) {
-    const { error: insertError } = await supabaseClient
-      .from('records')
-      .insert([{ worker_id: workerId, fecha: getTodayISO(), ...recordData }]);
-
-    if (insertError) {
-      showCriticalModal('Error', 'No se pudo guardar la entrada');
-      return false;
-    }
-  } else {
+  // ✅ Guardado seguro: UPDATE por ID si existe, si no existe hacemos INSERT
+  if (todayRecord?.id) {
     const { error: updateError } = await supabaseClient
       .from('records')
       .update(recordData)
       .eq('id', todayRecord.id);
 
     if (updateError) {
+      showCriticalModal('Error', 'No se pudo guardar la checada');
+      return false;
+    }
+  } else {
+    const { error: insertError } = await supabaseClient
+      .from('records')
+      .insert([{ worker_id: workerId, fecha: getTodayISO(), ...recordData }]);
+
+    if (insertError) {
       showCriticalModal('Error', 'No se pudo guardar la checada');
       return false;
     }
@@ -398,17 +445,6 @@ async function registerStepManual(employee, action, todayRecord) {
     `Hola <span class="employee-name">${employee.name}</span>, ${action.includes('salida') ? '¡Hasta luego!' : 'registro exitoso'}`
   );
   return true;
-}
-
-function isBlocked(workerId) {
-  const lastTime = recentScans.get(workerId);
-  if (!lastTime) return false;
-
-  const now = Date.now();
-  if (now - lastTime < BLOCK_TIME) return true;
-
-  recentScans.delete(workerId);
-  return false;
 }
 
 // ===== MODAL AUTOMÁTICO =====
@@ -471,7 +507,7 @@ closeAutoModal.addEventListener('click', hideAutoModal);
   });
 });
 
-// ===== BOTÓN MANUAL =====
+// ===== BOTÓN MANUAL (abre el modal automático) =====
 const openAutoModalBtn = document.getElementById('openAutoModal');
 if (openAutoModalBtn) {
   openAutoModalBtn.addEventListener('click', () => {
@@ -580,7 +616,7 @@ function stopCameraScanner() {
   }
 }
 
-// ===== ESCANEAR QR =====
+// ===== ESCANEAR QR (scanner input) =====
 if (scannerInput) {
   scannerInput.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
@@ -662,17 +698,7 @@ function showSuccessModal(title, message) {
   showConfirmModal(title, message, 2500);
 }
 
-function hasTime(v) {
-  if (v === null || v === undefined) return false;
-  const s = String(v).trim();
-  return s !== '' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined';
-}
-
 // ===== REGISTRAR CHECADA (AUTO) =====
-// ✅ CAMBIO CLAVE:
-// - Intentamos SELECT normal
-// - Si no vemos nada, hacemos "UPSERT BASE" (solo worker_id+fecha) para obtener el estado REAL SIN pisar campos
-// - Luego UPDATE por ID con el campo correcto del paso (entrada/salida_comida/entrada_comida/salida)
 async function registerStep(employee) {
   const ubicacionValida = await validarUbicacionObligatoria();
   if (!ubicacionValida) return false;
@@ -701,7 +727,6 @@ async function registerStep(employee) {
 
   if (readError) {
     console.error('❌ READ ERROR:', readError);
-    // OJO: si RLS bloquea, a veces no marca error, solo devuelve []
   }
 
   let todayRecord = rows?.[0] ?? null;
@@ -709,8 +734,7 @@ async function registerStep(employee) {
   console.log('🧾 rows:', rows);
   console.log('🧾 todayRecord usado (pre-fallback):', todayRecord);
 
-  // 2) Fallback: si no vemos el registro (rows vacío) hacemos UPSERT BASE (NO pisa campos)
-  // Esto evita el bug donde siempre marca "entrada" y pisa la entrada existente.
+  // 2) Fallback: UPSERT BASE
   if (!todayRecord) {
     const basePayload = { worker_id: workerId, fecha: today };
 
@@ -722,19 +746,16 @@ async function registerStep(employee) {
 
     console.log('🧱 baseRow (fallback):', baseRow, baseErr);
 
-    // Si baseRow viene, ya tenemos el estado REAL sin pisar campos
     if (baseRow) todayRecord = baseRow;
   }
 
   console.log('🧾 todayRecord final:', todayRecord);
 
-  // Helpers
   const hasEntrada = hasTime(todayRecord?.entrada);
   const hasSalidaComida = hasTime(todayRecord?.salida_comida);
   const hasEntradaComida = hasTime(todayRecord?.entrada_comida);
   const hasSalida = hasTime(todayRecord?.salida);
 
-  // 3) Determinar acción REAL por campos (ya con todayRecord real)
   let actionReal = null;
   let recordData = {};
 
@@ -757,8 +778,6 @@ async function registerStep(employee) {
 
   console.log('➡️ ACCIÓN REAL:', actionReal, { todayRecord, recordData });
 
-  // 4) Guardado: UPDATE por ID (para no pisar otros campos ni reiniciar)
-  // Si por alguna razón no tenemos ID (raro), hacemos upsert con recordData.
   let saveError = null;
 
   if (todayRecord?.id) {
@@ -781,7 +800,6 @@ async function registerStep(employee) {
     return false;
   }
 
-  // 5) Verify (puede seguir saliendo [] si RLS bloquea SELECT, es normal)
   const { data: verifyRows, error: verifyErr } = await supabaseClient
     .from('records')
     .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
@@ -791,7 +809,6 @@ async function registerStep(employee) {
 
   console.log('✅ VERIFY rows:', verifyRows, verifyErr);
 
-  // 6) Mensaje
   switch (actionReal) {
     case 'entrada':
       showSuccessModal('Entrada registrada', `Bienvenido <span class="employee-name">${employee.name}</span>`);
