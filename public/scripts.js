@@ -129,10 +129,11 @@ function getNowTimeMX() {
     hour12: false
   }).formatToParts(new Date());
 
-  const h = parts.find(p => p.type === 'hour')?.value ?? '00';
-  const m = parts.find(p => p.type === 'minute')?.value ?? '00';
-  const s = parts.find(p => p.type === 'second')?.value ?? '00';
-  return `${h}:${m}:${s}`;
+const h = (parts.find(p => p.type === 'hour')?.value ?? '00').padStart(2,'0');
+const m = (parts.find(p => p.type === 'minute')?.value ?? '00').padStart(2,'0');
+const s = (parts.find(p => p.type === 'second')?.value ?? '00').padStart(2,'0');
+return `${h}:${m}:${s}`;
+
 }
 
 
@@ -661,7 +662,6 @@ async function registerStep(employee) {
   if (!ubicacionValida) return false;
 
   const today = getTodayISO();
-  const tomorrow = getTomorrowISO(today);
   const nowTime = getNowTimeMX();
   const workerId = String(employee.id).trim();
 
@@ -672,8 +672,7 @@ async function registerStep(employee) {
     .from('records')
     .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
     .eq('worker_id', workerId)
-    .gte('fecha', today)
-    .lt('fecha', tomorrow)
+    .eq('fecha', today)
     .order('created_at', { ascending: true });
 
   if (readError) {
@@ -730,11 +729,14 @@ async function registerStep(employee) {
       .insert([{ worker_id: workerId, fecha: today, ...recordData }]);
     saveError = error;
   } else {
-    const { error } = await supabaseClient
-      .from('records')
-      .update(recordData)
-      .eq('id', todayRecord.id);
-    saveError = error;
+const { data: updatedRow, error } = await supabaseClient
+  .from('records')
+  .update(recordData)
+  .eq('id', todayRecord.id)
+  .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at');
+
+console.log('🧩 UPDATE devuelve:', updatedRow, error);
+saveError = error;
   }
 
   if (saveError) {
@@ -748,8 +750,7 @@ async function registerStep(employee) {
     .from('records')
     .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
     .eq('worker_id', workerId)
-    .gte('fecha', today)
-    .lt('fecha', tomorrow)
+    .eq('fecha', today)
     .order('created_at', { ascending: true });
 
   console.log('✅ VERIFY rows:', verifyRows, verifyErr);
