@@ -111,11 +111,22 @@ const currentDateEl = document.getElementById('currentDate');
 
 // ===== FECHA Y HORA =====
 function getTodayISO() {
-  const now = new Date();
-  const mx = new Date(
-    now.toLocaleString('en-US', { timeZone: 'America/Monterrey' })
-  );
-  return mx.toISOString().slice(0, 10); // YYYY-MM-DD
+  // Fecha REAL en Monterrey sin UTC
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Monterrey',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date()); // => "YYYY-MM-DD"
+}
+function getNowTimeMX() {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Monterrey',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(new Date()); // => "HH:MM:SS"
 }
 
 function updateDateTime() {
@@ -642,10 +653,8 @@ async function registerStep(employee) {
   if (!ubicacionValida) return false;
 
   const today = getTodayISO();
-  const nowTime = new Date().toLocaleTimeString('es-MX', {
-    hour12: false,
-    timeZone: 'America/Monterrey'
-  });
+  const nowTime = getNowTimeMX();
+console.log('📅 HOY APP:', getTodayISO(), '⏰', getNowTimeMX());
 
   // 1) Leer estado actual REAL desde Supabase
   const { data: todayRecord, error: readError } = await supabaseClient
