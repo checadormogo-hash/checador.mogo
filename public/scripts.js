@@ -721,23 +721,17 @@ async function registerStep(employee) {
   console.log('➡️ ACCIÓN REAL:', actionReal, { todayRecord, recordData });
 
   // 3) Guardar: INSERT si no existe, UPDATE por ID si existe
-  let saveError = null;
+// 3) Guardar SIEMPRE con UPSERT (por unique_worker_fecha)
+const payload = todayRecord
+  ? { id: todayRecord.id, worker_id: workerId, fecha: today, ...recordData }
+  : { worker_id: workerId, fecha: today, ...recordData };
 
-  if (!todayRecord) {
-    const { error } = await supabaseClient
-      .from('records')
-      .insert([{ worker_id: workerId, fecha: today, ...recordData }]);
-    saveError = error;
-  } else {
-const { data: updatedRow, error } = await supabaseClient
+const { data: upserted, error: saveError } = await supabaseClient
   .from('records')
-  .update(recordData)
-  .eq('id', todayRecord.id)
+  .upsert(payload, { onConflict: 'worker_id,fecha', returning: 'representation' })
   .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at');
-
-console.log('🧩 UPDATE devuelve:', updatedRow, error);
-saveError = error;
-  }
+console.log('📦 UPSERT payload:', payload);
+console.log('🧩 UPSERT devuelve:', upserted, saveError);
 
   if (saveError) {
     console.error('❌ SAVE ERROR:', saveError);
