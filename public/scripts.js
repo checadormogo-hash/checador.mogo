@@ -655,29 +655,26 @@ function hasTime(v) {
   const s = String(v).trim();
   return s !== '' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined';
 }
-
 // ===== REGISTRAR CHECADA (AUTO) =====
 async function registerStep(employee) {
   const ubicacionValida = await validarUbicacionObligatoria();
   if (!ubicacionValida) return false;
 
   const today = getTodayISO();
+  const tomorrow = getTomorrowISO(today);
   const nowTime = getNowTimeMX();
+  const workerId = String(employee.id).trim();
 
-  const workerId = String(employee.id).trim(); // 🔥 FORZAMOS STRING SIEMPRE
+  console.log('📅 HOY APP:', today, '⏰', nowTime, 'workerId:', workerId);
 
-  console.log('📅 HOY APP:', today, '⏰', nowTime, 'workerId:', workerId, 'typeof:', typeof workerId);
-
-  // 1) Leer estado real
-  const { data: todayRecord, error: readError } = await supabaseClient
-  .from('records')
-  .select('id, worker_id, fecha, entrada, salida_comida, entrada_comida, salida, step')
-  .eq('worker_id', workerId)
-  .eq('fecha', today)
-  .maybeSingle();
-
-
-  console.log('🧾 todayRecord leído:', todayRecord);
+  // 1) Leer registros del día (RANGO para evitar broncas con date)
+  const { data: rows, error: readError } = await supabaseClient
+    .from('records')
+    .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
+    .eq('worker_id', workerId)
+    .gte('fecha', today)
+    .lt('fecha', tomorrow)
+    .order('created_at', { ascending: true });
 
   if (readError) {
     console.error('❌ READ ERROR:', readError);
@@ -685,63 +682,60 @@ async function registerStep(employee) {
     return false;
   }
 
+  const todayRecord = rows?.[0] ?? null;
 
+  console.log('🧾 rows:', rows);
+  console.log('🧾 todayRecord usado:', todayRecord);
+
+  if (rows?.length > 1) {
+    console.warn('⚠️ DUPLICADOS detectados para worker_id + fecha:', rows);
+    // (Opcional) aquí luego limpiamos duplicados si quieres
+  }
+
+  // Helpers
   const hasEntrada = hasTime(todayRecord?.entrada);
   const hasSalidaComida = hasTime(todayRecord?.salida_comida);
   const hasEntradaComida = hasTime(todayRecord?.entrada_comida);
   const hasSalida = hasTime(todayRecord?.salida);
 
-  let recordData = {};
+  // 2) Determinar acción REAL por campos
   let actionReal = null;
-const step = Number(todayRecord?.step || 0);
+  let recordData = {};
 
-if (!todayRecord || step === 0) {
-  actionReal = 'entrada';
-  recordData = { entrada: nowTime, step: 1 };
-} else if (step === 1) {
-  // solo avanzar si no existe salida_comida todavía
-  if (hasTime(todayRecord?.salida_comida)) {
-    actionReal = 'entrada-comida';
-    recordData = { entrada_comida: nowTime, step: 3 };
-  } else {
+  if (!todayRecord || !hasEntrada) {
+    actionReal = 'entrada';
+    recordData = { entrada: nowTime, step: 1 };
+  } else if (!hasSalidaComida) {
     actionReal = 'salida-comida';
     recordData = { salida_comida: nowTime, step: 2 };
-  }
-} else if (step === 2) {
-  // solo avanzar si no existe entrada_comida todavía
-  if (hasTime(todayRecord?.entrada_comida)) {
+  } else if (!hasEntradaComida) {
+    actionReal = 'entrada-comida';
+    recordData = { entrada_comida: nowTime, step: 3 };
+  } else if (!hasSalida) {
     actionReal = 'salida';
     recordData = { salida: nowTime, step: 4 };
   } else {
-    actionReal = 'entrada-comida';
-    recordData = { entrada_comida: nowTime, step: 3 };
+    showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
+    return false;
   }
-} else if (step === 3) {
-  actionReal = 'salida';
-  recordData = { salida: nowTime, step: 4 };
-} else {
-  showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
-  return false;
-}
 
+  console.log('➡️ ACCIÓN REAL:', actionReal, { todayRecord, recordData });
 
-  console.log('➡️ ACCIÓN REAL:', actionReal, { todayRecord });
-const payload = { worker_id: workerId, fecha: today, ...recordData };
-  // 2) Guardar SIEMPRE con UPSERT para evitar 409
-  const { error: saveError } = await supabaseClient
-    .from('records')
-    .upsert(payload, { onConflict: 'worker_id,fecha' });
-    console.log('📦 UPSERT payload:', payload);
+  // 3) Guardar: INSERT si no existe, UPDATE por ID si existe
+  let saveError = null;
 
-// ✅ Re-lee lo guardado REAL para confirmar que sí se escribió
-const { data: verifyRecord, error: verifyErr } = await supabaseClient
-  .from('records')
-  .select('id, entrada, salida_comida, entrada_comida, salida, step')
-  .eq('worker_id', workerId)
-  .eq('fecha', today)
-  .maybeSingle();
-
-console.log('✅ VERIFY BD:', verifyRecord, verifyErr);
+  if (!todayRecord) {
+    const { error } = await supabaseClient
+      .from('records')
+      .insert([{ worker_id: workerId, fecha: today, ...recordData }]);
+    saveError = error;
+  } else {
+    const { error } = await supabaseClient
+      .from('records')
+      .update(recordData)
+      .eq('id', todayRecord.id);
+    saveError = error;
+  }
 
   if (saveError) {
     console.error('❌ SAVE ERROR:', saveError);
@@ -749,7 +743,18 @@ console.log('✅ VERIFY BD:', verifyRecord, verifyErr);
     return false;
   }
 
-  // 3) Mensaje
+  // 4) Verify
+  const { data: verifyRows, error: verifyErr } = await supabaseClient
+    .from('records')
+    .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
+    .eq('worker_id', workerId)
+    .gte('fecha', today)
+    .lt('fecha', tomorrow)
+    .order('created_at', { ascending: true });
+
+  console.log('✅ VERIFY rows:', verifyRows, verifyErr);
+
+  // 5) Mensaje
   switch (actionReal) {
     case 'entrada':
       showSuccessModal('Entrada registrada', `Bienvenido <span class="employee-name">${employee.name}</span>`);
@@ -766,6 +771,16 @@ console.log('✅ VERIFY BD:', verifyRecord, verifyErr);
   }
 
   return true;
+}
+
+function getTomorrowISO(todayISO) {
+  const [y,m,d] = todayISO.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m-1, d));
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth()+1).padStart(2,'0');
+  const dd = String(dt.getUTCDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 // ===== MODALES =====
