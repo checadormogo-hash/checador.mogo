@@ -15,12 +15,13 @@ async function loadEmployees() {
     return;
   }
 
-  employees = data.map(w => ({
-    id: w.id,
-    name: w.nombre,
-    activo: w.activo ? 'SI' : 'NO',
-    token: w.qr_token
-  }));
+employees = data.map(w => ({
+  id: String(w.id).trim(),  // 🔥
+  name: w.nombre,
+  activo: w.activo ? 'SI' : 'NO',
+  token: w.qr_token
+}));
+
 
   employeesReady = true;
 }
@@ -130,7 +131,7 @@ function getNowTimeMX() {
 }
 
 function updateDateTime() {
-  const now = new Date();
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Monterrey' }));
 
   const dateFormatter = new Intl.DateTimeFormat('es-MX', {
     weekday: 'long',
@@ -244,8 +245,8 @@ async function processManualQR(token, action) {
     hideAutoModal();
     return;
   }
-
-  if (isBlocked(employee.id)) {
+  const workerId = String(employee.id).trim();
+  if (isBlocked(workerId)) {
     showWarningModal('Checaste Recientemente', 'Espera unos minutos más para volver a checar...');
     hideAutoModal();
     return;
@@ -253,12 +254,14 @@ async function processManualQR(token, action) {
 
   // Validar secuencia de pasos según acción manual
   const today = getTodayISO();
-  const { data: todayRecord } = await supabaseClient
-    .from('records')
-    .select('id, entrada, salida_comida, entrada_comida, salida')
-    .eq('worker_id', employee.id)
-    .eq('fecha', today)
-    .maybeSingle();
+
+const { data: todayRecord } = await supabaseClient
+  .from('records')
+  .select('id, entrada, salida_comida, entrada_comida, salida')
+  .eq('worker_id', workerId)
+  .eq('fecha', today)
+  .maybeSingle();
+
 
   // Validar si la acción ya fue registrada
   if (todayRecord) {
@@ -320,10 +323,11 @@ async function processManualQR(token, action) {
 
 // Registrar paso manual
 async function registerStepManual(employee, action, todayRecord) {
+  const workerId = String(employee.id).trim();
   const ubicacionValida = await validarUbicacionObligatoria();
   if (!ubicacionValida) return false;
 
-  recentScans.set(employee.id, Date.now());
+  recentScans.set(workerId, Date.now());
 
   const nowTime = new Date().toLocaleTimeString('es-MX', {
     hour12: false,
@@ -357,7 +361,7 @@ async function registerStepManual(employee, action, todayRecord) {
   if (!todayRecord) {
     const { error: insertError } = await supabaseClient
       .from('records')
-      .insert([{ worker_id: employee.id, fecha: getTodayISO(), ...recordData }]);
+      .insert([{ worker_id: workerId, fecha: getTodayISO(), ...recordData }]);
 
     if (insertError) {
       showCriticalModal('Error', 'No se pudo guardar la entrada');
@@ -614,18 +618,18 @@ async function processQR(token) {
       showCriticalModal('Acceso denegado', 'El trabajador está desactivado');
       return;
     }
-
-    if (isBlocked(employee.id)) {
+    const workerId = String(employee.id).trim();
+    if (isBlocked(workerId)) {
       showWarningModal('Checaste recientemente', 'Espera unos minutos más para volver a checar...');
       return;
     }
 
-    recentScans.set(employee.id, Date.now());
+    recentScans.set(workerId, Date.now());
 
     const saved = await registerStep(employee);
 
     if (!saved) {
-      recentScans.delete(employee.id);
+      recentScans.delete(workerId);
     }
 
   } catch (err) {
@@ -654,21 +658,27 @@ async function registerStep(employee) {
 
   const today = getTodayISO();
   const nowTime = getNowTimeMX();
-console.log('📅 HOY APP:', getTodayISO(), '⏰', getNowTimeMX());
 
-  // 1) Leer estado actual REAL desde Supabase
+  const workerId = String(employee.id).trim(); // 🔥 FORZAMOS STRING SIEMPRE
+
+  console.log('📅 HOY APP:', today, '⏰', nowTime, 'workerId:', workerId, 'typeof:', typeof workerId);
+
+  // 1) Leer estado real
   const { data: todayRecord, error: readError } = await supabaseClient
     .from('records')
-    .select('worker_id, fecha, entrada, salida_comida, entrada_comida, salida')
-    .eq('worker_id', employee.id)
+    .select('id, worker_id, fecha, entrada, salida_comida, entrada_comida, salida')
+    .eq('worker_id', workerId)   // 🔥 usamos el string
     .eq('fecha', today)
     .maybeSingle();
+
+  console.log('🧾 todayRecord leído:', todayRecord);
 
   if (readError) {
     console.error('❌ READ ERROR:', readError);
     showCriticalModal('Error', 'No se pudo validar la checada');
     return false;
   }
+
 
   const hasEntrada = hasTime(todayRecord?.entrada);
   const hasSalidaComida = hasTime(todayRecord?.salida_comida);
@@ -702,7 +712,7 @@ console.log('📅 HOY APP:', getTodayISO(), '⏰', getNowTimeMX());
     .from('records')
     .upsert(
       {
-        worker_id: employee.id,
+        worker_id: workerId, // 🔥 string consistente
         fecha: today,
         ...recordData
       },
