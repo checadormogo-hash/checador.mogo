@@ -661,8 +661,9 @@ async function registerStep(employee) {
     return false;
   }
 
-const recordData = {};
+let recordData = {};
 let actionReal = null;
+
 
 // Normalización fuerte
 const hasEntrada = hasTime(todayRecord?.entrada);
