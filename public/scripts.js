@@ -650,12 +650,11 @@ async function registerStep(employee) {
   // 🔎 Buscar registro del día (AHORA TRAEMOS step)
   const { data: todayRecord, error } = await supabaseClient
     .from('records')
-    .select('id, entrada, salida_comida, entrada_comida, salida, step')
+    .select('id, entrada, salida_comida, entrada_comida, salida')
     .eq('worker_id', employee.id)
     .eq('fecha', today)
-    .order('created_at', { ascending: false })
-    .limit(1)
     .maybeSingle();
+
 
   if (error) {
     showCriticalModal('Error', 'No se pudo validar la checada');
@@ -679,25 +678,25 @@ console.log('DEBUG', {
   flags: { hasEntrada, hasSalidaComida, hasEntradaComida, hasSalida }
 });
 // Secuencia estricta SOLO por campos (esto NO falla nunca)
-if (!todayRecord || !hasEntrada) {
-  recordData.entrada = nowTime;
-  recordData.step = 1;
+if (!todayRecord) {
   actionReal = 'entrada';
+  recordData = { entrada: nowTime, step: 1 };
+
+} else if (!hasEntrada) {
+  actionReal = 'entrada';
+  recordData = { entrada: nowTime, step: 1 };
 
 } else if (!hasSalidaComida) {
-  recordData.salida_comida = nowTime;
-  recordData.step = 2;
   actionReal = 'salida-comida';
+  recordData = { salida_comida: nowTime, step: 2 };
 
 } else if (!hasEntradaComida) {
-  recordData.entrada_comida = nowTime;
-  recordData.step = 3;
   actionReal = 'entrada-comida';
+  recordData = { entrada_comida: nowTime, step: 3 };
 
 } else if (!hasSalida) {
-  recordData.salida = nowTime;
-  recordData.step = 4;
   actionReal = 'salida';
+  recordData = { salida: nowTime, step: 4 };
 
 } else {
   showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
@@ -706,22 +705,26 @@ if (!todayRecord || !hasEntrada) {
 
 console.log('➡️ ACCIÓN REAL:', actionReal);
 
-  const { error: saveError } = await supabaseClient
-    .from('records')
-    .upsert(
-      {
-        worker_id: employee.id,
-        fecha: today,
-        ...recordData
-      },
-      { onConflict: 'worker_id,fecha' }
-    );
+let saveError = null;
 
-  if (saveError) {
-    console.error('❌ SAVE ERROR:', saveError);
-    showCriticalModal('Error', 'No se pudo guardar la checada');
-    return false;
-  }
+if (!todayRecord) {
+  const { error } = await supabaseClient
+    .from('records')
+    .insert([{ worker_id: employee.id, fecha: today, ...recordData }]);
+  saveError = error;
+} else {
+  const { error } = await supabaseClient
+    .from('records')
+    .update(recordData)
+    .eq('id', todayRecord.id);
+  saveError = error;
+}
+
+if (saveError) {
+  console.error('❌ SAVE ERROR:', saveError);
+  showCriticalModal('Error', 'No se pudo guardar la checada');
+  return false;
+}
 
   switch (actionReal) {
     case 'entrada':
