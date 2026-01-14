@@ -1,3 +1,6 @@
+// ✅ COPIA Y REEMPLAZA TODO TU ARCHIVO POR ESTE
+// (Con las modificaciones: TEST SELECT + "upsert base" que NO pisa campos + update por ID)
+
 const supabaseClient = window.supabase.createClient(
   "https://akgbqsfkehqlpxtrjsnw.supabase.co",
   "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
@@ -15,28 +18,28 @@ async function loadEmployees() {
     return;
   }
 
-employees = data.map(w => ({
-  id: String(w.id).trim(),  // 🔥
-  name: w.nombre,
-  activo: w.activo ? 'SI' : 'NO',
-  token: w.qr_token
-}));
-
+  employees = data.map(w => ({
+    id: String(w.id).trim(),
+    name: w.nombre,
+    activo: w.activo ? 'SI' : 'NO',
+    token: w.qr_token
+  }));
 
   employeesReady = true;
 }
+
 const IS_DESKTOP_TEST = true; // ⚠️ SOLO PARA PRUEBAS
 
 // ===== GEOLOCALIZACIÓN CONFIG =====
 const STORE_LOCATION = {
-  lat: 25.82105601479065,   // 👈 CAMBIA por la real
-  lng: -100.08711844709858  // 👈 CAMBIA por la real
+  lat: 25.82105601479065,
+  lng: -100.08711844709858
 };
 
-const ALLOWED_RADIUS_METERS = 400; // rango permitido
+const ALLOWED_RADIUS_METERS = 400;
 
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
-  const R = 6371000; // radio tierra en metros
+  const R = 6371000;
   const toRad = x => x * Math.PI / 180;
 
   const dLat = toRad(lat2 - lat1);
@@ -50,6 +53,7 @@ function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
 async function validarUbicacionObligatoria() {
 
   // 🧪 BYPASS SOLO EN DESARROLLO PC
@@ -112,14 +116,14 @@ const currentDateEl = document.getElementById('currentDate');
 
 // ===== FECHA Y HORA =====
 function getTodayISO() {
-  // Fecha REAL en Monterrey sin UTC
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Monterrey',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
-  }).format(new Date()); // => "YYYY-MM-DD"
+  }).format(new Date());
 }
+
 function getNowTimeMX() {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'America/Monterrey',
@@ -129,13 +133,11 @@ function getNowTimeMX() {
     hour12: false
   }).formatToParts(new Date());
 
-const h = (parts.find(p => p.type === 'hour')?.value ?? '00').padStart(2,'0');
-const m = (parts.find(p => p.type === 'minute')?.value ?? '00').padStart(2,'0');
-const s = (parts.find(p => p.type === 'second')?.value ?? '00').padStart(2,'0');
-return `${h}:${m}:${s}`;
-
+  const h = (parts.find(p => p.type === 'hour')?.value ?? '00').padStart(2, '0');
+  const m = (parts.find(p => p.type === 'minute')?.value ?? '00').padStart(2, '0');
+  const s = (parts.find(p => p.type === 'second')?.value ?? '00').padStart(2, '0');
+  return `${h}:${m}:${s}`;
 }
-
 
 function updateDateTime() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Monterrey' }));
@@ -166,23 +168,20 @@ const openOfflineModalBtn = document.getElementById('openOfflineModal');
 const offlineModal = document.getElementById('offlineModal');
 const closeOfflineModalBtn = document.getElementById('closeOfflineModal');
 
-// Abrir modal
 if (openOfflineModalBtn) {
   openOfflineModalBtn.addEventListener('click', () => {
     offlineModal.classList.remove('oculto');
-    clearTimeout(inactivityTimer); // pausa auto modal
+    clearTimeout(inactivityTimer);
   });
 }
 
-// Cerrar modal con botón ✕
 if (closeOfflineModalBtn) {
   closeOfflineModalBtn.addEventListener('click', () => {
     offlineModal.classList.add('oculto');
-    startInactivityTimer(); // reanuda auto modal
+    startInactivityTimer();
   });
 }
 
-// Cerrar modal al hacer clic fuera del contenido
 offlineModal.addEventListener('click', (e) => {
   if (e.target === offlineModal) {
     offlineModal.classList.add('oculto');
@@ -193,26 +192,21 @@ offlineModal.addEventListener('click', (e) => {
 // ===== MODO MANUAL =====
 actionButtons.forEach(btn => {
   const action = btn.dataset.action;
-  if (!action || action === 'abrirscanner') return; // ignorar el botón de automático
+  if (!action || action === 'abrirscanner') return;
 
   btn.addEventListener('click', () => {
     openManualModal(action);
   });
 });
 
-// Abrir modal manual con acción específica
 function openManualModal(action) {
-  clearTimeout(inactivityTimer); // pausa el auto-modal
+  clearTimeout(inactivityTimer);
   autoOverlay.style.display = 'flex';
 
-  // Cambiar título dinámicamente
   const headerTitle = autoOverlay.querySelector('.auto-header h3');
   headerTitle.textContent = `Manual | ${formatActionTitle(action)}`;
 
-  // Activar scanner por defecto
   switchToScannerTab();
-
-  // Flag de acción manual actual
   autoOverlay.dataset.manualAction = action;
 
   setTimeout(() => {
@@ -220,7 +214,6 @@ function openManualModal(action) {
   }, 100);
 }
 
-// Formatear título bonito
 function formatActionTitle(action) {
   switch (action) {
     case 'entrada': return 'Entrada';
@@ -231,7 +224,6 @@ function formatActionTitle(action) {
   }
 }
 
-// Procesar QR en modo manual
 async function processManualQR(token, action) {
   if (!employeesReady) {
     showWarningModal('Sistema iniciando', 'Espera un momento e intenta nuevamente');
@@ -252,25 +244,25 @@ async function processManualQR(token, action) {
     hideAutoModal();
     return;
   }
+
   const workerId = String(employee.id).trim();
   if (isBlocked(workerId)) {
     showWarningModal('Checaste Recientemente', 'Espera unos minutos más para volver a checar...');
     hideAutoModal();
     return;
   }
+
   recentScans.set(workerId, Date.now());
-  // Validar secuencia de pasos según acción manual
+
   const today = getTodayISO();
 
-const { data: todayRecord } = await supabaseClient
-  .from('records')
-  .select('id, entrada, salida_comida, entrada_comida, salida')
-  .eq('worker_id', workerId)
-  .eq('fecha', today)
-  .maybeSingle();
+  const { data: todayRecord } = await supabaseClient
+    .from('records')
+    .select('id, entrada, salida_comida, entrada_comida, salida')
+    .eq('worker_id', workerId)
+    .eq('fecha', today)
+    .maybeSingle();
 
-
-  // Validar si la acción ya fue registrada
   if (todayRecord) {
     switch (action) {
       case 'entrada':
@@ -304,7 +296,6 @@ const { data: todayRecord } = await supabaseClient
     }
   }
 
-  // Reglas de secuencia manual
   if (action === 'salida-comida' && !todayRecord?.entrada) {
     showWarningModal('Secuencia inválida', 'No puedes registrar salida a comida antes de entrada');
     hideAutoModal();
@@ -321,13 +312,11 @@ const { data: todayRecord } = await supabaseClient
     return;
   }
 
-  // Registrar el paso según acción
   const saved = await registerStepManual(employee, action, todayRecord);
   if (!saved) recentScans.delete(workerId);
   if (saved) hideAutoModal();
 }
 
-// Registrar paso manual
 async function registerStepManual(employee, action, todayRecord) {
   const workerId = String(employee.id).trim();
   const ubicacionValida = await validarUbicacionObligatoria();
@@ -355,13 +344,14 @@ async function registerStepManual(employee, action, todayRecord) {
       recordData.entrada_comida = nowTime;
       recordData.step = 3;
       break;
-    case 'salida':
+    case 'salida': {
       const pinValidado = await solicitarPin(employee.id, todayRecord?.id);
       if (!pinValidado) return false;
 
       recordData.salida = nowTime;
       recordData.step = 4;
       break;
+    }
   }
 
   if (!todayRecord) {
@@ -447,6 +437,7 @@ function hideAutoModal() {
   }
   startInactivityTimer();
 }
+
 function startInactivityTimer() {
   clearTimeout(inactivityTimer);
   inactivityTimer = setTimeout(() => {
@@ -513,7 +504,8 @@ autoTabs.forEach(tab => {
 let html5QrCode = null;
 let cameraActive = false;
 let cameraInactivityTimer = null;
-const CAMERA_INACTIVITY_TIME = 15000; // 15 segundos
+const CAMERA_INACTIVITY_TIME = 15000;
+
 function resetCameraInactivity() {
   clearTimeout(cameraInactivityTimer);
 
@@ -624,6 +616,7 @@ async function processQR(token) {
       showCriticalModal('Acceso denegado', 'El trabajador está desactivado');
       return;
     }
+
     const workerId = String(employee.id).trim();
     if (isBlocked(workerId)) {
       showWarningModal('Checaste recientemente', 'Espera unos minutos más para volver a checar...');
@@ -656,7 +649,12 @@ function hasTime(v) {
   const s = String(v).trim();
   return s !== '' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined';
 }
+
 // ===== REGISTRAR CHECADA (AUTO) =====
+// ✅ CAMBIO CLAVE:
+// - Intentamos SELECT normal
+// - Si no vemos nada, hacemos "UPSERT BASE" (solo worker_id+fecha) para obtener el estado REAL SIN pisar campos
+// - Luego UPDATE por ID con el campo correcto del paso (entrada/salida_comida/entrada_comida/salida)
 async function registerStep(employee) {
   const ubicacionValida = await validarUbicacionObligatoria();
   if (!ubicacionValida) return false;
@@ -667,7 +665,15 @@ async function registerStep(employee) {
 
   console.log('📅 HOY APP:', today, '⏰', nowTime, 'workerId:', workerId);
 
-  // 1) Leer registros del día (RANGO para evitar broncas con date)
+  // 🧪 TEST SELECT (para saber si RLS sigue bloqueando lecturas)
+  const { data: testRow, error: testErr } = await supabaseClient
+    .from('records')
+    .select('id, worker_id, fecha')
+    .limit(1);
+
+  console.log('🧪 TEST SELECT records:', testRow, testErr);
+
+  // 1) Intento de lectura normal del registro del día
   const { data: rows, error: readError } = await supabaseClient
     .from('records')
     .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
@@ -677,19 +683,32 @@ async function registerStep(employee) {
 
   if (readError) {
     console.error('❌ READ ERROR:', readError);
-    showCriticalModal('Error', 'No se pudo validar la checada');
-    return false;
+    // OJO: si RLS bloquea, a veces no marca error, solo devuelve []
   }
 
-  const todayRecord = rows?.[0] ?? null;
+  let todayRecord = rows?.[0] ?? null;
 
   console.log('🧾 rows:', rows);
-  console.log('🧾 todayRecord usado:', todayRecord);
+  console.log('🧾 todayRecord usado (pre-fallback):', todayRecord);
 
-  if (rows?.length > 1) {
-    console.warn('⚠️ DUPLICADOS detectados para worker_id + fecha:', rows);
-    // (Opcional) aquí luego limpiamos duplicados si quieres
+  // 2) Fallback: si no vemos el registro (rows vacío) hacemos UPSERT BASE (NO pisa campos)
+  // Esto evita el bug donde siempre marca "entrada" y pisa la entrada existente.
+  if (!todayRecord) {
+    const basePayload = { worker_id: workerId, fecha: today };
+
+    const { data: baseRow, error: baseErr } = await supabaseClient
+      .from('records')
+      .upsert(basePayload, { onConflict: 'worker_id,fecha' })
+      .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
+      .maybeSingle();
+
+    console.log('🧱 baseRow (fallback):', baseRow, baseErr);
+
+    // Si baseRow viene, ya tenemos el estado REAL sin pisar campos
+    if (baseRow) todayRecord = baseRow;
   }
+
+  console.log('🧾 todayRecord final:', todayRecord);
 
   // Helpers
   const hasEntrada = hasTime(todayRecord?.entrada);
@@ -697,11 +716,11 @@ async function registerStep(employee) {
   const hasEntradaComida = hasTime(todayRecord?.entrada_comida);
   const hasSalida = hasTime(todayRecord?.salida);
 
-  // 2) Determinar acción REAL por campos
+  // 3) Determinar acción REAL por campos (ya con todayRecord real)
   let actionReal = null;
   let recordData = {};
 
-  if (!todayRecord || !hasEntrada) {
+  if (!hasEntrada) {
     actionReal = 'entrada';
     recordData = { entrada: nowTime, step: 1 };
   } else if (!hasSalidaComida) {
@@ -720,18 +739,23 @@ async function registerStep(employee) {
 
   console.log('➡️ ACCIÓN REAL:', actionReal, { todayRecord, recordData });
 
-  // 3) Guardar: INSERT si no existe, UPDATE por ID si existe
-// 3) Guardar SIEMPRE con UPSERT (por unique_worker_fecha)
-const payload = todayRecord
-  ? { id: todayRecord.id, worker_id: workerId, fecha: today, ...recordData }
-  : { worker_id: workerId, fecha: today, ...recordData };
+  // 4) Guardado: UPDATE por ID (para no pisar otros campos ni reiniciar)
+  // Si por alguna razón no tenemos ID (raro), hacemos upsert con recordData.
+  let saveError = null;
 
-const { data: upserted, error: saveError } = await supabaseClient
-  .from('records')
-  .upsert(payload, { onConflict: 'worker_id,fecha', returning: 'representation' })
-  .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at');
-console.log('📦 UPSERT payload:', payload);
-console.log('🧩 UPSERT devuelve:', upserted, saveError);
+  if (todayRecord?.id) {
+    const { error } = await supabaseClient
+      .from('records')
+      .update(recordData)
+      .eq('id', todayRecord.id);
+    saveError = error;
+  } else {
+    const payload = { worker_id: workerId, fecha: today, ...recordData };
+    const { error } = await supabaseClient
+      .from('records')
+      .upsert(payload, { onConflict: 'worker_id,fecha' });
+    saveError = error;
+  }
 
   if (saveError) {
     console.error('❌ SAVE ERROR:', saveError);
@@ -739,7 +763,7 @@ console.log('🧩 UPSERT devuelve:', upserted, saveError);
     return false;
   }
 
-  // 4) Verify
+  // 5) Verify (puede seguir saliendo [] si RLS bloquea SELECT, es normal)
   const { data: verifyRows, error: verifyErr } = await supabaseClient
     .from('records')
     .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
@@ -749,7 +773,7 @@ console.log('🧩 UPSERT devuelve:', upserted, saveError);
 
   console.log('✅ VERIFY rows:', verifyRows, verifyErr);
 
-  // 5) Mensaje
+  // 6) Mensaje
   switch (actionReal) {
     case 'entrada':
       showSuccessModal('Entrada registrada', `Bienvenido <span class="employee-name">${employee.name}</span>`);
@@ -769,12 +793,12 @@ console.log('🧩 UPSERT devuelve:', upserted, saveError);
 }
 
 function getTomorrowISO(todayISO) {
-  const [y,m,d] = todayISO.split('-').map(Number);
-  const dt = new Date(Date.UTC(y, m-1, d));
+  const [y, m, d] = todayISO.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
   dt.setUTCDate(dt.getUTCDate() + 1);
   const yyyy = dt.getUTCFullYear();
-  const mm = String(dt.getUTCMonth()+1).padStart(2,'0');
-  const dd = String(dt.getUTCDate()).padStart(2,'0');
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
 
