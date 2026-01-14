@@ -306,7 +306,7 @@ async function processManualQR(token, action) {
     hideAutoModal();
     return;
   }
-  if (action === 'salida' && !todayRecord?.entrada) {
+  if (action === 'salida' && !hasTime(todayRecord?.entrada)) {
     showWarningModal('Secuencia inválida', 'No puedes registrar salida antes de entrada');
     hideAutoModal();
     return;
@@ -345,13 +345,31 @@ async function registerStepManual(employee, action, todayRecord) {
       recordData.step = 3;
       break;
     case 'salida': {
-      const pinValidado = await solicitarPin(employee.id, todayRecord?.id);
-      if (!pinValidado) return false;
+      // ✅ Si ya pasó por comida (entrada + salida_comida + entrada_comida),
+      // entonces la salida es normal y NO pide PIN.
+      const yaPasoPorComida =
+        hasTime(todayRecord?.entrada) &&
+        hasTime(todayRecord?.salida_comida) &&
+        hasTime(todayRecord?.entrada_comida);
 
+      // ✅ Si NO pasó por comida pero sí tiene entrada, es salida temprana y requiere PIN
+      const salidaTemprana =
+        hasTime(todayRecord?.entrada) &&
+        !hasTime(todayRecord?.salida_comida) &&
+        !hasTime(todayRecord?.entrada_comida);
+  
+      if (salidaTemprana) {
+        const pinValidado = await solicitarPin(employee.id, todayRecord?.id);
+        if (!pinValidado) return false;
+      }
+
+      // Si ya pasó por comida -> sin PIN
+      // Si es salida temprana -> con PIN
       recordData.salida = nowTime;
       recordData.step = 4;
       break;
     }
+
   }
 
   if (!todayRecord) {
