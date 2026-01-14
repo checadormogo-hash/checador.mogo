@@ -647,86 +647,66 @@ async function registerStep(employee) {
     timeZone: 'America/Monterrey'
   });
 
-  // 🔎 Buscar registro del día (AHORA TRAEMOS step)
-  const { data: todayRecord, error } = await supabaseClient
+  // 1) Leer estado actual REAL desde Supabase
+  const { data: todayRecord, error: readError } = await supabaseClient
     .from('records')
-    .select('id, entrada, salida_comida, entrada_comida, salida')
+    .select('worker_id, fecha, entrada, salida_comida, entrada_comida, salida')
     .eq('worker_id', employee.id)
     .eq('fecha', today)
     .maybeSingle();
 
-
-  if (error) {
+  if (readError) {
+    console.error('❌ READ ERROR:', readError);
     showCriticalModal('Error', 'No se pudo validar la checada');
     return false;
   }
 
-let recordData = {};
-let actionReal = null;
+  const hasEntrada = hasTime(todayRecord?.entrada);
+  const hasSalidaComida = hasTime(todayRecord?.salida_comida);
+  const hasEntradaComida = hasTime(todayRecord?.entrada_comida);
+  const hasSalida = hasTime(todayRecord?.salida);
 
+  let recordData = {};
+  let actionReal = null;
 
-// Normalización fuerte
-const hasEntrada = hasTime(todayRecord?.entrada);
-const hasSalidaComida = hasTime(todayRecord?.salida_comida);
-const hasEntradaComida = hasTime(todayRecord?.entrada_comida);
-const hasSalida = hasTime(todayRecord?.salida);
+  if (!todayRecord || !hasEntrada) {
+    actionReal = 'entrada';
+    recordData = { entrada: nowTime, step: 1 };
+  } else if (!hasSalidaComida) {
+    actionReal = 'salida-comida';
+    recordData = { salida_comida: nowTime, step: 2 };
+  } else if (!hasEntradaComida) {
+    actionReal = 'entrada-comida';
+    recordData = { entrada_comida: nowTime, step: 3 };
+  } else if (!hasSalida) {
+    actionReal = 'salida';
+    recordData = { salida: nowTime, step: 4 };
+  } else {
+    showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
+    return false;
+  }
 
-console.log('DEBUG', {
-  entrada: todayRecord?.entrada,
-  salida_comida: todayRecord?.salida_comida,
-  entrada_comida: todayRecord?.entrada_comida,
-  salida: todayRecord?.salida,
-  flags: { hasEntrada, hasSalidaComida, hasEntradaComida, hasSalida }
-});
-// Secuencia estricta SOLO por campos (esto NO falla nunca)
-if (!todayRecord) {
-  actionReal = 'entrada';
-  recordData = { entrada: nowTime, step: 1 };
+  console.log('➡️ ACCIÓN REAL:', actionReal, { todayRecord });
 
-} else if (!hasEntrada) {
-  actionReal = 'entrada';
-  recordData = { entrada: nowTime, step: 1 };
-
-} else if (!hasSalidaComida) {
-  actionReal = 'salida-comida';
-  recordData = { salida_comida: nowTime, step: 2 };
-
-} else if (!hasEntradaComida) {
-  actionReal = 'entrada-comida';
-  recordData = { entrada_comida: nowTime, step: 3 };
-
-} else if (!hasSalida) {
-  actionReal = 'salida';
-  recordData = { salida: nowTime, step: 4 };
-
-} else {
-  showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
-  return false;
-}
-
-console.log('➡️ ACCIÓN REAL:', actionReal);
-
-let saveError = null;
-
-if (!todayRecord) {
-  const { error } = await supabaseClient
+  // 2) Guardar SIEMPRE con UPSERT para evitar 409
+  const { error: saveError } = await supabaseClient
     .from('records')
-    .insert([{ worker_id: employee.id, fecha: today, ...recordData }]);
-  saveError = error;
-} else {
-  const { error } = await supabaseClient
-    .from('records')
-    .update(recordData)
-    .eq('id', todayRecord.id);
-  saveError = error;
-}
+    .upsert(
+      {
+        worker_id: employee.id,
+        fecha: today,
+        ...recordData
+      },
+      { onConflict: 'worker_id,fecha' }
+    );
 
-if (saveError) {
-  console.error('❌ SAVE ERROR:', saveError);
-  showCriticalModal('Error', 'No se pudo guardar la checada');
-  return false;
-}
+  if (saveError) {
+    console.error('❌ SAVE ERROR:', saveError);
+    showCriticalModal('Error', 'No se pudo guardar la checada');
+    return false;
+  }
 
+  // 3) Mensaje
   switch (actionReal) {
     case 'entrada':
       showSuccessModal('Entrada registrada', `Bienvenido <span class="employee-name">${employee.name}</span>`);
