@@ -251,7 +251,7 @@ async function processManualQR(token, action) {
     hideAutoModal();
     return;
   }
-
+  recentScans.set(workerId, Date.now());
   // Validar secuencia de pasos según acción manual
   const today = getTodayISO();
 
@@ -316,9 +316,8 @@ const { data: todayRecord } = await supabaseClient
 
   // Registrar el paso según acción
   const saved = await registerStepManual(employee, action, todayRecord);
-  if (saved) {
-    hideAutoModal();
-  }
+  if (!saved) recentScans.delete(workerId);
+  if (saved) hideAutoModal();
 }
 
 // Registrar paso manual
