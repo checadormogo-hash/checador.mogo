@@ -121,14 +121,20 @@ function getTodayISO() {
   }).format(new Date()); // => "YYYY-MM-DD"
 }
 function getNowTimeMX() {
-  return new Intl.DateTimeFormat('en-GB', {
+  const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'America/Monterrey',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12: false
-  }).format(new Date()); // => "HH:MM:SS"
+  }).formatToParts(new Date());
+
+  const h = parts.find(p => p.type === 'hour')?.value ?? '00';
+  const m = parts.find(p => p.type === 'minute')?.value ?? '00';
+  const s = parts.find(p => p.type === 'second')?.value ?? '00';
+  return `${h}:${m}:${s}`;
 }
+
 
 function updateDateTime() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Monterrey' }));
@@ -664,11 +670,12 @@ async function registerStep(employee) {
 
   // 1) Leer estado real
   const { data: todayRecord, error: readError } = await supabaseClient
-    .from('records')
-    .select('id, worker_id, fecha, entrada, salida_comida, entrada_comida, salida')
-    .eq('worker_id', workerId)   // 🔥 usamos el string
-    .eq('fecha', today)
-    .maybeSingle();
+  .from('records')
+  .select('id, worker_id, fecha, entrada, salida_comida, entrada_comida, salida, step')
+  .eq('worker_id', workerId)
+  .eq('fecha', today)
+  .maybeSingle();
+
 
   console.log('🧾 todayRecord leído:', todayRecord);
 
@@ -686,37 +693,55 @@ async function registerStep(employee) {
 
   let recordData = {};
   let actionReal = null;
+const step = Number(todayRecord?.step || 0);
 
-  if (!todayRecord || !hasEntrada) {
-    actionReal = 'entrada';
-    recordData = { entrada: nowTime, step: 1 };
-  } else if (!hasSalidaComida) {
-    actionReal = 'salida-comida';
-    recordData = { salida_comida: nowTime, step: 2 };
-  } else if (!hasEntradaComida) {
+if (!todayRecord || step === 0) {
+  actionReal = 'entrada';
+  recordData = { entrada: nowTime, step: 1 };
+} else if (step === 1) {
+  // solo avanzar si no existe salida_comida todavía
+  if (hasTime(todayRecord?.salida_comida)) {
     actionReal = 'entrada-comida';
     recordData = { entrada_comida: nowTime, step: 3 };
-  } else if (!hasSalida) {
+  } else {
+    actionReal = 'salida-comida';
+    recordData = { salida_comida: nowTime, step: 2 };
+  }
+} else if (step === 2) {
+  // solo avanzar si no existe entrada_comida todavía
+  if (hasTime(todayRecord?.entrada_comida)) {
     actionReal = 'salida';
     recordData = { salida: nowTime, step: 4 };
   } else {
-    showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
-    return false;
+    actionReal = 'entrada-comida';
+    recordData = { entrada_comida: nowTime, step: 3 };
   }
+} else if (step === 3) {
+  actionReal = 'salida';
+  recordData = { salida: nowTime, step: 4 };
+} else {
+  showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
+  return false;
+}
+
 
   console.log('➡️ ACCIÓN REAL:', actionReal, { todayRecord });
-
+const payload = { worker_id: workerId, fecha: today, ...recordData };
   // 2) Guardar SIEMPRE con UPSERT para evitar 409
   const { error: saveError } = await supabaseClient
     .from('records')
-    .upsert(
-      {
-        worker_id: workerId, // 🔥 string consistente
-        fecha: today,
-        ...recordData
-      },
-      { onConflict: 'worker_id,fecha' }
-    );
+    .upsert(payload, { onConflict: 'worker_id,fecha' });
+    console.log('📦 UPSERT payload:', payload);
+
+// ✅ Re-lee lo guardado REAL para confirmar que sí se escribió
+const { data: verifyRecord, error: verifyErr } = await supabaseClient
+  .from('records')
+  .select('id, entrada, salida_comida, entrada_comida, salida, step')
+  .eq('worker_id', workerId)
+  .eq('fecha', today)
+  .maybeSingle();
+
+console.log('✅ VERIFY BD:', verifyRecord, verifyErr);
 
   if (saveError) {
     console.error('❌ SAVE ERROR:', saveError);
