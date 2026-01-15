@@ -408,7 +408,7 @@ async function registerStepManual(employee, action, todayRecord) {
         !hasTime(todayRecord?.entrada_comida);
 
       if (salidaTemprana) {
-        const pinValidado = await solicitarPin(employee.id, todayRecord?.id);
+        const pinValidado = await solicitarPin(employee.id, todayRecord?.id, employee.name);
         if (!pinValidado) return false;
       }
 
@@ -918,42 +918,154 @@ installBtn.addEventListener('click', async () => {
   installBtn.style.display = 'none';
 });
 
-async function solicitarPin(workerId, recordId) {
+async function solicitarPin(workerId, recordId, employeeName = '') {
   if (!workerPinInput || !pinError || !pinModal) {
     console.error('El modal o los inputs del PIN no existen en el DOM');
     return false;
   }
 
+  // helper: mostrar error + limpiar + focus
+  const showPinError = (msg) => {
+    pinError.textContent = msg;
+    pinError.style.display = 'block';
+    workerPinInput.value = '';
+    setTimeout(() => workerPinInput.focus(), 50);
+  };
+
+  // helper: modal bloqueante con solo Aceptar
+  const showBlockedPinModal = (name) => {
+    const nombre = (name || '').trim() || 'Colaborador';
+    showCriticalModal(
+      'Intentos agotados',
+      `Lo siento <span class="employee-name">${nombre}</span>, has agotado tus intentos para salida temprano.<br>Solicita un nuevo PIN con el administrador.`
+    );
+
+    // 🔒 Bloquear cierre automático y cualquier cierre extra
+    clearTimeout(confirmTimeout);
+
+    // Asegurar que SOLO cierre con el botón "X" si existe (lo ideal: ocultarlo en CSS)
+    // Aquí forzamos: al cerrar, reabrimos auto modal
+    closeConfirmModal.onclick = () => {
+      closeConfirmation();
+      showAutoModal();
+    };
+  };
+
+  // reset UI del pin
   workerPinInput.value = '';
   pinError.style.display = 'none';
+  pinError.textContent = '';
   pinModal.classList.remove('oculto');
+
+  let busy = false;
 
   return new Promise(resolve => {
     submitPinBtn.onclick = async () => {
-      const pin = workerPinInput.value.trim();
-      if (!pin) return;
+      if (busy) return;
+      busy = true;
 
-      const { data, error } = await supabaseClient
-        .from('auth_pins')
-        .select('id')
-        .eq('worker_id', workerId)
-        .eq('pin', pin)
-        .eq('tipo', 'salida_temprana')
-        .is('usado', false)
-        .maybeSingle();
+      try {
+        const pinIngresado = workerPinInput.value.trim();
+        if (!pinIngresado) {
+          busy = false;
+          return;
+        }
 
-      if (error || !data) {
-        pinError.style.display = 'block';
-        return;
+        // 1) buscar el PIN activo del trabajador (no usado)
+        const { data: pinRow, error: pinErr } = await supabaseClient
+          .from('auth_pins')
+          .select('id, pin, usado, intentos, max_intentos')
+          .eq('worker_id', workerId)
+          .eq('tipo', 'salida_temprana')
+          .is('usado', false)
+          .order('creado_en', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pinErr) {
+          console.error('Error leyendo auth_pins:', pinErr);
+          showPinError('No se pudo validar el PIN. Intenta de nuevo.');
+          busy = false;
+          return;
+        }
+
+        if (!pinRow) {
+          showPinError('No hay un PIN activo. Solicita uno al administrador.');
+          busy = false;
+          return;
+        }
+
+        const intentos = Number(pinRow.intentos ?? 0);
+        const max = Number(pinRow.max_intentos ?? 3);
+
+        // 2) comparar
+        const correcto = String(pinRow.pin) === String(pinIngresado);
+
+        if (!correcto) {
+          // 3) sumar intento
+          const newIntentos = intentos + 1;
+          const restantes = Math.max(0, max - newIntentos);
+
+          const { error: upErr } = await supabaseClient
+            .from('auth_pins')
+            .update({ intentos: newIntentos })
+            .eq('id', pinRow.id);
+
+          if (upErr) {
+            console.error('Error actualizando intentos:', upErr);
+            showPinError('PIN incorrecto (no se pudo actualizar intentos).');
+            busy = false;
+            return;
+          }
+
+          // 4) si se agotó
+          if (newIntentos >= max) {
+            // opcional: marcar como usado para que ya no se intente
+            await supabaseClient
+              .from('auth_pins')
+              .update({ usado: true, usado_en: new Date().toISOString() })
+              .eq('id', pinRow.id);
+
+            // cerrar modal de pin
+            pinModal.classList.add('oculto');
+
+            // mostrar modal bloqueante personalizado
+            showBlockedPinModal(employeeName);
+
+            // al aceptar, tu closeConfirmation ya hace showAutoModal()
+            // (por tu código actual)
+            resolve(false);
+            busy = false;
+            return;
+          }
+
+          showPinError(`PIN incorrecto | Te quedan ${restantes} intento(s)`);
+          busy = false;
+          return;
+        }
+
+        // 5) correcto: marcar usado
+        const { error: useErr } = await supabaseClient
+          .from('auth_pins')
+          .update({ usado: true, usado_en: new Date().toISOString() })
+          .eq('id', pinRow.id);
+
+        if (useErr) {
+          console.error('Error marcando usado:', useErr);
+          showPinError('PIN válido, pero no se pudo confirmar. Intenta de nuevo.');
+          busy = false;
+          return;
+        }
+
+        pinModal.classList.add('oculto');
+        resolve(true);
+        busy = false;
+
+      } catch (e) {
+        console.error('Error en solicitarPin:', e);
+        showPinError('Ocurrió un error. Intenta de nuevo.');
+        busy = false;
       }
-
-      await supabaseClient
-        .from('auth_pins')
-        .update({ usado: true })
-        .eq('id', data.id);
-
-      pinModal.classList.add('oculto');
-      resolve(true);
     };
 
     cancelPinBtn.onclick = () => {
