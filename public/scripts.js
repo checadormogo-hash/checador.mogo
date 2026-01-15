@@ -54,56 +54,145 @@ function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ===== GEO HELPERS =====
+async function getGeoPermissionState() {
+  // Devuelve: 'granted' | 'denied' | 'prompt' | 'unknown'
+  try {
+    if (!navigator.permissions?.query) return 'unknown';
+    const st = await navigator.permissions.query({ name: 'geolocation' });
+    return st.state; // granted | denied | prompt
+  } catch {
+    return 'unknown';
+  }
+}
+
+// Obtiene posición con alta precisión + timeout
+function getCurrentPositionAsync(options = {}) {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 12000,
+      maximumAge: 0,
+      ...options
+    });
+  });
+}
+
 async function validarUbicacionObligatoria() {
 
-  // 🧪 BYPASS SOLO EN DESARROLLO PC
+  // 🧪 BYPASS SOLO EN PRUEBAS
   if (IS_DESKTOP_TEST) {
-    console.warn('⚠️ Geolocalización ignorada (modo pruebas en PC)');
+    console.warn('⚠️ Geolocalización ignorada (modo pruebas)');
     return true;
   }
 
+  // 0) Si no existe geolocation
   if (!('geolocation' in navigator)) {
-    showCriticalModal(
+    FORCE_BLOCK_MODAL = true;
+    setConfirmStyle('#dc2626');
+    showConfirmModal(
       'Ubicación no disponible',
-      'Este dispositivo no soporta geolocalización'
+      'Este dispositivo no soporta geolocalización. No es posible checar.',
+      9999999
     );
     return false;
   }
 
-  return new Promise(resolve => {
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const { latitude, longitude } = position.coords;
+  // 1) Revisar estado de permisos (si el navegador lo soporta)
+  const permState = await getGeoPermissionState();
 
-        const distancia = calcularDistanciaMetros(
-          latitude,
-          longitude,
-          STORE_LOCATION.lat,
-          STORE_LOCATION.lng
-        );
-
-        console.log('📍 Distancia calculada:', Math.round(distancia), 'm');
-
-        if (distancia > ALLOWED_RADIUS_METERS) {
-          showCriticalModal(
-            'Fuera del establecimiento',
-            'Debes estar dentro del establecimiento para realizar la checada'
-          );
-          resolve(false);
-          return;
-        }
-
-        resolve(true);
-      },
-      error => {
-        showCriticalModal(
-          'Ubicación requerida',
-          'Debes permitir el acceso a tu ubicación'
-        );
-        resolve(false);
-      }
+  // Si está DENIED (bloqueado)
+  if (permState === 'denied') {
+    FORCE_BLOCK_MODAL = true;
+    setConfirmStyle('#dc2626');
+    showConfirmModal(
+      'Bloqueaste acceso a Ubicación',
+      'Es obligatorio compartir la ubicación del dispositivo para continuar.<br><br>Ve a Configuración del navegador y permite Ubicación.',
+      9999999
     );
-  });
+    return false;
+  }
+
+  // 2) Pedimos posición (si está prompt/unknown/granted)
+  try {
+    const position = await getCurrentPositionAsync();
+    const { latitude, longitude, accuracy } = position.coords;
+
+    // 3) Validar distancia
+    const distancia = calcularDistanciaMetros(
+      latitude,
+      longitude,
+      STORE_LOCATION.lat,
+      STORE_LOCATION.lng
+    );
+
+    console.log('📍 GPS OK:', { latitude, longitude, accuracy, distancia: Math.round(distancia) });
+
+    if (distancia > ALLOWED_RADIUS_METERS) {
+      FORCE_BLOCK_MODAL = true;
+      setConfirmStyle('#dc2626');
+      showConfirmModal(
+        'Fuera del establecimiento',
+        `Debes estar dentro del establecimiento para realizar la checada.<br><br>Distancia aproximada: <b>${Math.round(distancia)} m</b>`,
+        9999999
+      );
+      return false;
+    }
+
+    // ✅ OK
+    FORCE_BLOCK_MODAL = false;
+    try { closeConfirmation(); } catch {}
+    return true;
+
+  } catch (error) {
+    console.warn('❌ Error GPS:', error);
+
+    // 1 PERMISSION_DENIED
+    if (error && error.code === 1) {
+      FORCE_BLOCK_MODAL = true;
+      setConfirmStyle('#dc2626');
+      showConfirmModal(
+        'Permisos de Ubicación',
+        'Debes permitir compartir tu ubicación para poder checar.',
+        9999999
+      );
+      return false;
+    }
+
+    // 2 POSITION_UNAVAILABLE
+    if (error && error.code === 2) {
+      FORCE_BLOCK_MODAL = true;
+      setConfirmStyle('#dc2626');
+      showConfirmModal(
+        'Ubicación desactivada',
+        'Debes activar la ubicación (GPS) para continuar.',
+        9999999
+      );
+      return false;
+    }
+
+    // 3 TIMEOUT
+    if (error && error.code === 3) {
+      FORCE_BLOCK_MODAL = true;
+      setConfirmStyle('#dc2626');
+      showConfirmModal(
+        'No se pudo obtener ubicación',
+        'No se detectó tu ubicación a tiempo. Asegúrate de tener GPS activado e intenta nuevamente.',
+        9999999
+      );
+      return false;
+    }
+
+    // Fallback genérico
+    FORCE_BLOCK_MODAL = true;
+    setConfirmStyle('#dc2626');
+    showConfirmModal(
+      'Ubicación requerida',
+      'Debes permitir el acceso a tu ubicación para continuar.',
+      9999999
+    );
+    return false;
+  }
 }
 
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
@@ -837,6 +926,7 @@ function getTomorrowISO(todayISO) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+let FORCE_BLOCK_MODAL = false;
 // ===== MODALES =====
 const confirmModal = document.getElementById('confirmModal');
 const confirmTitle = document.getElementById('confirmTitle');
@@ -858,7 +948,11 @@ function closeConfirmation() {
   showAutoModal();
 }
 
-closeConfirmModal.addEventListener('click', closeConfirmation);
+closeConfirmModal.addEventListener('click', () => {
+  if (FORCE_BLOCK_MODAL) return; // 🔒 si es modal obligatorio, no deja cerrar
+  closeConfirmation();
+});
+
 
 function showWarningModal(title, message) {
   setConfirmStyle('#d97706');
