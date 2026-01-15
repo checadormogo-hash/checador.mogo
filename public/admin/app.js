@@ -197,10 +197,18 @@ if (clearFiltersBtn) {
   }
 /* ================== INICIO: CARGAR TRABAJADORES + REGISTROS ================== */
 async function init() {
-  await loadWorkers(); // primero cargamos trabajadores
+  await loadWorkers(); // primero trabajadores
   await loadRecords(); // luego registros
+  updateVistaFecha();
 }
-init();
+// ✅ SOLO cargar datos si ya hay sesión válida
+if (validarSesionAdmin()) {
+  showAdmin();
+  init();
+} else {
+  localStorage.removeItem('adminSession');
+  showLogin();
+}
   /* ================== EVENT LISTENER REGISTROS ================== */
   const recordsTableBody = document.getElementById('recordsTableBody');
   if (recordsTableBody) {
@@ -316,13 +324,6 @@ function validarSesionAdmin() {
   }
 }
 
-if (validarSesionAdmin()) {
-  showAdmin();
-} else {
-  localStorage.removeItem('adminSession'); // limpieza preventiva
-  showLogin();
-}
-
 if (loginBtn) {
   loginBtn.addEventListener('click', async () => {
     const user = document.getElementById('adminUser').value.trim();
@@ -348,6 +349,7 @@ if (loginBtn) {
     localStorage.setItem('adminSession', JSON.stringify(data));
     loginError.style.display = 'none';
     showAdmin();
+    await init();
   });
 }
 /* ================== LOGOUT ================== */
@@ -409,7 +411,7 @@ if (closeAuthPins) {
 async function loadAuthPinsToday() {
   authPinsTableBody.innerHTML = '';
 
-  const today = new Date().toISOString().substring(0, 10);
+  const today = hoyLocal(); // ✅ fecha local MX, no UTC
 
   try {
     // Traer todos los registros de hoy
