@@ -10,6 +10,19 @@ document.addEventListener('DOMContentLoaded', () => {
     "https://akgbqsfkehqlpxtrjsnw.supabase.co",
     "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
   );
+(async () => {
+  const t1 = await supabase.from('workers').select('id').limit(1);
+  console.log('TEST workers:', t1);
+
+  const t2 = await supabase.from('records').select('id').limit(1);
+  console.log('TEST records:', t2);
+
+  const t3 = await supabase.from('admin_users').select('id').limit(1);
+  console.log('TEST admin_users:', t3);
+
+  const t4 = await supabase.from('auth_pins').select('id').limit(1);
+  console.log('TEST auth_pins:', t4);
+})();
 
   /* ================== HASH PASSWORD ================== */
   async function sha256(text) {
