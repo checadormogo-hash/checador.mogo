@@ -1,71 +1,68 @@
-const CACHE_NAME = 'checador-v2';
+const CACHE_NAME = 'checador-workers-v3';
 
-// Archivos que queremos actualizar siempre si hay internet
-const DYNAMIC_ASSETS = [
+// Archivos base para offline
+const OFFLINE_ASSETS = [
   '/index.html',
+  '/styles.css',
   '/scripts.js',
   '/offline.js',
-  '/styles.css'
-];
-
-// Archivos estáticos que no cambian (iconos, manifest, etc.)
-const STATIC_ASSETS = [
   '/manifest-worker.json'
 ];
 
-
-// 🔧 INSTALACIÓN
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
+// Nunca cachear estas origins (Supabase + WA + etc)
+function isBypassURL(url) {
+  return (
+    url.hostname.endsWith('.supabase.co') ||
+    url.hostname.includes('wa.me') ||
+    url.hostname.includes('whatsapp.com')
   );
+}
+
+self.addEventListener('install', (event) => {
   self.skipWaiting();
-});
-// 🔄 ACTIVACIÓN
-self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      )
-    )
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_ASSETS)).catch(() => {})
   );
-  self.clients.claim();
 });
 
-// 🌐 FETCH
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : Promise.resolve())));
+    await self.clients.claim();
+  })());
+});
 
-  const url = new URL(event.request.url);
+// ✅ Network-first para TODO (si hay internet, manda red; si no, usa cache)
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
 
-  // Network-first para archivos dinámicos
-  if (DYNAMIC_ASSETS.includes(url.pathname)) {
-    event.respondWith(
-      fetch(event.request, { cache: 'no-store' })
-        .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
+  try {
+    const fresh = await fetch(request, { cache: 'no-store' });
+    // Solo cachear assets del mismo origen
+    const url = new URL(request.url);
+    if (url.origin === self.location.origin) {
+      cache.put(request, fresh.clone());
+    }
+    return fresh;
+  } catch (err) {
+    const cached = await cache.match(request);
+    return cached || caches.match('/index.html');
   }
+}
 
-  // Cache-first para todo lo demás (datos offline de trabajadores)
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
 
-      return fetch(event.request)
-        .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match('/index.html'));
-    })
-  );
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+
+  // ✅ No interceptar supabase ni externos
+  if (isBypassURL(url)) return;
+
+  // ✅ Solo controla tu mismo dominio
+  if (url.origin !== self.location.origin) return;
+
+  event.respondWith(networkFirst(req));
 });

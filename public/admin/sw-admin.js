@@ -1,87 +1,74 @@
-// service-worker.js
+const VERSION = 'admin-v20260115-2';
+const CACHE_NAME = `checador-admin-${VERSION}`;
 
-const VERSION = 'admin-v20260115-1'; // <-- súbelo cuando publiques
-const STATIC_CACHE = `static-${VERSION}`;
-
-// Archivos que quieres cachear para offline (básico)
-const CORE_ASSETS = [
-  '/',                 // o '/admin.html' si tienes uno
-  '/admin.html',       // si existe
-  '/app.js',
-  '/styles.css',       // ajusta nombres
-  '/manifest.webmanifest'
+// ⚠️ Rutas reales del admin (porque vive en /admin/)
+const OFFLINE_ASSETS = [
+  '/admin/index.html',
+  '/admin/app.js',
+  '/admin/styles.css',
+  '/admin/manifest.webmanifest'
 ];
 
-// Instala: precache básico
+// Nunca cachear supabase ni externos
+function isBypassURL(url) {
+  return (
+    url.hostname.endsWith('.supabase.co') ||
+    url.hostname.includes('wa.me') ||
+    url.hostname.includes('whatsapp.com')
+  );
+}
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => cache.addAll(CORE_ASSETS)).catch(() => {})
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_ASSETS)).catch(() => {})
   );
 });
 
-// Activa: limpia caches viejos
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.map((k) => (k !== STATIC_CACHE ? caches.delete(k) : Promise.resolve())));
+    await Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : Promise.resolve())));
     await self.clients.claim();
   })());
 });
 
-// Helper
-const isHTML = (req) =>
-  req.mode === 'navigate' ||
-  (req.headers.get('accept') || '').includes('text/html');
-
-// ✅ NETWORK FIRST (online manda) para HTML/JS/CSS
+// ✅ Con internet: SIEMPRE red
+// ✅ Sin internet: usa cache
 async function networkFirst(request) {
-  const cache = await caches.open(STATIC_CACHE);
+  const cache = await caches.open(CACHE_NAME);
+
   try {
-    const fresh = await fetch(request, { cache: 'no-store' }); // fuerza red
-    // Guarda copia
-    cache.put(request, fresh.clone());
+    const fresh = await fetch(request, { cache: 'no-store' });
+
+    // Solo cachear si es tu dominio y está dentro de /admin/
+    const url = new URL(request.url);
+    if (url.origin === self.location.origin && url.pathname.startsWith('/admin/')) {
+      cache.put(request, fresh.clone());
+    }
+
     return fresh;
   } catch (err) {
     const cached = await cache.match(request);
-    return cached || Response.error();
+    // fallback a index.html offline
+    return cached || cache.match('/admin/index.html') || Response.error();
   }
-}
-
-// ✅ STALE-WHILE-REVALIDATE (rápido pero se actualiza) para assets
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(STATIC_CACHE);
-  const cached = await cache.match(request);
-  const network = fetch(request).then((res) => {
-    cache.put(request, res.clone());
-    return res;
-  }).catch(() => null);
-
-  return cached || (await network) || Response.error();
 }
 
 self.addEventListener('fetch', (event) => {
-  const { request } = event;
+  const req = event.request;
+  if (req.method !== 'GET') return;
 
-  // Solo GET
-  if (request.method !== 'GET') return;
+  const url = new URL(req.url);
 
-  const url = new URL(request.url);
+  // ✅ No tocar supabase ni externos
+  if (isBypassURL(url)) return;
 
-  // Solo tu dominio
+  // ✅ Solo tu dominio
   if (url.origin !== self.location.origin) return;
 
-  // ✅ Admin: HTML + JS + CSS -> Network First
-  const isAdminAsset =
-    isHTML(request) ||
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css');
+  // ✅ IMPORTANTÍSIMO: este SW SOLO debe controlar /admin/
+  if (!url.pathname.startsWith('/admin/')) return;
 
-  if (isAdminAsset) {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  // Otros (imágenes, etc.)
-  event.respondWith(staleWhileRevalidate(request));
+  event.respondWith(networkFirst(req));
 });
