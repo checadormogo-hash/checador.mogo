@@ -37,8 +37,6 @@ const STORE_LOCATION = {
   lng: -100.08711844709858
 };
 
-const ALLOWED_RADIUS_METERS = 400;
-
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = x => x * Math.PI / 180;
@@ -958,11 +956,15 @@ function showConfirmModal(title, message, duration = 2500) {
 
   confirmTimeout = setTimeout(() => { closeConfirmation(); }, duration);
 }
+function closeConfirmation() {
+  clearTimeout(confirmTimeout);
+  confirmModal.classList.add('oculto');
 
-closeConfirmModal.addEventListener('click', () => {
-  if (FORCE_BLOCK_MODAL) return; // 🔒 bloqueante = no cierra
-  closeConfirmation();
-});
+  // ✅ IMPORTANTE: NO forzar el autoOverlay si no existe o si aún no se inicializa
+  try {
+    if (autoOverlay) showAutoModal();
+  } catch {}
+}
 
 closeConfirmModal.addEventListener('click', () => {
   if (FORCE_BLOCK_MODAL) return; // 🔒 si es modal obligatorio, no deja cerrar
@@ -994,8 +996,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadEmployees();
   showAutoModal();
   switchToScannerTab();
-  // ✅ Ubicación obligatoria al entrar/cargar
+
+  // ✅ Ubicación obligatoria al entrar/cargar (UNA SOLA VEZ)
   setTimeout(async () => {
+    FORCE_BLOCK_MODAL = false;
+    setConfirmStyle('#2563eb');
+    showConfirmModal('Validando ubicación…', 'Por favor espera un momento.', 1200);
+
     await validarUbicacionObligatoria({ silentIfOk: false });
   }, 300);
 
