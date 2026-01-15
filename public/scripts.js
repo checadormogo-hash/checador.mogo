@@ -28,7 +28,8 @@ async function loadEmployees() {
   employeesReady = true;
 }
 
-const IS_DESKTOP_TEST = true; // ⚠️ SOLO PARA PRUEBAS
+const IS_DESKTOP_TEST = false; // ✅ PRUEBA REAL
+const ALLOWED_RADIUS_METERS = 200; // ✅ pruebas (luego lo ajustamos)
 
 // ===== GEOLOCALIZACIÓN CONFIG =====
 const STORE_LOCATION = {
@@ -78,47 +79,92 @@ function getCurrentPositionAsync(options = {}) {
   });
 }
 
-async function validarUbicacionObligatoria() {
+async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
+  // Evitar re-entradas (dobles llamados)
+  if (GEO_CHECK_IN_PROGRESS) return false;
+  GEO_CHECK_IN_PROGRESS = true;
 
-  // 🧪 BYPASS SOLO EN PRUEBAS
-  if (IS_DESKTOP_TEST) {
-    console.warn('⚠️ Geolocalización ignorada (modo pruebas)');
-    return true;
-  }
-
-  // 0) Si no existe geolocation
-  if (!('geolocation' in navigator)) {
-    FORCE_BLOCK_MODAL = true;
-    setConfirmStyle('#dc2626');
-    showConfirmModal(
-      'Ubicación no disponible',
-      'Este dispositivo no soporta geolocalización. No es posible checar.',
-      9999999
-    );
-    return false;
-  }
-
-  // 1) Revisar estado de permisos (si el navegador lo soporta)
-  const permState = await getGeoPermissionState();
-
-  // Si está DENIED (bloqueado)
-  if (permState === 'denied') {
-    FORCE_BLOCK_MODAL = true;
-    setConfirmStyle('#dc2626');
-    showConfirmModal(
-      'Bloqueaste acceso a Ubicación',
-      'Es obligatorio compartir la ubicación del dispositivo para continuar.<br><br>Ve a Configuración del navegador y permite Ubicación.',
-      9999999
-    );
-    return false;
-  }
-
-  // 2) Pedimos posición (si está prompt/unknown/granted)
   try {
-    const position = await getCurrentPositionAsync();
+    // 🧪 BYPASS SOLO EN PRUEBAS
+    if (IS_DESKTOP_TEST) {
+      console.warn('⚠️ Geolocalización ignorada (modo pruebas)');
+      GEO_BOOT_OK = true;
+      FORCE_BLOCK_MODAL = false;
+      return true;
+    }
+
+    // 0) Si no existe geolocation
+    if (!('geolocation' in navigator)) {
+      FORCE_BLOCK_MODAL = true;
+      setConfirmStyle('#dc2626');
+      showConfirmModal(
+        'Ubicación no disponible',
+        'Este dispositivo no soporta geolocalización. No es posible checar.',
+        9999999
+      );
+      return false;
+    }
+
+    // 1) Revisar permisos (si se puede)
+    const permState = await getGeoPermissionState();
+
+    if (permState === 'denied') {
+      FORCE_BLOCK_MODAL = true;
+      setConfirmStyle('#dc2626');
+      showConfirmModal(
+        'Bloqueaste acceso a Ubicación',
+        'Es obligatorio compartir la ubicación para continuar.<br><br>Ve a Configuración del navegador y permite Ubicación.',
+        9999999
+      );
+      return false;
+    }
+
+    // 2) Pedir posición (esto dispara el prompt si está en "prompt")
+    let position;
+    try {
+      position = await getCurrentPositionAsync();
+    } catch (error) {
+      // ❌ Manejo de errores GPS / permisos / timeout
+      FORCE_BLOCK_MODAL = true;
+      setConfirmStyle('#dc2626');
+
+      if (error && error.code === 1) {
+        showConfirmModal(
+          'Permisos de Ubicación',
+          'Debes permitir compartir tu ubicación para poder checar.',
+          9999999
+        );
+        return false;
+      }
+
+      if (error && error.code === 2) {
+        showConfirmModal(
+          'Ubicación desactivada',
+          'Debes activar la ubicación (GPS) para continuar.',
+          9999999
+        );
+        return false;
+      }
+
+      if (error && error.code === 3) {
+        showConfirmModal(
+          'No se pudo obtener ubicación',
+          'No se detectó tu ubicación a tiempo. Asegúrate de tener GPS activado e intenta nuevamente.',
+          9999999
+        );
+        return false;
+      }
+
+      showConfirmModal(
+        'Ubicación requerida',
+        'Debes permitir el acceso a tu ubicación para continuar.',
+        9999999
+      );
+      return false;
+    }
+
     const { latitude, longitude, accuracy } = position.coords;
 
-    // 3) Validar distancia
     const distancia = calcularDistanciaMetros(
       latitude,
       longitude,
@@ -128,6 +174,7 @@ async function validarUbicacionObligatoria() {
 
     console.log('📍 GPS OK:', { latitude, longitude, accuracy, distancia: Math.round(distancia) });
 
+    // 3) Validar distancia (si está fuera => bloquea)
     if (distancia > ALLOWED_RADIUS_METERS) {
       FORCE_BLOCK_MODAL = true;
       setConfirmStyle('#dc2626');
@@ -139,59 +186,21 @@ async function validarUbicacionObligatoria() {
       return false;
     }
 
-    // ✅ OK
+    // ✅ OK: ya hay GPS + permisos + dentro del rango
+    GEO_BOOT_OK = true;
     FORCE_BLOCK_MODAL = false;
-    try { closeConfirmation(); } catch {}
+
+    // Si había modal bloqueante abierto, lo cerramos
+    try {
+      if (!confirmModal.classList.contains('oculto')) closeConfirmation();
+    } catch {}
+
+    // Si estás en modo "solo validar" (checadas), no muestres nada si está OK.
+    // (tu UI ya muestra el éxito de checada)
     return true;
 
-  } catch (error) {
-    console.warn('❌ Error GPS:', error);
-
-    // 1 PERMISSION_DENIED
-    if (error && error.code === 1) {
-      FORCE_BLOCK_MODAL = true;
-      setConfirmStyle('#dc2626');
-      showConfirmModal(
-        'Permisos de Ubicación',
-        'Debes permitir compartir tu ubicación para poder checar.',
-        9999999
-      );
-      return false;
-    }
-
-    // 2 POSITION_UNAVAILABLE
-    if (error && error.code === 2) {
-      FORCE_BLOCK_MODAL = true;
-      setConfirmStyle('#dc2626');
-      showConfirmModal(
-        'Ubicación desactivada',
-        'Debes activar la ubicación (GPS) para continuar.',
-        9999999
-      );
-      return false;
-    }
-
-    // 3 TIMEOUT
-    if (error && error.code === 3) {
-      FORCE_BLOCK_MODAL = true;
-      setConfirmStyle('#dc2626');
-      showConfirmModal(
-        'No se pudo obtener ubicación',
-        'No se detectó tu ubicación a tiempo. Asegúrate de tener GPS activado e intenta nuevamente.',
-        9999999
-      );
-      return false;
-    }
-
-    // Fallback genérico
-    FORCE_BLOCK_MODAL = true;
-    setConfirmStyle('#dc2626');
-    showConfirmModal(
-      'Ubicación requerida',
-      'Debes permitir el acceso a tu ubicación para continuar.',
-      9999999
-    );
-    return false;
+  } finally {
+    GEO_CHECK_IN_PROGRESS = false;
   }
 }
 
@@ -927,6 +936,9 @@ function getTomorrowISO(todayISO) {
 }
 
 let FORCE_BLOCK_MODAL = false;
+let GEO_BOOT_OK = false;
+let GEO_CHECK_IN_PROGRESS = false;
+
 // ===== MODALES =====
 const confirmModal = document.getElementById('confirmModal');
 const confirmTitle = document.getElementById('confirmTitle');
@@ -939,14 +951,18 @@ function showConfirmModal(title, message, duration = 2500) {
   confirmMessage.innerHTML = message;
   confirmModal.classList.remove('oculto');
 
+  clearTimeout(confirmTimeout);
+
+  // 🔒 Si es bloqueante, NO autocierra
+  if (FORCE_BLOCK_MODAL) return;
+
   confirmTimeout = setTimeout(() => { closeConfirmation(); }, duration);
 }
 
-function closeConfirmation() {
-  clearTimeout(confirmTimeout);
-  confirmModal.classList.add('oculto');
-  showAutoModal();
-}
+closeConfirmModal.addEventListener('click', () => {
+  if (FORCE_BLOCK_MODAL) return; // 🔒 bloqueante = no cierra
+  closeConfirmation();
+});
 
 closeConfirmModal.addEventListener('click', () => {
   if (FORCE_BLOCK_MODAL) return; // 🔒 si es modal obligatorio, no deja cerrar
@@ -978,6 +994,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadEmployees();
   showAutoModal();
   switchToScannerTab();
+  // ✅ Ubicación obligatoria al entrar/cargar
+  setTimeout(async () => {
+    await validarUbicacionObligatoria({ silentIfOk: false });
+  }, 300);
 
   pinModal = document.getElementById('pinModal');
   workerPinInput = document.getElementById('workerPinInput');
