@@ -1,3 +1,13 @@
+console.log('🔥 app.js CARGÓ (top-level)', new Date().toISOString());
+
+window.addEventListener('error', (e) => {
+  console.log('❌ window.error:', e.message, 'at', e.filename, e.lineno, e.colno);
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+  console.log('❌ unhandledrejection:', e.reason);
+});
+
 /* ================== APP.JS COMPLETO (con fixes + logs) ================== */
 
 document.addEventListener('DOMContentLoaded', () => {
