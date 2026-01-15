@@ -1,13 +1,3 @@
-console.log('🔥 app.js CARGÓ (top-level)', new Date().toISOString());
-
-window.addEventListener('error', (e) => {
-  console.log('❌ window.error:', e.message, 'at', e.filename, e.lineno, e.colno);
-});
-
-window.addEventListener('unhandledrejection', (e) => {
-  console.log('❌ unhandledrejection:', e.reason);
-});
-
 /* ================== APP.JS COMPLETO (con fixes + logs) ================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -20,20 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
     "https://akgbqsfkehqlpxtrjsnw.supabase.co",
     "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
   );
-(async () => {
-  const t1 = await supabase.from('workers').select('id').limit(1);
-  console.log('TEST workers:', t1);
-
-  const t2 = await supabase.from('records').select('id').limit(1);
-  console.log('TEST records:', t2);
-
-  const t3 = await supabase.from('admin_users').select('id').limit(1);
-  console.log('TEST admin_users:', t3);
-
-  const t4 = await supabase.from('auth_pins').select('id').limit(1);
-  console.log('TEST auth_pins:', t4);
-})();
-
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    // cuando el SW nuevo toma control, recarga para agarrar assets nuevos
+    window.location.reload();
+  });
+}
   /* ================== HASH PASSWORD ================== */
   async function sha256(text) {
     const data = new TextEncoder().encode(text);
