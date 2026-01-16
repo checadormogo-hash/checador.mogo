@@ -302,43 +302,93 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("online", applyButtonsByConnection);
   window.addEventListener("offline", applyButtonsByConnection);
 });
+
 // ===============================
-// OFFLINE: deshabilitar "Registro automático" + cerrar modal si estaba abierto
+// OFFLINE: impedir que el timer de scripts.js reabra el modal automático
+// sin modificar scripts.js (wrapper seguro)
 // ===============================
-document.addEventListener("DOMContentLoaded", () => {
-  const btnAuto = document.getElementById("openAutoModal");
-  const autoOverlay = document.getElementById("autoOverlay");
+(function () {
+  // Espera a que scripts.js haya definido showAutoModal
+  function hookShowAutoModal() {
+    if (typeof window.showAutoModal !== "function") return false;
+    if (window.__offline_showAutoModal_hooked) return true;
 
-  function setBtnState(el, enabled) {
-    if (!el) return;
-    el.style.pointerEvents = enabled ? "auto" : "none";
-    el.style.opacity = enabled ? "1" : "0.45";
-    el.style.filter = enabled ? "none" : "grayscale(35%)";
-    el.setAttribute("aria-disabled", enabled ? "false" : "true");
+    const original = window.showAutoModal;
+
+    window.showAutoModal = function (...args) {
+      // Si NO hay conexión, NO permitir reabrir el modal automático
+      if (!navigator.onLine) {
+        return;
+      }
+      return original.apply(this, args);
+    };
+
+    window.__offline_showAutoModal_hooked = true;
+    return true;
   }
 
-  function closeAutoOverlayIfOpen() {
-    if (!autoOverlay) return;
-    const visible = autoOverlay.style.display !== "none" && autoOverlay.style.display !== "";
-    if (visible) {
-      // cerrar de forma segura sin depender de scripts.js
-      autoOverlay.style.display = "none";
-    }
+  // intentos suaves hasta que scripts.js cargue
+  const t = setInterval(() => {
+    if (hookShowAutoModal()) clearInterval(t);
+  }, 50);
+
+  // Cuando cae conexión: cerrar modal y parar timer si existe (best-effort)
+  function onOffline() {
+    const autoOverlay = document.getElementById("autoOverlay");
+    if (autoOverlay) autoOverlay.style.display = "none";
+
+    // scripts.js tiene inactivityTimer; si existe global, lo limpiamos
+    try {
+      if (typeof window.inactivityTimer !== "undefined" && window.inactivityTimer) {
+        clearTimeout(window.inactivityTimer);
+      }
+    } catch {}
   }
 
-  function applyAutoModeByConnection() {
-    const isOnline = navigator.onLine;
+  window.addEventListener("offline", onOffline);
+})();
 
-    // Online: botón activo
-    // Offline: botón desactivado y modal cerrado si estaba abierto
-    setBtnState(btnAuto, isOnline);
+// ===============================
+// OFFLINE: impedir que el timer de scripts.js reabra el modal automático
+// sin modificar scripts.js (wrapper seguro)
+// ===============================
+(function () {
+  // Espera a que scripts.js haya definido showAutoModal
+  function hookShowAutoModal() {
+    if (typeof window.showAutoModal !== "function") return false;
+    if (window.__offline_showAutoModal_hooked) return true;
 
-    if (!isOnline) {
-      closeAutoOverlayIfOpen();
-    }
+    const original = window.showAutoModal;
+
+    window.showAutoModal = function (...args) {
+      // Si NO hay conexión, NO permitir reabrir el modal automático
+      if (!navigator.onLine) {
+        return;
+      }
+      return original.apply(this, args);
+    };
+
+    window.__offline_showAutoModal_hooked = true;
+    return true;
   }
 
-  applyAutoModeByConnection();
-  window.addEventListener("online", applyAutoModeByConnection);
-  window.addEventListener("offline", applyAutoModeByConnection);
-});
+  // intentos suaves hasta que scripts.js cargue
+  const t = setInterval(() => {
+    if (hookShowAutoModal()) clearInterval(t);
+  }, 50);
+
+  // Cuando cae conexión: cerrar modal y parar timer si existe (best-effort)
+  function onOffline() {
+    const autoOverlay = document.getElementById("autoOverlay");
+    if (autoOverlay) autoOverlay.style.display = "none";
+
+    // scripts.js tiene inactivityTimer; si existe global, lo limpiamos
+    try {
+      if (typeof window.inactivityTimer !== "undefined" && window.inactivityTimer) {
+        clearTimeout(window.inactivityTimer);
+      }
+    } catch {}
+  }
+
+  window.addEventListener("offline", onOffline);
+})();
