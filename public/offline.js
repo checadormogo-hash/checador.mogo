@@ -22,8 +22,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ===== CONFIG PARA DISTANCIA (solo visual) =====
-// Debe coincidir con scripts.js
-// ===== CONFIG PARA DISTANCIA (solo visual) =====
 // Reusar STORE_LOCATION de scripts.js si existe (evita redeclare)
 const STORE_LOCATION_OFFLINE =
   (window.STORE_LOCATION && typeof window.STORE_LOCATION.lat === "number")
@@ -66,10 +64,7 @@ function openDB() {
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, {
-          keyPath: "id",
-          autoIncrement: true
-        });
+        db.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
       }
     };
 
@@ -118,10 +113,13 @@ async function renderOfflineTable() {
     return;
   }
 
-  // ✅ Hay datos
   data.forEach(row => {
     const dist = getDistanciaAprox(row);
     const distTxt = (dist === null) ? "-" : `${dist} m`;
+
+    // Estado visual: Pendiente (naranja) o Sincronizado (azul) - lo usaremos después
+    // Por ahora solo mostramos texto
+    const estadoTxt = row.estado || "Pendiente";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -133,7 +131,7 @@ async function renderOfflineTable() {
       <td class="${row._offlineFields?.entradaComida ? 'offline-pending' : ''}">${row.entradaComida || "-"}</td>
       <td class="${row._offlineFields?.salida ? 'offline-pending' : ''}">${row.salida || "-"}</td>
 
-      <td>${row.estado || "Pendiente"}</td>
+      <td>${estadoTxt}</td>
       <td>${row.lat ?? "-"}</td>
       <td>${row.lng ?? "-"}</td>
       <td>${distTxt}</td>
@@ -143,15 +141,20 @@ async function renderOfflineTable() {
 }
 
 // ===== GUARDAR O ACTUALIZAR CHECADAS =====
-// data esperado (desde scripts.js después):
+// data esperado (desde scripts.js):
 // {
 //   worker_id, worker_name, fecha,
 //   tipo: 'entrada' | 'salida-comida' | 'entrada-comida' | 'salida',
 //   hora: 'HH:mm:ss',
-//   lat, lng
+//   lat, lng,
+//   // opcional:
+//   // forceCoords: true  (si quieres forzar guardar coords aunque haya online)
 // }
 async function savePendingRecord(data) {
   const db = await openDB();
+
+  // Regla: guardar coords SOLO si fue offline (o si se fuerza)
+  const shouldSaveCoords = (!navigator.onLine) || (data?.forceCoords === true);
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
@@ -162,7 +165,7 @@ async function savePendingRecord(data) {
     request.onsuccess = () => {
       const records = request.result || [];
 
-      // buscar por worker_id + fecha (tu "llave lógica")
+      // Buscar por worker_id + fecha (llave lógica)
       let record = records.find(r =>
         String(r.worker_id) === String(data.worker_id) &&
         String(r.fecha) === String(data.fecha)
@@ -172,7 +175,6 @@ async function savePendingRecord(data) {
 
       if (!record) {
         record = {
-          // id lo asigna IndexedDB
           worker_id: data.worker_id,
           nombre: data.worker_name,
           fecha: data.fecha,
@@ -180,14 +182,22 @@ async function savePendingRecord(data) {
           salidaComida: null,
           entradaComida: null,
           salida: null,
+
+          // Estado general de este "día" (lo afinamos en sync)
           estado: "Pendiente",
+
+          // Coords solo si offline
           lat: null,
           lng: null,
-          _offlineFields: {}
+
+          // qué campos están pendientes por sync (naranja)
+          _offlineFields: {},
+
+          // qué campos ya se sincronizaron (azul) -> lo usaremos después
+          _syncedFields: {}
         };
       }
 
-      // map de acciones a campos
       const map = {
         "entrada": "entrada",
         "salida-comida": "salidaComida",
@@ -197,25 +207,32 @@ async function savePendingRecord(data) {
 
       const field = map[data.tipo];
 
-      // guardar hora del campo si viene
+      // 1) Guardar SIEMPRE la hora en cache local (online u offline)
       if (field && data.hora) {
         record[field] = data.hora;
-
-        // marcar que este campo es offline
-        if (!record._offlineFields) record._offlineFields = {};
-        record._offlineFields[field] = true;
       }
 
-      // 📍 guardar coords si vienen (evidencia offline)
-      if (data.lat !== undefined && data.lat !== null) record.lat = data.lat;
-      if (data.lng !== undefined && data.lng !== null) record.lng = data.lng;
+      // 2) Marcar pendiente SOLO si fue offline
+      //    (si estás online, ese paso ya quedó en Supabase y no debe quedar “pendiente”)
+      if (field) {
+        if (!navigator.onLine) {
+          if (!record._offlineFields) record._offlineFields = {};
+          record._offlineFields[field] = true;
 
-      // ✅ Guardado correcto: add si es nuevo, put si existe
-      if (isNew) {
-        store.add(record);
-      } else {
-        store.put(record);
+          // si se estaba marcando como synced antes y luego cayó offline, lo quitamos de synced
+          if (record._syncedFields) delete record._syncedFields[field];
+        }
       }
+
+      // 3) Guardar coords solo si offline (evidencia)
+      if (shouldSaveCoords) {
+        if (data.lat !== undefined && data.lat !== null) record.lat = data.lat;
+        if (data.lng !== undefined && data.lng !== null) record.lng = data.lng;
+      }
+
+      // 4) Guardado (add si nuevo, put si existe)
+      if (isNew) store.add(record);
+      else store.put(record);
     };
 
     tx.oncomplete = () => resolve(true);
@@ -223,6 +240,7 @@ async function savePendingRecord(data) {
     request.onerror = () => reject(request.error);
   });
 }
+
 // ✅ AUTO-RENDER: cuando scripts.js abre el modal (remove 'oculto'), pintamos la tabla
 document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("offlineModal");
@@ -230,10 +248,57 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const observer = new MutationObserver(() => {
     const visible = !modal.classList.contains("oculto");
-    if (visible) {
-      renderOfflineTable();
-    }
+    if (visible) renderOfflineTable();
   });
 
   observer.observe(modal, { attributes: true, attributeFilter: ["class"] });
+});
+
+// (Opcional) Exponer helpers si los quieres usar desde scripts.js en consola
+window.renderOfflineTable = renderOfflineTable;
+window.savePendingRecord = savePendingRecord;
+window.getOfflineCheckins = getOfflineCheckins;
+
+
+// ===============================
+// UI: HABILITAR / DESHABILITAR BOTONES SEGÚN CONEXIÓN
+// (No rompe scripts.js: solo controla interfaz)
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+  function setBtnState(el, enabled) {
+    if (!el) return;
+    el.style.pointerEvents = enabled ? "auto" : "none";
+    el.style.opacity = enabled ? "1" : "0.45";
+    el.style.filter = enabled ? "none" : "grayscale(35%)";
+    el.setAttribute("aria-disabled", enabled ? "false" : "true");
+  }
+
+  function applyButtonsByConnection() {
+    const isOnline = navigator.onLine;
+
+    // Botones por data-action (los 3 que solo deben servir OFFLINE)
+    const btnEntrada = document.querySelector('.action-btn[data-action="entrada"]');
+    const btnSalidaComida = document.querySelector('.action-btn[data-action="salida-comida"]');
+    const btnEntradaComida = document.querySelector('.action-btn[data-action="entrada-comida"]');
+
+    // Botón salida SIEMPRE activo
+    const btnSalida = document.querySelector('.action-btn[data-action="salida"]');
+
+    // Reglas
+    // Online => desactivar 3 botones
+    // Offline => activar 3 botones
+    setBtnState(btnEntrada, !isOnline);
+    setBtnState(btnSalidaComida, !isOnline);
+    setBtnState(btnEntradaComida, !isOnline);
+
+    // Salida siempre activa
+    setBtnState(btnSalida, true);
+  }
+
+  // aplicar al cargar
+  applyButtonsByConnection();
+
+  // aplicar al cambiar estado de red
+  window.addEventListener("online", applyButtonsByConnection);
+  window.addEventListener("offline", applyButtonsByConnection);
 });

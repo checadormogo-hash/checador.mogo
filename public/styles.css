@@ -595,3 +595,4 @@ body {
   font-weight: 700;
   cursor: pointer;
 }
+.offline-synced { background: #2563eb; color:#fff; }
