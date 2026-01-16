@@ -111,7 +111,7 @@ async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
       setConfirmStyle('#dc2626');
       showConfirmModal(
         'Bloqueaste acceso a Ubicación',
-        'Es obligatorio compartir la ubicación para continuar.<br><br>Ve a Configuración del navegador y permite Ubicación.',
+        'Es obligatorio compartir la ubicación para continuar.<br><br>Ve a Configuración y permite Ubicación.',
         9999999,
         `<button class="btn-retry-geo" id="btnGeoRetry">Ya desbloqueé ubicación</button>`
       );
