@@ -21,6 +21,37 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("offline", updateStatus);
 });
 
+// ===== CONFIG PARA DISTANCIA (solo visual) =====
+// Debe coincidir con scripts.js
+const STORE_LOCATION = {
+  lat: 25.82105601479065,
+  lng: -100.08711844709858
+};
+
+function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function getDistanciaAprox(row) {
+  const lat = Number(row?.lat);
+  const lng = Number(row?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const d = calcularDistanciaMetros(lat, lng, STORE_LOCATION.lat, STORE_LOCATION.lng);
+  return Math.round(d);
+}
+
 // ===== INDEXED DB OFFLINE =====
 const DB_NAME = "checador_offline_db";
 const DB_VERSION = 1;
@@ -77,7 +108,7 @@ async function renderOfflineTable() {
   if (!data.length) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td colspan="9" style="text-align:center; padding:12px;">
+      <td colspan="10" style="text-align:center; padding:12px;">
         No hay checadas pendientes almacenadas
       </td>
     `;
@@ -87,32 +118,36 @@ async function renderOfflineTable() {
 
   // ✅ Hay datos
   data.forEach(row => {
+    const dist = getDistanciaAprox(row);
+    const distTxt = (dist === null) ? "-" : `${dist} m`;
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td >${row.nombre || "-"}</td>
+      <td>${row.nombre || "-"}</td>
       <td>${row.fecha || "-"}</td>
+
       <td class="${row._offlineFields?.entrada ? 'offline-pending' : ''}">${row.entrada || "-"}</td>
       <td class="${row._offlineFields?.salidaComida ? 'offline-pending' : ''}">${row.salidaComida || "-"}</td>
       <td class="${row._offlineFields?.entradaComida ? 'offline-pending' : ''}">${row.entradaComida || "-"}</td>
       <td class="${row._offlineFields?.salida ? 'offline-pending' : ''}">${row.salida || "-"}</td>
+
       <td>${row.estado || "Pendiente"}</td>
-      <td>${row.lat || "-"}</td>
-      <td>${row.lng || "-"}</td>
+      <td>${row.lat ?? "-"}</td>
+      <td>${row.lng ?? "-"}</td>
+      <td>${distTxt}</td>
     `;
     tbody.appendChild(tr);
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("btnChecadasPendientes");
-  if (!btn) return;
-
-  btn.addEventListener("click", () => {
-    renderOfflineTable();
-  });
-});
-
-//GUARDAR O ACTUALIZAR CHECADAS
+// ===== GUARDAR O ACTUALIZAR CHECADAS =====
+// data esperado (desde scripts.js después):
+// {
+//   worker_id, worker_name, fecha,
+//   tipo: 'entrada' | 'salida-comida' | 'entrada-comida' | 'salida',
+//   hora: 'HH:mm:ss',
+//   lat, lng
+// }
 async function savePendingRecord(data) {
   const db = await openDB();
 
@@ -123,64 +158,80 @@ async function savePendingRecord(data) {
     const request = store.getAll();
 
     request.onsuccess = () => {
-      const records = request.result;
+      const records = request.result || [];
 
-      // 🔧 usar los nombres REALES que vienen de scripts.js
+      // buscar por worker_id + fecha (tu "llave lógica")
       let record = records.find(r =>
-        r.worker_id === data.worker_id &&
-        r.fecha === data.fecha
-      );
+        String(r.worker_id) === String(data.worker_id) &&
+        String(r.fecha) === String(data.fecha)
+      ) || null;
 
-    if (!record) {
-      record = {
-        worker_id: data.worker_id,
-        nombre: data.worker_name,
-        fecha: data.fecha,
-        entrada: null,
-        salidaComida: null,
-        entradaComida: null,
-        salida: null,
-        estado: "Pendiente",
-        lat: null,
-        lng: null
-     };
-    }
+      const isNew = !record;
 
+      if (!record) {
+        record = {
+          // id lo asigna IndexedDB
+          worker_id: data.worker_id,
+          nombre: data.worker_name,
+          fecha: data.fecha,
+          entrada: null,
+          salidaComida: null,
+          entradaComida: null,
+          salida: null,
+          estado: "Pendiente",
+          lat: null,
+          lng: null,
+          _offlineFields: {}
+        };
+      }
 
-      // 🔧 normalizar tipos
+      // map de acciones a campos
       const map = {
         "entrada": "entrada",
         "salida-comida": "salidaComida",
         "entrada-comida": "entradaComida",
         "salida": "salida"
       };
-      // 🔒 Ignorar registros automáticos sin paso definido
-let field = null;
 
-if (data.tipo !== 'auto') {
-  field = map[data.tipo];
-  if (field && data.hora) {
-    record[field] = data.hora;
-  }
-}
+      const field = map[data.tipo];
 
-// 📍 Guardar coordenadas si existen
-if (data.lat !== undefined) record.lat = data.lat;
-if (data.lng !== undefined) record.lng = data.lng;
+      // guardar hora del campo si viene
+      if (field && data.hora) {
+        record[field] = data.hora;
 
-// 👇 MARCAR QUE ESTE CAMPO ES OFFLINE
-if (field) {
-  if (!record._offlineFields) record._offlineFields = {};
-  record._offlineFields[field] = true;
-}
+        // marcar que este campo es offline
+        if (!record._offlineFields) record._offlineFields = {};
+        record._offlineFields[field] = true;
+      }
 
-// 💾 guardar SIEMPRE el registro completo (AL FINAL)
-store.put(record);
+      // 📍 guardar coords si vienen (evidencia offline)
+      if (data.lat !== undefined && data.lat !== null) record.lat = data.lat;
+      if (data.lng !== undefined && data.lng !== null) record.lng = data.lng;
 
-
+      // ✅ Guardado correcto: add si es nuevo, put si existe
+      if (isNew) {
+        store.add(record);
+      } else {
+        store.put(record);
+      }
     };
 
     tx.oncomplete = () => resolve(true);
     tx.onerror = () => reject(tx.error);
+    request.onerror = () => reject(request.error);
   });
 }
+// ✅ AUTO-RENDER: cuando scripts.js abre el modal (remove 'oculto'), pintamos la tabla
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("offlineModal");
+  if (!modal) return;
+
+  const observer = new MutationObserver(() => {
+    const visible = !modal.classList.contains("oculto");
+    if (visible) {
+      renderOfflineTable();
+    }
+  });
+
+  observer.observe(modal, { attributes: true, attributeFilter: ["class"] });
+});
