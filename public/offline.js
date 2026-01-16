@@ -23,10 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ===== CONFIG PARA DISTANCIA (solo visual) =====
 // Debe coincidir con scripts.js
-const STORE_LOCATION = {
-  lat: 25.82105601479065,
-  lng: -100.08711844709858
-};
+// ===== CONFIG PARA DISTANCIA (solo visual) =====
+// Reusar STORE_LOCATION de scripts.js si existe (evita redeclare)
+const STORE_LOCATION_OFFLINE =
+  (window.STORE_LOCATION && typeof window.STORE_LOCATION.lat === "number")
+    ? window.STORE_LOCATION
+    : { lat: 25.82105601479065, lng: -100.08711844709858 };
 
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -48,7 +50,7 @@ function getDistanciaAprox(row) {
   const lat = Number(row?.lat);
   const lng = Number(row?.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  const d = calcularDistanciaMetros(lat, lng, STORE_LOCATION.lat, STORE_LOCATION.lng);
+  const d = calcularDistanciaMetros(lat, lng, STORE_LOCATION_OFFLINE.lat, STORE_LOCATION_OFFLINE.lng);
   return Math.round(d);
 }
 
