@@ -302,3 +302,43 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("online", applyButtonsByConnection);
   window.addEventListener("offline", applyButtonsByConnection);
 });
+// ===============================
+// OFFLINE: deshabilitar "Registro automático" + cerrar modal si estaba abierto
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+  const btnAuto = document.getElementById("openAutoModal");
+  const autoOverlay = document.getElementById("autoOverlay");
+
+  function setBtnState(el, enabled) {
+    if (!el) return;
+    el.style.pointerEvents = enabled ? "auto" : "none";
+    el.style.opacity = enabled ? "1" : "0.45";
+    el.style.filter = enabled ? "none" : "grayscale(35%)";
+    el.setAttribute("aria-disabled", enabled ? "false" : "true");
+  }
+
+  function closeAutoOverlayIfOpen() {
+    if (!autoOverlay) return;
+    const visible = autoOverlay.style.display !== "none" && autoOverlay.style.display !== "";
+    if (visible) {
+      // cerrar de forma segura sin depender de scripts.js
+      autoOverlay.style.display = "none";
+    }
+  }
+
+  function applyAutoModeByConnection() {
+    const isOnline = navigator.onLine;
+
+    // Online: botón activo
+    // Offline: botón desactivado y modal cerrado si estaba abierto
+    setBtnState(btnAuto, isOnline);
+
+    if (!isOnline) {
+      closeAutoOverlayIfOpen();
+    }
+  }
+
+  applyAutoModeByConnection();
+  window.addEventListener("online", applyAutoModeByConnection);
+  window.addEventListener("offline", applyAutoModeByConnection);
+});
