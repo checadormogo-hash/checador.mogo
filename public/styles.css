@@ -587,3 +587,11 @@ body {
   background: #fdba74; /* naranja suave */
   font-weight: 600;
 }
+.btn-retry-geo{
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}

@@ -112,8 +112,16 @@ async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
       showConfirmModal(
         'Bloqueaste acceso a Ubicación',
         'Es obligatorio compartir la ubicación para continuar.<br><br>Ve a Configuración del navegador y permite Ubicación.',
-        9999999
+        9999999,
+        `<button class="btn-retry-geo" id="btnGeoRetry">Ya desbloqueé ubicación</button>`
       );
+
+      // enganchar el botón
+      setTimeout(() => {
+        const b = document.getElementById('btnGeoRetry');
+        if (b) b.onclick = reintentarUbicacion;
+      }, 0);
+
       return false;
     }
 
@@ -130,8 +138,15 @@ async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
         showConfirmModal(
           'Permisos de Ubicación',
           'Debes permitir compartir tu ubicación para poder checar.',
-          9999999
+          9999999,
+          `<button class="btn-retry-geo" id="btnGeoRetry">Ya permití ubicación</button>`
         );
+
+        setTimeout(() => {
+          const b = document.getElementById('btnGeoRetry');
+          if (b) b.onclick = reintentarUbicacion;
+        }, 0);
+
         return false;
       }
 
@@ -139,8 +154,15 @@ async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
         showConfirmModal(
           'Ubicación desactivada',
           'Debes activar la ubicación (GPS) para continuar.',
-          9999999
+          9999999,
+          `<button class="btn-retry-geo" id="btnGeoRetry">Ya activé ubicación</button>`
         );
+
+        setTimeout(() => {
+          const b = document.getElementById('btnGeoRetry');
+          if (b) b.onclick = reintentarUbicacion;
+        }, 0);
+
         return false;
       }
 
@@ -148,16 +170,30 @@ async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
         showConfirmModal(
           'No se pudo obtener ubicación',
           'No se detectó tu ubicación a tiempo. Asegúrate de tener GPS activado e intenta nuevamente.',
-          9999999
+          9999999,
+          `<button class="btn-retry-geo" id="btnGeoRetry">Reintentar</button>`
         );
+
+        setTimeout(() => {
+          const b = document.getElementById('btnGeoRetry');
+          if (b) b.onclick = reintentarUbicacion;
+        }, 0);
+
         return false;
       }
 
       showConfirmModal(
         'Ubicación requerida',
         'Debes permitir el acceso a tu ubicación para continuar.',
-        9999999
+        9999999,
+        `<button class="btn-retry-geo" id="btnGeoRetry">Ya permití ubicación</button>`
       );
+
+      setTimeout(() => {
+        const b = document.getElementById('btnGeoRetry');
+        if (b) b.onclick = reintentarUbicacion;
+      }, 0);
+
       return false;
     }
 
@@ -179,8 +215,15 @@ async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
       showConfirmModal(
         'Fuera del establecimiento',
         `Debes estar dentro del establecimiento para realizar la checada.<br><br>Distancia aproximada: <b>${Math.round(distancia)} m</b>`,
-        9999999
+        9999999,
+        `<button class="btn-retry-geo" id="btnGeoRetry">Ya estoy en el establecimiento</button>`
       );
+
+      setTimeout(() => {
+        const b = document.getElementById('btnGeoRetry');
+        if (b) b.onclick = reintentarUbicacion;
+      }, 0);
+
       return false;
     }
 
@@ -200,6 +243,19 @@ async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
   } finally {
     GEO_CHECK_IN_PROGRESS = false;
   }
+}
+async function reintentarUbicacion() {
+  // evita dobles clicks
+  if (GEO_CHECK_IN_PROGRESS) return;
+
+  confirmMessage.innerHTML = '';
+  
+  FORCE_BLOCK_MODAL = false; // permitir que el modal azul cierre solo
+  setConfirmStyle('#2563eb');
+  showConfirmModal('Revisando ubicación…', 'Espera un momento.', 1200);
+
+  // vuelve a validar (si falla, validarUbicacionObligatoria pondrá FORCE_BLOCK_MODAL=true y mostrará el modal rojo)
+  await validarUbicacionObligatoria({ silentIfOk: false });
 }
 
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
@@ -613,16 +669,18 @@ if (openAutoModalBtn) {
 }
 
 function switchToScannerTab() {
+  if (!autoTabs || !autoPanels) return;
+
   autoTabs.forEach(t => t.classList.remove('active'));
   autoPanels.forEach(p => p.classList.remove('active'));
 
   const scannerTab = document.querySelector('.auto-tab[data-mode="scanner"]');
   const scannerPanel = document.getElementById('autoScanner');
 
-  scannerTab.classList.add('active');
-  scannerPanel.classList.add('active');
+  if (scannerTab) scannerTab.classList.add('active');
+  if (scannerPanel) scannerPanel.classList.add('active');
 
-  setTimeout(() => scannerInput.focus(), 100);
+  setTimeout(() => scannerInput?.focus(), 100);
 }
 
 // ===== CAMBIO DE TAB CAMERA / SCANNER =====
@@ -944,9 +1002,14 @@ const confirmMessage = document.getElementById('confirmMessage');
 const closeConfirmModal = document.getElementById('closeConfirmModal');
 let confirmTimeout = null;
 
-function showConfirmModal(title, message, duration = 2500) {
+function showConfirmModal(title, message, duration = 2500, actionBtnHtml = '') {
   confirmTitle.textContent = title;
-  confirmMessage.innerHTML = message;
+
+  // ✅ Si mandamos botón, lo añadimos debajo del mensaje
+  confirmMessage.innerHTML = `
+    <div>${message}</div>
+    ${actionBtnHtml ? `<div style="margin-top:14px;">${actionBtnHtml}</div>` : ''}
+  `;
   confirmModal.classList.remove('oculto');
 
   clearTimeout(confirmTimeout);
@@ -956,6 +1019,7 @@ function showConfirmModal(title, message, duration = 2500) {
 
   confirmTimeout = setTimeout(() => { closeConfirmation(); }, duration);
 }
+
 function closeConfirmation() {
   clearTimeout(confirmTimeout);
   confirmModal.classList.add('oculto');
