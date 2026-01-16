@@ -596,3 +596,6 @@ body {
   cursor: pointer;
 }
 .offline-synced { background: #2563eb; color:#fff; }
+.offline-pending-badge { font-weight: 600; }
+.offline-synced { font-weight: 700; color: #2563eb; }   /* azul */
+.offline-pin { font-weight: 700; color: #dc2626; }      /* rojo */

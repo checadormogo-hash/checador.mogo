@@ -1,4 +1,13 @@
-// ===== ESTADO ONLINE / OFFLINE =====
+// =====================================================
+// OFFLINE.JS (baseline actual + ajustes planeados)
+// - Cache diario en IndexedDB (siempre)
+// - Lat/Lng SOLO cuando NO hay internet (evidencia)
+// - Tabla pendientes + Distancia aprox
+// - UI botones manuales según conexión
+// - Control del modal automático sin tocar scripts.js
+// =====================================================
+
+// ===== ESTADO ONLINE / OFFLINE (texto en header) =====
 document.addEventListener("DOMContentLoaded", () => {
   const statusEl = document.getElementById("connectionStatus");
 
@@ -117,8 +126,9 @@ async function renderOfflineTable() {
     const dist = getDistanciaAprox(row);
     const distTxt = (dist === null) ? "-" : `${dist} m`;
 
-    // Estado visual: Pendiente (naranja) o Sincronizado (azul) - lo usaremos después
-    // Por ahora solo mostramos texto
+    // Estado visual: Pendiente (naranja) o Sincronizado (azul)
+    // (Aún no pintamos azul aquí porque depende del CSS que quieras;
+    //  pero dejamos la estructura lista con _syncedFields)
     const estadoTxt = row.estado || "Pendiente";
 
     const tr = document.createElement("tr");
@@ -126,10 +136,18 @@ async function renderOfflineTable() {
       <td>${row.nombre || "-"}</td>
       <td>${row.fecha || "-"}</td>
 
-      <td class="${row._offlineFields?.entrada ? 'offline-pending' : ''}">${row.entrada || "-"}</td>
-      <td class="${row._offlineFields?.salidaComida ? 'offline-pending' : ''}">${row.salidaComida || "-"}</td>
-      <td class="${row._offlineFields?.entradaComida ? 'offline-pending' : ''}">${row.entradaComida || "-"}</td>
-      <td class="${row._offlineFields?.salida ? 'offline-pending' : ''}">${row.salida || "-"}</td>
+      <td class="${row._offlineFields?.entrada ? 'offline-pending' : (row._syncedFields?.entrada ? 'offline-synced' : '')}">
+        ${row.entrada || "-"}
+      </td>
+      <td class="${row._offlineFields?.salidaComida ? 'offline-pending' : (row._syncedFields?.salidaComida ? 'offline-synced' : '')}">
+        ${row.salidaComida || "-"}
+      </td>
+      <td class="${row._offlineFields?.entradaComida ? 'offline-pending' : (row._syncedFields?.entradaComida ? 'offline-synced' : '')}">
+        ${row.entradaComida || "-"}
+      </td>
+      <td class="${row._offlineFields?.salida ? 'offline-pending' : (row._syncedFields?.salida ? 'offline-synced' : '')}">
+        ${row.salida || "-"}
+      </td>
 
       <td>${estadoTxt}</td>
       <td>${row.lat ?? "-"}</td>
@@ -148,7 +166,7 @@ async function renderOfflineTable() {
 //   hora: 'HH:mm:ss',
 //   lat, lng,
 //   // opcional:
-//   // forceCoords: true  (si quieres forzar guardar coords aunque haya online)
+//   // forceCoords: true (si quieres forzar guardar coords aunque haya online)
 // }
 async function savePendingRecord(data) {
   const db = await openDB();
@@ -183,17 +201,17 @@ async function savePendingRecord(data) {
           entradaComida: null,
           salida: null,
 
-          // Estado general de este "día" (lo afinamos en sync)
+          // Estado general del "día"
           estado: "Pendiente",
 
-          // Coords solo si offline
+          // Coords (solo evidencia offline)
           lat: null,
           lng: null,
 
-          // qué campos están pendientes por sync (naranja)
+          // Pendientes por sync (naranja)
           _offlineFields: {},
 
-          // qué campos ya se sincronizaron (azul) -> lo usaremos después
+          // Sincronizados (azul)
           _syncedFields: {}
         };
       }
@@ -207,30 +225,30 @@ async function savePendingRecord(data) {
 
       const field = map[data.tipo];
 
-      // 1) Guardar SIEMPRE la hora en cache local (online u offline)
+      // 1) Cache local SIEMPRE (online u offline): guardamos la hora para tener "estado del día"
       if (field && data.hora) {
         record[field] = data.hora;
       }
 
       // 2) Marcar pendiente SOLO si fue offline
-      //    (si estás online, ese paso ya quedó en Supabase y no debe quedar “pendiente”)
-      if (field) {
-        if (!navigator.onLine) {
-          if (!record._offlineFields) record._offlineFields = {};
-          record._offlineFields[field] = true;
+      if (field && !navigator.onLine) {
+        if (!record._offlineFields) record._offlineFields = {};
+        record._offlineFields[field] = true;
 
-          // si se estaba marcando como synced antes y luego cayó offline, lo quitamos de synced
-          if (record._syncedFields) delete record._syncedFields[field];
-        }
+        // si algún día se marcó como synced antes, lo removemos
+        if (record._syncedFields) delete record._syncedFields[field];
+
+        // estado general
+        record.estado = record.estado || "Pendiente";
       }
 
-      // 3) Guardar coords solo si offline (evidencia)
+      // 3) Guardar coords solo si offline (evidencia) o forzado
       if (shouldSaveCoords) {
         if (data.lat !== undefined && data.lat !== null) record.lat = data.lat;
         if (data.lng !== undefined && data.lng !== null) record.lng = data.lng;
       }
 
-      // 4) Guardado (add si nuevo, put si existe)
+      // 4) Guardar
       if (isNew) store.add(record);
       else store.put(record);
     };
@@ -254,7 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
   observer.observe(modal, { attributes: true, attributeFilter: ["class"] });
 });
 
-// (Opcional) Exponer helpers si los quieres usar desde scripts.js en consola
+// Exponer helpers (útil para consola / pruebas)
 window.renderOfflineTable = renderOfflineTable;
 window.savePendingRecord = savePendingRecord;
 window.getOfflineCheckins = getOfflineCheckins;
@@ -262,7 +280,9 @@ window.getOfflineCheckins = getOfflineCheckins;
 
 // ===============================
 // UI: HABILITAR / DESHABILITAR BOTONES SEGÚN CONEXIÓN
-// (No rompe scripts.js: solo controla interfaz)
+// - Online: desactivar entrada/salida comida/entrada comida
+// - Offline: activarlos
+// - Salida siempre activa
 // ===============================
 document.addEventListener("DOMContentLoaded", () => {
   function setBtnState(el, enabled) {
@@ -276,93 +296,41 @@ document.addEventListener("DOMContentLoaded", () => {
   function applyButtonsByConnection() {
     const isOnline = navigator.onLine;
 
-    // Botones por data-action (los 3 que solo deben servir OFFLINE)
     const btnEntrada = document.querySelector('.action-btn[data-action="entrada"]');
     const btnSalidaComida = document.querySelector('.action-btn[data-action="salida-comida"]');
     const btnEntradaComida = document.querySelector('.action-btn[data-action="entrada-comida"]');
-
-    // Botón salida SIEMPRE activo
     const btnSalida = document.querySelector('.action-btn[data-action="salida"]');
 
-    // Reglas
-    // Online => desactivar 3 botones
-    // Offline => activar 3 botones
+    // Online => desactivar 3 botones manuales (entrada, salida comida, entrada comida)
+    // Offline => activarlos
     setBtnState(btnEntrada, !isOnline);
     setBtnState(btnSalidaComida, !isOnline);
     setBtnState(btnEntradaComida, !isOnline);
 
-    // Salida siempre activa
+    // Salida siempre activa (online u offline)
     setBtnState(btnSalida, true);
   }
 
-  // aplicar al cargar
   applyButtonsByConnection();
-
-  // aplicar al cambiar estado de red
   window.addEventListener("online", applyButtonsByConnection);
   window.addEventListener("offline", applyButtonsByConnection);
 });
 
-// ===============================
-// OFFLINE: impedir que el timer de scripts.js reabra el modal automático
-// sin modificar scripts.js (wrapper seguro)
-// ===============================
-(function () {
-  // Espera a que scripts.js haya definido showAutoModal
-  function hookShowAutoModal() {
-    if (typeof window.showAutoModal !== "function") return false;
-    if (window.__offline_showAutoModal_hooked) return true;
-
-    const original = window.showAutoModal;
-
-    window.showAutoModal = function (...args) {
-      // Si NO hay conexión, NO permitir reabrir el modal automático
-      if (!navigator.onLine) {
-        return;
-      }
-      return original.apply(this, args);
-    };
-
-    window.__offline_showAutoModal_hooked = true;
-    return true;
-  }
-
-  // intentos suaves hasta que scripts.js cargue
-  const t = setInterval(() => {
-    if (hookShowAutoModal()) clearInterval(t);
-  }, 50);
-
-  // Cuando cae conexión: cerrar modal y parar timer si existe (best-effort)
-  function onOffline() {
-    const autoOverlay = document.getElementById("autoOverlay");
-    if (autoOverlay) autoOverlay.style.display = "none";
-
-    // scripts.js tiene inactivityTimer; si existe global, lo limpiamos
-    try {
-      if (typeof window.inactivityTimer !== "undefined" && window.inactivityTimer) {
-        clearTimeout(window.inactivityTimer);
-      }
-    } catch {}
-  }
-
-  window.addEventListener("offline", onOffline);
-})();
 
 // ===============================
-// OFFLINE/ONLINE: control del modal automático sin tocar scripts.js
-// - OFFLINE: cierra auto modal y detiene su timer
-// - ONLINE: abre auto modal inmediatamente y deja el flujo normal
+// CONTROL MODAL AUTOMÁTICO SIN TOCAR scripts.js
+// - Offline: cerrar modal automático y NO permitir reapertura por timer
+// - Online: abrir modal automático inmediatamente al volver la conexión
 // ===============================
 (function () {
   function safeHideAutoModal() {
     const autoOverlay = document.getElementById("autoOverlay");
     if (autoOverlay) {
       autoOverlay.style.display = "none";
-      // evitar que quede una acción manual pegada
       try { delete autoOverlay.dataset.manualAction; } catch {}
     }
 
-    // detener timer de inactividad si está accesible
+    // Detener el timer si fuera accesible (best-effort)
     try {
       if (typeof window.inactivityTimer !== "undefined" && window.inactivityTimer) {
         clearTimeout(window.inactivityTimer);
@@ -371,7 +339,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function safeShowAutoModalNow() {
-    // Solo si scripts.js ya cargó la función
     if (typeof window.showAutoModal === "function") {
       window.showAutoModal();
       return true;
@@ -379,40 +346,49 @@ document.addEventListener("DOMContentLoaded", () => {
     return false;
   }
 
-  // Cuando se va offline: cerrar y parar re-open por timer
+  // Hook: evita que showAutoModal (re-apertura por inactividad) funcione si offline
+  function hookShowAutoModal() {
+    if (typeof window.showAutoModal !== "function") return false;
+    if (window.__offline_showAutoModal_hooked) return true;
+
+    const original = window.showAutoModal;
+
+    window.showAutoModal = function (...args) {
+      if (!navigator.onLine) return; // offline => no reabrir
+      return original.apply(this, args);
+    };
+
+    window.__offline_showAutoModal_hooked = true;
+    return true;
+  }
+
+  // Esperar a que scripts.js defina showAutoModal
+  const hookTimer = setInterval(() => {
+    if (hookShowAutoModal()) clearInterval(hookTimer);
+  }, 50);
+
+  // OFFLINE => cerrar auto modal
   window.addEventListener("offline", () => {
     safeHideAutoModal();
   });
 
-  // Cuando regresa online: ABRIR inmediatamente el modal automático
+  // ONLINE => abrir auto modal inmediatamente
   window.addEventListener("online", () => {
-    // intenta abrir ya
     if (safeShowAutoModalNow()) return;
 
-    // si scripts.js todavía no estaba listo, reintenta unos ms
+    // si scripts.js aún no estaba listo, reintenta un poco
     let tries = 0;
     const t = setInterval(() => {
       tries++;
-      if (safeShowAutoModalNow() || tries > 40) { // ~2s max
-        clearInterval(t);
-      }
+      if (safeShowAutoModalNow() || tries > 40) clearInterval(t);
     }, 50);
   });
 
-  // Al cargar la página: si ya inicia offline, cerrar; si inicia online, abrir auto modal (como “bienvenida”)
+  // Al cargar: si inicia offline, cerrar auto; si inicia online, dejar que scripts.js haga lo suyo.
+  // (NO forzamos abrir aquí para no duplicar la lógica que ya tienes en scripts.js al DOMContentLoaded)
   document.addEventListener("DOMContentLoaded", () => {
     if (!navigator.onLine) {
       safeHideAutoModal();
-      return;
     }
-
-    // Si estás online al cargar, lo abrimos igual (coincide con tu comportamiento normal)
-    let tries = 0;
-    const t = setInterval(() => {
-      tries++;
-      if (safeShowAutoModalNow() || tries > 40) {
-        clearInterval(t);
-      }
-    }, 50);
   });
 })();
