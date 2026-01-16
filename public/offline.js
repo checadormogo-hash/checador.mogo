@@ -349,40 +349,20 @@ document.addEventListener("DOMContentLoaded", () => {
 })();
 
 // ===============================
-// OFFLINE: impedir que el timer de scripts.js reabra el modal automático
-// sin modificar scripts.js (wrapper seguro)
+// OFFLINE/ONLINE: control del modal automático sin tocar scripts.js
+// - OFFLINE: cierra auto modal y detiene su timer
+// - ONLINE: abre auto modal inmediatamente y deja el flujo normal
 // ===============================
 (function () {
-  // Espera a que scripts.js haya definido showAutoModal
-  function hookShowAutoModal() {
-    if (typeof window.showAutoModal !== "function") return false;
-    if (window.__offline_showAutoModal_hooked) return true;
-
-    const original = window.showAutoModal;
-
-    window.showAutoModal = function (...args) {
-      // Si NO hay conexión, NO permitir reabrir el modal automático
-      if (!navigator.onLine) {
-        return;
-      }
-      return original.apply(this, args);
-    };
-
-    window.__offline_showAutoModal_hooked = true;
-    return true;
-  }
-
-  // intentos suaves hasta que scripts.js cargue
-  const t = setInterval(() => {
-    if (hookShowAutoModal()) clearInterval(t);
-  }, 50);
-
-  // Cuando cae conexión: cerrar modal y parar timer si existe (best-effort)
-  function onOffline() {
+  function safeHideAutoModal() {
     const autoOverlay = document.getElementById("autoOverlay");
-    if (autoOverlay) autoOverlay.style.display = "none";
+    if (autoOverlay) {
+      autoOverlay.style.display = "none";
+      // evitar que quede una acción manual pegada
+      try { delete autoOverlay.dataset.manualAction; } catch {}
+    }
 
-    // scripts.js tiene inactivityTimer; si existe global, lo limpiamos
+    // detener timer de inactividad si está accesible
     try {
       if (typeof window.inactivityTimer !== "undefined" && window.inactivityTimer) {
         clearTimeout(window.inactivityTimer);
@@ -390,5 +370,49 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch {}
   }
 
-  window.addEventListener("offline", onOffline);
+  function safeShowAutoModalNow() {
+    // Solo si scripts.js ya cargó la función
+    if (typeof window.showAutoModal === "function") {
+      window.showAutoModal();
+      return true;
+    }
+    return false;
+  }
+
+  // Cuando se va offline: cerrar y parar re-open por timer
+  window.addEventListener("offline", () => {
+    safeHideAutoModal();
+  });
+
+  // Cuando regresa online: ABRIR inmediatamente el modal automático
+  window.addEventListener("online", () => {
+    // intenta abrir ya
+    if (safeShowAutoModalNow()) return;
+
+    // si scripts.js todavía no estaba listo, reintenta unos ms
+    let tries = 0;
+    const t = setInterval(() => {
+      tries++;
+      if (safeShowAutoModalNow() || tries > 40) { // ~2s max
+        clearInterval(t);
+      }
+    }, 50);
+  });
+
+  // Al cargar la página: si ya inicia offline, cerrar; si inicia online, abrir auto modal (como “bienvenida”)
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!navigator.onLine) {
+      safeHideAutoModal();
+      return;
+    }
+
+    // Si estás online al cargar, lo abrimos igual (coincide con tu comportamiento normal)
+    let tries = 0;
+    const t = setInterval(() => {
+      tries++;
+      if (safeShowAutoModalNow() || tries > 40) {
+        clearInterval(t);
+      }
+    }, 50);
+  });
 })();
