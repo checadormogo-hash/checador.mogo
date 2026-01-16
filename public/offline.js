@@ -258,7 +258,7 @@ async function savePendingRecord(data) {
     request.onerror = () => reject(request.error);
   });
 }
-
+window.savePendingRecord = savePendingRecord;
 // ✅ AUTO-RENDER: cuando scripts.js abre el modal (remove 'oculto'), pintamos la tabla
 document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("offlineModal");

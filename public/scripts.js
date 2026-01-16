@@ -5,6 +5,11 @@ const supabaseClient = window.supabase.createClient(
   "https://akgbqsfkehqlpxtrjsnw.supabase.co",
   "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
 );
+if (typeof window.savePendingRecord !== 'function') {
+  console.error('❌ offline.js NO cargó o no expuso savePendingRecord(). Revisa el orden de scripts.');
+  // opcional: modal rojo para que lo veas en pantalla
+  // showCriticalModal('Error', 'offline.js no cargó. No se puede guardar sin conexión.');
+}
 
 let employees = [];
 let employeesReady = false;
@@ -75,6 +80,20 @@ function getCurrentPositionAsync(options = {}) {
       ...options
     });
   });
+}
+async function getCoordsIfOffline(force = false) {
+  // force=true => intenta obtener coords aunque navigator.onLine diga true
+  if (!force && navigator.onLine) return { lat: null, lng: null };
+
+  try {
+    const pos = await getCurrentPositionAsync();
+    return {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude
+    };
+  } catch {
+    return { lat: null, lng: null };
+  }
 }
 
 async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
@@ -570,6 +589,41 @@ async function registerStepManual(employee, action, todayRecord) {
     }
   }
 
+  // ===============================
+// ✅ OFFLINE: no tocar Supabase, guardar solo en IndexedDB + coords
+// ===============================
+if (!navigator.onLine) {
+  try {
+    const coords = await getCoordsIfOffline();
+    if (typeof window.savePendingRecord === 'function') {
+      await window.savePendingRecord({
+        worker_id: workerId,
+        worker_name: employee.name,
+        fecha: getTodayISO(),
+        tipo: action,
+        hora: nowTime,
+        lat: coords.lat,
+        lng: coords.lng
+      });
+    }
+  } catch (e) {
+    console.error('Error guardando offline:', e);
+    showCriticalModal('Error', 'No se pudo guardar la checada en modo sin conexión');
+    return false;
+  }
+
+  showSuccessModal(
+    `${formatActionTitle(action)} registrada`,
+    `Hola <span class="employee-name">${employee.name}</span>, registro guardado <b>sin conexión</b>.`
+  );
+
+  return true;
+}
+
+// ===============================
+// ✅ ONLINE: continúa normal (Supabase) y cachea sin coords
+// ===============================
+
   // ✅ Guardado seguro: UPDATE por ID si existe, si no existe hacemos INSERT
   if (todayRecord?.id) {
     const { error: updateError } = await supabaseClient
@@ -596,6 +650,24 @@ async function registerStepManual(employee, action, todayRecord) {
     `${formatActionTitle(action)} registrada`,
     `Hola <span class="employee-name">${employee.name}</span>, ${action.includes('salida') ? '¡Hasta luego!' : 'registro exitoso'}`
   );
+
+// ✅ Cache local del día (online) SIN coords
+try {
+  if (typeof window.savePendingRecord === 'function') {
+    await window.savePendingRecord({
+      worker_id: workerId,
+      worker_name: employee.name,
+      fecha: getTodayISO(),
+      tipo: action,
+      hora: nowTime,
+      lat: null,
+      lng: null
+    });
+  }
+} catch (e) {
+  console.warn('No se pudo cachear en IndexedDB (manual online):', e);
+}
+
   return true;
 }
 
@@ -633,7 +705,7 @@ function showAutoModal() {
   }, 100);
 
   startInactivityTimer();
-}
+}window.showAutoModal = showAutoModal;
 
 function hideAutoModal() {
   stopCameraScanner();
@@ -642,7 +714,7 @@ function hideAutoModal() {
     delete autoOverlay.dataset.manualAction;
   }
   startInactivityTimer();
-}
+}window.hideAutoModal = hideAutoModal;
 
 function startInactivityTimer() {
   clearTimeout(inactivityTimer);
@@ -948,11 +1020,67 @@ async function registerStep(employee) {
     saveError = error;
   }
 
-  if (saveError) {
-    console.error('❌ SAVE ERROR:', saveError);
-    showCriticalModal('Error', 'No se pudo guardar la checada');
+if (saveError) {
+  console.error('❌ SAVE ERROR (Supabase):', saveError);
+
+  // ✅ Guardar OFFLINE en IndexedDB con coords (evidencia)
+  try {
+    if (typeof window.savePendingRecord === 'function') {
+      const coords = await getCoordsIfOffline(true);
+      await window.savePendingRecord({
+        worker_id: workerId,
+        worker_name: employee.name,
+        fecha: today,
+        tipo: actionReal,
+        hora: nowTime,
+        lat: coords.lat,
+        lng: coords.lng
+      });
+    }
+
+    // ✅ Mostrar éxito OFFLINE y NO tratar como error
+    switch (actionReal) {
+      case 'entrada':
+        showSuccessModal('Entrada registrada', `Guardado <b>sin conexión</b> · <span class="employee-name">${employee.name}</span>`);
+        break;
+      case 'salida-comida':
+        showSuccessModal('Salida a comida', `Guardado <b>sin conexión</b> · <span class="employee-name">${employee.name}</span>`);
+        break;
+      case 'entrada-comida':
+        showSuccessModal('Entrada de comida', `Guardado <b>sin conexión</b> · <span class="employee-name">${employee.name}</span>`);
+        break;
+      case 'salida':
+        showSuccessModal('Salida registrada', `Guardado <b>sin conexión</b> · <span class="employee-name">${employee.name}</span>`);
+        break;
+    }
+
+    return true; // 🔥 IMPORTANTE: ya quedó guardado local
+  } catch (e) {
+    console.error('❌ También falló IndexedDB:', e);
+    showCriticalModal('Error', 'No se pudo guardar la checada (ni online ni offline)');
     return false;
   }
+}
+
+
+
+// ✅ Cache local del día (ONLINE) SIN coords (solo si Supabase guardó bien)
+try {
+  if (typeof window.savePendingRecord === 'function') {
+    await window.savePendingRecord({
+      worker_id: workerId,
+      worker_name: employee.name,
+      fecha: today,
+      tipo: actionReal,
+      hora: nowTime,
+      lat: null,
+      lng: null
+    });
+  }
+} catch (e) {
+  console.warn('No se pudo cachear en IndexedDB (auto online):', e);
+}
+
 
   const { data: verifyRows, error: verifyErr } = await supabaseClient
     .from('records')
