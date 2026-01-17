@@ -5,6 +5,7 @@ const supabaseClient = window.supabase.createClient(
   "https://akgbqsfkehqlpxtrjsnw.supabase.co",
   "sb_publishable_dXfxuXMQS__XuqmdqXnbgA_yBkRMABj"
 );
+window.supabaseClient = supabaseClient;
 if (typeof window.savePendingRecord !== 'function') {
   console.error('❌ offline.js NO cargó o no expuso savePendingRecord(). Revisa el orden de scripts.');
   // opcional: modal rojo para que lo veas en pantalla
@@ -290,7 +291,7 @@ async function reintentarUbicacion() {
 
 // ===== BLOQUEO ANTI DOBLE CHECADA =====
 const recentScans = new Map();
-const BLOCK_TIME = 3 * 60 * 1000; // 3 minutos
+const BLOCK_TIME = 10 * 60 * 1000; // 10 minutos
 
 const actionButtons = document.querySelectorAll('.action-btn');
 const scannerInput = document.querySelector('.scanner-input');

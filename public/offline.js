@@ -142,6 +142,7 @@ wrap.insertAdjacentHTML("beforeend", `
     <span class="status-chip"><span class="dot pending"></span> Pendiente: guardado local, falta enviar</span>
     <span class="status-chip"><span class="dot synced"></span> Sincronizado: ya enviado</span>
     <span class="status-chip"><span class="dot error"></span> Error: no se pudo enviar</span>
+    <button id="btnSyncNow" class="sync-btn" style="margin-left:auto;">Sincronizar</button>
   </div>
   <div class="offline-cards"></div>
 `);
@@ -167,11 +168,11 @@ const cardsWrap = wrap.querySelector(".offline-cards");
 
   function cellClass(row, field) {
     // field esperado: entrada | salidaComida | entradaComida | salida
-    if (row?._offlineFields?.[field]) return "offline-pending";
-    if (row?._syncedFields?.[field]) return "offline-synced";
+    if (row?._syncErrors?.[field]) return "offline-error";     // 🔴 error
+    if (row?._offlineFields?.[field]) return "offline-pending"; // 🟠 pendiente
+    if (row?._syncedFields?.[field]) return "offline-synced";   // 🔵 sincronizado
     return "";
   }
-
   // ✅ Pintar tarjetas
   Array.from(groups.values()).forEach(row => {
     const st = getOverallStatus(row);
@@ -217,13 +218,6 @@ const cardsWrap = wrap.querySelector(".offline-cards");
         </div>
       </div>
     `;
-console.log("🧩 savePendingRecord", {
-  tipo: data.tipo,
-  online: navigator.onLine,
-  lat: data.lat,
-  lng: data.lng
-});
-
     cardsWrap.appendChild(card);
   });
 }
@@ -358,7 +352,256 @@ document.addEventListener("DOMContentLoaded", () => {
 // Exponer helpers (útil para consola / pruebas)
 window.renderOfflineTable = renderOfflineTable;
 window.getOfflineCheckins = getOfflineCheckins;
+// =====================================================
+// SYNC: IndexedDB -> Supabase (sin sobrescribir)
+// =====================================================
+const FIELD_MAP = {
+  entrada: "entrada",
+  salidaComida: "salida_comida",
+  entradaComida: "entrada_comida",
+  salida: "salida"
+};
 
+function buildSafeUpdatePayload(localRow, remoteRow) {
+  const payload = {};
+  const pending = localRow?._offlineFields || {};
+
+  Object.keys(pending).forEach(localField => {
+    const remoteField = FIELD_MAP[localField];
+    if (!remoteField) return;
+
+    const localValue = localRow?.[localField];
+    const remoteValue = remoteRow?.[remoteField];
+
+    // ✅ solo enviar si local tiene hora y supabase NO tiene
+    if (hasTime(localValue) && !hasTime(remoteValue)) {
+      payload[remoteField] = localValue;
+    }
+  });
+
+  // step: mandarlo si corresponde al ultimo campo enviado
+  // (no obligatorio, pero ayuda)
+  if (payload.salida) payload.step = 4;
+  else if (payload.entrada_comida) payload.step = 3;
+  else if (payload.salida_comida) payload.step = 2;
+  else if (payload.entrada) payload.step = 1;
+
+  return payload;
+}
+
+async function updateLocalFlags(worker_id, fecha, fnMutate) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+
+    req.onsuccess = () => {
+      const all = req.result || [];
+      const rec = all.find(r => String(r.worker_id) === String(worker_id) && String(r.fecha) === String(fecha));
+      if (!rec) return;
+
+      fnMutate(rec);
+      store.put(rec);
+    };
+
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function syncPendingToSupabase() {
+  if (!navigator.onLine) {
+    console.warn("⚠️ No hay internet, no se puede sincronizar.");
+    return;
+  }
+
+  const sb = window.supabaseClient;
+  if (!sb) {
+    console.error("❌ No existe window.supabaseClient. Asegura window.supabaseClient = supabaseClient en scripts.js");
+    return;
+  }
+
+  const all = await getOfflineCheckins();
+  if (!all.length) return;
+
+  // agrupar por worker_id + fecha
+  const groups = new Map();
+  all.forEach(r => {
+    const key = `${String(r.worker_id)}__${String(r.fecha)}`;
+    if (!groups.has(key)) groups.set(key, r);
+  });
+
+  for (const row of groups.values()) {
+    const pending = row?._offlineFields && Object.keys(row._offlineFields).length > 0;
+    if (!pending) continue;
+
+    try {
+      // 1) leer registro remoto
+      const { data: remoteRows, error: readErr } = await sb
+        .from("records")
+        .select("id, worker_id, fecha, entrada, salida_comida, entrada_comida, salida, step")
+        .eq("worker_id", row.worker_id)
+        .eq("fecha", row.fecha)
+        .limit(1);
+
+      if (readErr) throw readErr;
+
+      let remote = remoteRows?.[0] || null;
+
+      // 2) si no existe remoto, crear base (sin pisa)
+      if (!remote) {
+        const { data: baseRow, error: baseErr } = await sb
+          .from("records")
+          .upsert({ worker_id: row.worker_id, fecha: row.fecha }, { onConflict: "worker_id,fecha" })
+          .select("id, worker_id, fecha, entrada, salida_comida, entrada_comida, salida, step")
+          .maybeSingle();
+
+        if (baseErr) throw baseErr;
+        remote = baseRow;
+      }
+
+      // 3) construir payload seguro
+      const payload = buildSafeUpdatePayload(row, remote);
+      if (!Object.keys(payload).length) {
+        // nada que mandar (ya existe en supabase o local vacío)
+        // marcamos estado general si ya no hay pendientes reales
+        await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+          rec._offlineFields = rec._offlineFields || {};
+          rec._syncedFields = rec._syncedFields || {};
+          rec._syncErrors = rec._syncErrors || {};
+
+          // si supabase ya tiene todo, limpiamos pendientes
+          Object.keys(FIELD_MAP).forEach(lf => {
+            if (rec._offlineFields?.[lf]) delete rec._offlineFields[lf];
+          });
+
+          rec.estado = Object.keys(rec._offlineFields || {}).length ? "Pendiente" : "Sincronizado";
+        });
+        continue;
+      }
+
+      // 4) update por id
+      const { error: upErr } = await sb
+        .from("records")
+        .update(payload)
+        .eq("id", remote.id);
+
+      if (upErr) throw upErr;
+
+      // 5) marcar columnas como sincronizadas localmente
+      await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+        rec._offlineFields = rec._offlineFields || {};
+        rec._syncedFields = rec._syncedFields || {};
+        rec._syncErrors = rec._syncErrors || {};
+
+        Object.keys(payload).forEach(remoteField => {
+          const localField = Object.keys(FIELD_MAP).find(k => FIELD_MAP[k] === remoteField);
+          if (!localField) return;
+
+          delete rec._offlineFields[localField];
+          rec._syncedFields[localField] = true;
+          delete rec._syncErrors[localField];
+        });
+
+        rec.estado = Object.keys(rec._offlineFields || {}).length ? "Pendiente" : "Sincronizado";
+      });
+
+    } catch (err) {
+      console.error("❌ Error sincronizando", row.worker_id, row.fecha, err);
+
+      // marcar error en todos los campos pendientes de ese día
+      await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+        rec._syncErrors = rec._syncErrors || {};
+        Object.keys(rec._offlineFields || {}).forEach(f => {
+          rec._syncErrors[f] = "Error al sincronizar";
+        });
+        rec.estado = "Error";
+      });
+    }
+  }
+
+  // refrescar UI si modal abierto
+  try { await renderOfflineTable(); } catch {}
+}
+
+// click del botón sincronizar
+document.addEventListener("click", (e) => {
+  if (e.target && e.target.id === "btnSyncNow") {
+    syncPendingToSupabase();
+  }
+});
+
+// al volver online: intenta una vez (sin spam)
+window.addEventListener("online", () => {
+  setTimeout(() => syncPendingToSupabase(), 500);
+});
+
+// exponer para pruebas
+window.syncPendingToSupabase = syncPendingToSupabase;
+
+// =====================================================
+// CLEANUP 10:10pm (solo sincronizados)
+// =====================================================
+function msUntil2210() {
+  const now = new Date();
+  const mxNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Monterrey" }));
+
+  const target = new Date(mxNow);
+  target.setHours(22, 10, 0, 0);
+
+  if (mxNow > target) target.setDate(target.getDate() + 1);
+
+  return target.getTime() - mxNow.getTime();
+}
+
+async function deleteFullySynced() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+
+    req.onsuccess = () => {
+      const rows = req.result || [];
+      rows.forEach(r => {
+        const pending = r?._offlineFields && Object.keys(r._offlineFields).length > 0;
+        const hasError = r?._syncErrors && Object.keys(r._syncErrors).length > 0;
+
+        // ✅ borrar solo si ya no hay pendientes y no hay errores
+        if (!pending && !hasError) {
+          store.delete(r.id);
+        }
+      });
+    };
+
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function scheduleCleanup2210() {
+  setTimeout(async () => {
+    try {
+      // intenta sync antes de borrar
+      if (navigator.onLine) await syncPendingToSupabase();
+
+      await deleteFullySynced();
+      console.log("🧹 Cleanup 10:10pm terminado");
+    } catch (e) {
+      console.error("❌ Cleanup error:", e);
+    }
+
+    // reprogramar cada 24h
+    scheduleCleanup2210();
+  }, msUntil2210());
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  scheduleCleanup2210();
+});
 
 // ===============================
 // UI: HABILITAR / DESHABILITAR BOTONES SEGÚN CONEXIÓN
