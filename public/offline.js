@@ -192,7 +192,7 @@ const cardsWrap = wrap.querySelector(".offline-cards");
           <div class="offline-col-title">Entrada</div>
           <div class="offline-col-time">${safe(row.entrada)}</div>
           <div class="offline-col-sub">Lat: ${safe(row.entrada_lat)}</div>
-          <div class="offline-col-sub">Lng: ${safe(row.salida_lat)}</div>
+          <div class="offline-col-sub">Lng: ${safe(row.entrada_lng)}</div>
         </div>
 
         <div class="offline-col ${cellClass(row,'salidaComida')}">
