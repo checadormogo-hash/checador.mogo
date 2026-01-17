@@ -388,9 +388,11 @@ async function getOrCreateTodayRecord(workerId, today) {
     .eq('fecha', today)
     .order('created_at', { ascending: true });
 
-  if (readError) {
-    console.warn('⚠️ MANUAL readError (puede ser RLS):', readError);
-  }
+if (readError) {
+  if (!navigator.onLine) console.warn('⚠️ MANUAL offline: no se pudo leer records');
+  else console.warn('⚠️ MANUAL readError:', readError);
+}
+
 
   let todayRecord = rows?.[0] ?? null;
 
@@ -479,10 +481,29 @@ async function processManualQR(token, action) {
 
   recentScans.set(workerId, Date.now());
 
-  const today = getTodayISO();
+const today = getTodayISO();
 
-  // ✅ FIX: Obtener estado REAL del día (con fallback upsert base)
-  const todayRecord = await getOrCreateTodayRecord(workerId, today);
+// ✅ OFFLINE: el "estado del día" sale de IndexedDB (no Supabase)
+let todayRecord = null;
+
+if (!navigator.onLine) {
+  if (typeof window.getLocalDayRecord === 'function') {
+    todayRecord = await window.getLocalDayRecord(workerId, today);
+  }
+} else {
+  // ✅ ONLINE: Supabase normal
+  todayRecord = await getOrCreateTodayRecord(workerId, today);
+}
+
+// ✅ Si viene de IndexedDB, convertir a "formato Supabase" para reutilizar validaciones
+if (todayRecord && !navigator.onLine) {
+  todayRecord = {
+    ...todayRecord,
+    salida_comida: todayRecord.salidaComida,
+    entrada_comida: todayRecord.entradaComida
+  };
+}
+
 
   // Validar si la acción ya fue registrada (usando hasTime para no confundir null/"")
   if (todayRecord) {

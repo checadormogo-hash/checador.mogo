@@ -95,6 +95,15 @@ async function getOfflineCheckins() {
     request.onerror = () => reject(request.error);
   });
 }
+// ===== OBTENER REGISTRO LOCAL DEL DIA (por worker_id + fecha) =====
+async function getLocalDayRecord(workerId, fecha) {
+  const all = await getOfflineCheckins();
+  return all.find(r =>
+    String(r.worker_id) === String(workerId) &&
+    String(r.fecha) === String(fecha)
+  ) || null;
+}
+window.getLocalDayRecord = getLocalDayRecord;
 
 // ===== PINTAMOS DATOS EN LA TABLA O MENSAJE VACIO =====
 async function renderOfflineTable() {
