@@ -459,14 +459,6 @@ body {
 #closePolicies i{
   font-size: 20px;
 }
-@media (min-width: 768px){
-  .policies-modal{
-    width: 94%;
-    height: 92dvh;
-    border-radius: 18px;
-  }
-}
-
 /* Estado conexion */
 #connectionStatus {
   display: block;
@@ -560,17 +552,6 @@ body {
   overflow-y: auto;
   overflow-x: auto;
   max-height: 55vh; /* ⬅ controla cuando aparece el scroll */
-}
-.table-wrapper table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px; /* para scroll horizontal */
-}
-.table-wrapper thead th {
-  position: sticky;
-  top: 0;
-  background: #fff;
-  z-index: 2;
 }
 
 @media (max-width: 600px) {

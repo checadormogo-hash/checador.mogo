@@ -107,10 +107,10 @@ window.getLocalDayRecord = getLocalDayRecord;
 
 // ===== PINTAMOS DATOS EN LA TABLA O MENSAJE VACIO =====
 async function renderOfflineTable() {
-  const tbody = document.getElementById("offlineTableBody");
-  if (!tbody) return;
+  const wrap = document.getElementById("offlineCardsWrap");
+  if (!wrap) return;
 
-  tbody.innerHTML = "";
+  wrap.innerHTML = "";
 
   let data = [];
   try {
@@ -121,13 +121,11 @@ async function renderOfflineTable() {
 
   // 🚫 No hay datos
   if (!data.length) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td colspan="10" style="text-align:center; padding:12px;">
+    wrap.innerHTML = `
+      <div class="offline-empty">
         No hay checadas pendientes almacenadas
-      </td>
+      </div>
     `;
-    tbody.appendChild(tr);
     return;
   }
 
@@ -139,24 +137,17 @@ async function renderOfflineTable() {
   });
 
   // ✅ Creamos una sola fila contenedora (colspan=10) para meter tarjetas
-  const tr = document.createElement("tr");
-  const td = document.createElement("td");
-  td.colSpan = 10;
+wrap.insertAdjacentHTML("beforeend", `
+  <div class="status-legend">
+    <span class="status-chip"><span class="dot pending"></span> Pendiente: guardado local, falta enviar</span>
+    <span class="status-chip"><span class="dot synced"></span> Sincronizado: ya enviado</span>
+    <span class="status-chip"><span class="dot error"></span> Error: no se pudo enviar</span>
+  </div>
+  <div class="offline-cards"></div>
+`);
 
-  // ✅ Leyenda de colores
-  td.innerHTML = `
-    <div class="status-legend">
-      <span class="status-chip"><span class="dot pending"></span> Pendiente: guardado local, falta enviar</span>
-      <span class="status-chip"><span class="dot synced"></span> Sincronizado: ya enviado</span>
-      <span class="status-chip"><span class="dot error"></span> Error: no se pudo enviar</span>
-    </div>
-    <div class="offline-cards"></div>
-  `;
+const cardsWrap = wrap.querySelector(".offline-cards");
 
-  tr.appendChild(td);
-  tbody.appendChild(tr);
-
-  const cardsWrap = td.querySelector(".offline-cards");
 
   // Helpers
   const safe = (v) => (v === null || v === undefined || String(v).trim() === "" ? "—" : v);

@@ -503,8 +503,6 @@ if (todayRecord && !navigator.onLine) {
     entrada_comida: todayRecord.entradaComida
   };
 }
-
-
   // Validar si la acción ya fue registrada (usando hasTime para no confundir null/"")
   if (todayRecord) {
     switch (action) {
