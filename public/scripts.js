@@ -489,9 +489,6 @@ async function processManualQR(token, action) {
     hideAutoModal();
     return;
   }
-
-  recentScans.set(workerId, Date.now());
-
 const today = getTodayISO();
 
 // ✅ OFFLINE: el "estado del día" sale de IndexedDB (no Supabase)
@@ -566,16 +563,18 @@ if (todayRecord && !navigator.onLine) {
   }
 
   const saved = await registerStepManual(employee, action, todayRecord);
-  if (!saved) recentScans.delete(workerId);
-  if (saved) hideAutoModal();
-}
+  if (saved) {
+      recentScans.set(workerId, Date.now()); // ✅ SOLO si guardó
+      hideAutoModal();
+    } else {
+      recentScans.delete(workerId); // opcional, pero deja todo limpio
+    }
+  }
 
 async function registerStepManual(employee, action, todayRecord) {
   const workerId = String(employee.id).trim();
   const ubicacionValida = await validarUbicacionObligatoria();
   if (!ubicacionValida) return false;
-
-  recentScans.set(workerId, Date.now());
 
   const nowTime = new Date().toLocaleTimeString('es-MX', {
     hour12: false,
