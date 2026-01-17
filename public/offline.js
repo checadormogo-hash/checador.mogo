@@ -131,39 +131,103 @@ async function renderOfflineTable() {
     return;
   }
 
+  // ✅ Agrupar por trabajador + fecha (porque tu llave lógica es worker_id + fecha)
+  const groups = new Map();
   data.forEach(row => {
-    const dist = getDistanciaAprox(row);
-    const distTxt = (dist === null) ? "-" : `${dist} m`;
+    const key = `${String(row.worker_id)}__${String(row.fecha)}`;
+    if (!groups.has(key)) groups.set(key, row);
+  });
 
-    // Estado visual: Pendiente (naranja) o Sincronizado (azul)
-    // (Aún no pintamos azul aquí porque depende del CSS que quieras;
-    //  pero dejamos la estructura lista con _syncedFields)
-    const estadoTxt = row.estado || "Pendiente";
+  // ✅ Creamos una sola fila contenedora (colspan=10) para meter tarjetas
+  const tr = document.createElement("tr");
+  const td = document.createElement("td");
+  td.colSpan = 10;
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${row.nombre || "-"}</td>
-      <td>${row.fecha || "-"}</td>
+  // ✅ Leyenda de colores
+  td.innerHTML = `
+    <div class="status-legend">
+      <span class="status-chip"><span class="dot pending"></span> Pendiente: guardado local, falta enviar</span>
+      <span class="status-chip"><span class="dot synced"></span> Sincronizado: ya enviado</span>
+      <span class="status-chip"><span class="dot error"></span> Error: no se pudo enviar</span>
+    </div>
+    <div class="offline-cards"></div>
+  `;
 
-      <td class="${row._offlineFields?.entrada ? 'offline-pending' : (row._syncedFields?.entrada ? 'offline-synced' : '')}">
-        ${row.entrada || "-"}
-      </td>
-      <td class="${row._offlineFields?.salidaComida ? 'offline-pending' : (row._syncedFields?.salidaComida ? 'offline-synced' : '')}">
-        ${row.salidaComida || "-"}
-      </td>
-      <td class="${row._offlineFields?.entradaComida ? 'offline-pending' : (row._syncedFields?.entradaComida ? 'offline-synced' : '')}">
-        ${row.entradaComida || "-"}
-      </td>
-      <td class="${row._offlineFields?.salida ? 'offline-pending' : (row._syncedFields?.salida ? 'offline-synced' : '')}">
-        ${row.salida || "-"}
-      </td>
+  tr.appendChild(td);
+  tbody.appendChild(tr);
 
-      <td>${estadoTxt}</td>
-      <td>${row.lat ?? "-"}</td>
-      <td>${row.lng ?? "-"}</td>
-      <td>${distTxt}</td>
+  const cardsWrap = td.querySelector(".offline-cards");
+
+  // Helpers
+  const safe = (v) => (v === null || v === undefined || String(v).trim() === "" ? "—" : v);
+
+  function getOverallStatus(row) {
+    const hasPending = row?._offlineFields && Object.keys(row._offlineFields).length > 0;
+    const hasSynced = row?._syncedFields && Object.keys(row._syncedFields).length > 0;
+
+    // preparado para futuro (sync con errores)
+    const hasError = String(row?.estado || "").toLowerCase() === "error" || !!row?._syncErrors;
+
+    if (hasError) return { key: "error", label: "Error" };
+    if (hasPending) return { key: "pending", label: "Pendiente" };
+    if (hasSynced) return { key: "synced", label: "Sincronizado" };
+    return { key: "pending", label: "Pendiente" };
+  }
+
+  function cellClass(row, field) {
+    // field esperado: entrada | salidaComida | entradaComida | salida
+    if (row?._offlineFields?.[field]) return "offline-pending";
+    if (row?._syncedFields?.[field]) return "offline-synced";
+    return "";
+  }
+
+  // ✅ Pintar tarjetas
+  Array.from(groups.values()).forEach(row => {
+    const st = getOverallStatus(row);
+
+    const card = document.createElement("div");
+    card.className = "offline-card";
+
+    card.innerHTML = `
+      <div class="offline-card-header">
+        <div class="offline-card-title">
+          Empleado: <b>${safe(row.nombre)}</b> · Fecha: <b>${safe(row.fecha)}</b> · Estado:
+          <span class="estado-text ${st.key}">${st.label}</span>
+        </div>
+      </div>
+
+      <div class="offline-grid">
+        <div class="offline-col ${cellClass(row,'entrada')}">
+          <div class="offline-col-title">Entrada</div>
+          <div class="offline-col-time">${safe(row.entrada)}</div>
+          <div class="offline-col-sub">Lat: ${safe(row.lat)}</div>
+          <div class="offline-col-sub">Lng: ${safe(row.lng)}</div>
+        </div>
+
+        <div class="offline-col ${cellClass(row,'salidaComida')}">
+          <div class="offline-col-title">Salida comida</div>
+          <div class="offline-col-time">${safe(row.salidaComida)}</div>
+          <div class="offline-col-sub">Lat: ${safe(row.lat)}</div>
+          <div class="offline-col-sub">Lng: ${safe(row.lng)}</div>
+        </div>
+
+        <div class="offline-col ${cellClass(row,'entradaComida')}">
+          <div class="offline-col-title">Entrada comida</div>
+          <div class="offline-col-time">${safe(row.entradaComida)}</div>
+          <div class="offline-col-sub">Lat: ${safe(row.lat)}</div>
+          <div class="offline-col-sub">Lng: ${safe(row.lng)}</div>
+        </div>
+
+        <div class="offline-col ${cellClass(row,'salida')}">
+          <div class="offline-col-title">Salida</div>
+          <div class="offline-col-time">${safe(row.salida)}</div>
+          <div class="offline-col-sub">Lat: ${safe(row.lat)}</div>
+          <div class="offline-col-sub">Lng: ${safe(row.lng)}</div>
+        </div>
+      </div>
     `;
-    tbody.appendChild(tr);
+
+    cardsWrap.appendChild(card);
   });
 }
 

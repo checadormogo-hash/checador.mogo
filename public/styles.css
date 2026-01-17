@@ -599,3 +599,104 @@ body {
 .offline-pending-badge { font-weight: 600; }
 .offline-synced { font-weight: 700; color: #2563eb; }   /* azul */
 .offline-pin { font-weight: 700; color: #dc2626; }      /* rojo */
+/* ===== LEYENDA DE COLORES ===== */
+.status-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 8px 0 14px;
+  font-size: 13px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.dot.pending { background: #f59e0b; }
+.dot.synced  { background: #2563eb; }
+.dot.error   { background: #dc2626; }
+
+/* ===== ESTADO COLOR EN HEADER ===== */
+.estado-text { font-weight: 800; }
+.estado-text.pending { color: #f59e0b; }
+.estado-text.synced  { color: #2563eb; }
+.estado-text.error   { color: #dc2626; }
+
+/* ===== TARJETAS ===== */
+.offline-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.offline-card {
+  background: #111;           /* negro elegante como tu ejemplo */
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.offline-card-header {
+  margin-bottom: 10px;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.offline-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.offline-col {
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255,255,255,0.06);
+}
+
+.offline-col-title {
+  font-weight: 700;
+  opacity: 0.9;
+  margin-bottom: 8px;
+}
+
+.offline-col-time {
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.offline-col-sub {
+  font-size: 13px;
+  opacity: 0.85;
+  margin: 4px 0;
+}
+
+/* Reusar tus clases existentes para marcar pendientes/sync */
+.offline-col.offline-pending {
+  background: rgba(245, 158, 11, 0.25);
+}
+
+.offline-col.offline-synced {
+  background: rgba(37, 99, 235, 0.22);
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .offline-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
