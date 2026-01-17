@@ -158,7 +158,10 @@ const cardsWrap = wrap.querySelector(".offline-cards");
     const hasSynced = row?._syncedFields && Object.keys(row._syncedFields).length > 0;
 
     // preparado para futuro (sync con errores)
-    const hasError = String(row?.estado || "").toLowerCase() === "error" || !!row?._syncErrors;
+    const hasError =
+      String(row?.estado || "").toLowerCase() === "error" ||
+      (row?._syncErrors && Object.keys(row._syncErrors).length > 0);
+
 
     if (hasError) return { key: "error", label: "Error" };
     if (hasPending) return { key: "pending", label: "Pendiente" };
@@ -465,23 +468,37 @@ async function syncPendingToSupabase() {
       // 3) construir payload seguro
       const payload = buildSafeUpdatePayload(row, remote);
       if (!Object.keys(payload).length) {
-        // nada que mandar (ya existe en supabase o local vacío)
-        // marcamos estado general si ya no hay pendientes reales
-        await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
-          rec._offlineFields = rec._offlineFields || {};
-          rec._syncedFields = rec._syncedFields || {};
-          rec._syncErrors = rec._syncErrors || {};
+          await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+            rec._offlineFields = rec._offlineFields || {};
+            rec._syncedFields = rec._syncedFields || {};
+            rec._syncErrors = rec._syncErrors || {};
 
-          // si supabase ya tiene todo, limpiamos pendientes
-          Object.keys(FIELD_MAP).forEach(lf => {
-            if (rec._offlineFields?.[lf]) delete rec._offlineFields[lf];
+            // Si Supabase ya tiene lo que local marcaba pendiente, limpiamos esos pendientes
+            Object.keys(rec._offlineFields).forEach(lf => {
+              const rf = FIELD_MAP[lf];
+              if (!rf) return;
+
+              const localValue = rec[lf];
+              const remoteValue = remote?.[rf];
+
+              // ✅ si remoto ya tiene el valor, entonces sí lo damos como sincronizado
+              if (hasTime(localValue) && hasTime(remoteValue)) {
+                delete rec._offlineFields[lf];
+                rec._syncedFields[lf] = true;
+                delete rec._syncErrors[lf];
+              }
+            });
+            // ✅ si ya no hay pendientes, NO debe quedar Error
+            const stillPending = Object.keys(rec._offlineFields).length > 0;
+            rec.estado = stillPending ? "Pendiente" : "Sincronizado";
+
+            // ✅ si ya quedó sincronizado completo, limpia cualquier error remanente
+            if (!stillPending) {
+              rec._syncErrors = {};
+            }
           });
-
-          rec.estado = Object.keys(rec._offlineFields || {}).length ? "Pendiente" : "Sincronizado";
-        });
-        continue;
-      }
-
+          continue;
+        }
       // 4) update por id
       const { error: upErr } = await sb
         .from("records")
@@ -505,9 +522,15 @@ async function syncPendingToSupabase() {
           delete rec._syncErrors[localField];
         });
 
-        rec.estado = Object.keys(rec._offlineFields || {}).length ? "Pendiente" : "Sincronizado";
-      });
+        const stillPending = Object.keys(rec._offlineFields || {}).length > 0;
+        rec.estado = stillPending ? "Pendiente" : "Sincronizado";
 
+        // ✅ Si ya no hay pendientes, limpiar errores del día completo
+        if (!stillPending) {
+          rec._syncErrors = {};
+        }
+
+      });
     } catch (err) {
       console.error("❌ Error sincronizando", row.worker_id, row.fecha, err);
 
