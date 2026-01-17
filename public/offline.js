@@ -191,29 +191,29 @@ const cardsWrap = wrap.querySelector(".offline-cards");
         <div class="offline-col ${cellClass(row,'entrada')}">
           <div class="offline-col-title">Entrada</div>
           <div class="offline-col-time">${safe(row.entrada)}</div>
-          <div class="offline-col-sub">Lat: ${safe(row.lat)}</div>
-          <div class="offline-col-sub">Lng: ${safe(row.lng)}</div>
+          <div class="offline-col-sub">Lat: ${safe(row.entrada_lat)}</div>
+          <div class="offline-col-sub">Lng: ${safe(row.salida_lat)}</div>
         </div>
 
         <div class="offline-col ${cellClass(row,'salidaComida')}">
           <div class="offline-col-title">Salida comida</div>
           <div class="offline-col-time">${safe(row.salidaComida)}</div>
-          <div class="offline-col-sub">Lat: ${safe(row.lat)}</div>
-          <div class="offline-col-sub">Lng: ${safe(row.lng)}</div>
+          <div class="offline-col-sub">Lat: ${safe(row.salidaComida_lat)}</div>
+          <div class="offline-col-sub">Lng: ${safe(row.salidaComida_lng)}</div>
         </div>
 
         <div class="offline-col ${cellClass(row,'entradaComida')}">
           <div class="offline-col-title">Entrada comida</div>
           <div class="offline-col-time">${safe(row.entradaComida)}</div>
-          <div class="offline-col-sub">Lat: ${safe(row.lat)}</div>
-          <div class="offline-col-sub">Lng: ${safe(row.lng)}</div>
+          <div class="offline-col-sub">Lat: ${safe(row.entradaComida_lat)}</div>
+          <div class="offline-col-sub">Lng: ${safe(row.entradaComida_lng)}</div>
         </div>
 
         <div class="offline-col ${cellClass(row,'salida')}">
           <div class="offline-col-title">Salida</div>
           <div class="offline-col-time">${safe(row.salida)}</div>
-          <div class="offline-col-sub">Lat: ${safe(row.lat)}</div>
-          <div class="offline-col-sub">Lng: ${safe(row.lng)}</div>
+          <div class="offline-col-sub">Lat: ${safe(row.salida_lat)}</div>
+          <div class="offline-col-sub">Lng: ${safe(row.salida_lng)}</div>
         </div>
       </div>
     `;
@@ -271,10 +271,18 @@ async function savePendingRecord(data) {
           // Coords (solo evidencia offline)
           lat: null,
           lng: null,
+          // Coords por evento (evidencia por checada)
+          entrada_lat: null,
+            entrada_lng: null,
+          salidaComida_lat: null,
+            salidaComida_lng: null,
+          entradaComida_lat: null,
+            entradaComida_lng: null,
+          salida_lat: null,
+            salida_lng: null,
 
           // Pendientes por sync (naranja)
           _offlineFields: {},
-
           // Sincronizados (azul)
           _syncedFields: {}
         };
@@ -305,13 +313,18 @@ async function savePendingRecord(data) {
         // estado general
         record.estado = record.estado || "Pendiente";
       }
+      // 3) Guardar coords por evento (evidencia) o forzado
+      if (shouldSaveCoords && field) {
+        const latKey = `${field}_lat`;
+        const lngKey = `${field}_lng`;
 
-      // 3) Guardar coords solo si offline (evidencia) o forzado
-      if (shouldSaveCoords) {
-        if (data.lat !== undefined && data.lat !== null) record.lat = data.lat;
-        if (data.lng !== undefined && data.lng !== null) record.lng = data.lng;
+        if (data.lat !== undefined && data.lat !== null) record[latKey] = data.lat;
+        if (data.lng !== undefined && data.lng !== null) record[lngKey] = data.lng;
+
+        // (Opcional) mantener también "lat/lng" general como último punto
+        record.lat = record[latKey];
+        record.lng = record[lngKey];
       }
-
       // 4) Guardar
       if (isNew) store.add(record);
       else store.put(record);
