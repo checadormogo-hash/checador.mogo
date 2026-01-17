@@ -283,7 +283,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Exponer helpers (útil para consola / pruebas)
 window.renderOfflineTable = renderOfflineTable;
-window.savePendingRecord = savePendingRecord;
 window.getOfflineCheckins = getOfflineCheckins;
 
 
