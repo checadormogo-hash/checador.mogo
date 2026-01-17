@@ -95,6 +95,17 @@ async function getCoordsIfOffline(force = false) {
     return { lat: null, lng: null };
   }
 }
+// ✅ Intenta varias veces obtener coords (evidencia offline)
+async function getCoordsForEvidence(retries = 3, waitMs = 600) {
+  for (let i = 0; i < retries; i++) {
+    const c = await getCoordsIfOffline(true); // true = forzar intento siempre
+    if (Number.isFinite(c.lat) && Number.isFinite(c.lng)) return c;
+
+    // pequeña pausa y reintento
+    await new Promise(r => setTimeout(r, waitMs));
+  }
+  return { lat: null, lng: null };
+}
 
 async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
   // Evitar re-entradas (dobles llamados)
@@ -613,17 +624,23 @@ async function registerStepManual(employee, action, todayRecord) {
 // ===============================
 if (!navigator.onLine) {
   try {
-    const coords = await getCoordsIfOffline();
+    const coords = await getCoordsForEvidence(3, 700);
     if (typeof window.savePendingRecord === 'function') {
       await window.savePendingRecord({
-        worker_id: workerId,
-        worker_name: employee.name,
-        fecha: getTodayISO(),
-        tipo: action,
-        hora: nowTime,
-        lat: coords.lat,
-        lng: coords.lng
-      });
+  worker_id: workerId,
+  worker_name: employee.name,
+  fecha: getTodayISO(),
+  tipo: action,
+  hora: nowTime,
+  lat: coords.lat,
+  lng: coords.lng,
+  forceCoords: true
+});
+
+// ✅ si no logró coords, avisa (para que sepas que fue por GPS, no por tu guardado)
+if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+  console.warn('⚠️ No se pudo obtener lat/lng (offline) para:', action);
+}
     }
   } catch (e) {
     console.error('Error guardando offline:', e);
@@ -1045,16 +1062,21 @@ if (saveError) {
   // ✅ Guardar OFFLINE en IndexedDB con coords (evidencia)
   try {
     if (typeof window.savePendingRecord === 'function') {
-      const coords = await getCoordsIfOffline(true);
+      const coords = await getCoordsForEvidence(3, 700);
       await window.savePendingRecord({
-        worker_id: workerId,
-        worker_name: employee.name,
-        fecha: today,
-        tipo: actionReal,
-        hora: nowTime,
-        lat: coords.lat,
-        lng: coords.lng
-      });
+  worker_id: workerId,
+  worker_name: employee.name,
+  fecha: today,
+  tipo: actionReal,
+  hora: nowTime,
+  lat: coords.lat,
+  lng: coords.lng,
+  forceCoords: true
+});
+
+if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+  console.warn('⚠️ No se pudo obtener lat/lng (fallback offline) para:', actionReal);
+}
     }
 
     // ✅ Mostrar éxito OFFLINE y NO tratar como error

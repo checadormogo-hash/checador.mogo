@@ -217,6 +217,13 @@ const cardsWrap = wrap.querySelector(".offline-cards");
         </div>
       </div>
     `;
+console.log("🧩 savePendingRecord", {
+  tipo: data.tipo,
+  online: navigator.onLine,
+  shouldSaveCoords,
+  lat: data.lat,
+  lng: data.lng
+});
 
     cardsWrap.appendChild(card);
   });
