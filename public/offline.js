@@ -220,7 +220,6 @@ const cardsWrap = wrap.querySelector(".offline-cards");
 console.log("🧩 savePendingRecord", {
   tipo: data.tipo,
   online: navigator.onLine,
-  shouldSaveCoords,
   lat: data.lat,
   lng: data.lng
 });
