@@ -69,9 +69,15 @@
   </button>
 </div>
 <div class="records-nav">
+  <button id="openCalendarBtn" class="btn-calendar" title="Calendario">
+    📅
+  </button>
   <button id="prevDay" disabled>◀</button>
   <span id="currentDateLabel"></span>
   <button id="nextDay">▶</button>
+  <button id="refreshRecordsBtn" class="btn-refresh" title="Actualizar">
+    🔄
+  </button>
 </div>
   <div class="records-table-wrapper">
     <div class="card">
@@ -479,6 +485,31 @@
     <button id="alertOkBtn">Aceptar</button>
   </div>
 </div>
+<!-- ===== CALENDARIO HISTÓRICO ===== -->
+<div id="calendarModal" class="modal-overlay oculto">
+  <div class="modal modal-large">
+    <div class="modal-header">
+      <h3>📅 Historial de asistencias</h3>
+      <button class="btn-icon" id="closeCalendarModal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="calendar-toolbar">
+      <button id="calPrevMonth" class="btn">◀</button>
+      <div id="calMonthLabel" class="cal-month-label"></div>
+      <button id="calNextMonth" class="btn">▶</button>
+    </div>
+
+    <div class="calendar-grid" id="calendarGrid"></div>
+
+    <p class="calendar-legend">
+      <span class="legend-dot blue"></span> Asistencias (entrada) |
+      <span class="legend-dot orange"></span> 0 asistencias
+    </p>
+  </div>
+</div>
+
 
   <div id="toastSuccess" style="
   display:none;

@@ -94,6 +94,10 @@ if ('serviceWorker' in navigator) {
   const prevDayBtn = document.getElementById('prevDay');
   const nextDayBtn = document.getElementById('nextDay');
   const currentDateLabel = document.getElementById('currentDateLabel');
+const refreshRecordsBtn = document.getElementById('refreshRecordsBtn');
+const openCalendarBtn = document.getElementById('openCalendarBtn');
+
+let isEditingRow = false;
 
   function hoyLocal() {
     const d = new Date();
@@ -111,11 +115,6 @@ if ('serviceWorker' in navigator) {
       year: 'numeric'
     });
   }
-
-  function existeFecha(fecha) {
-    return recordsCache.some(r => r.fecha === fecha);
-  }
-
   /* ================== RENDER REGISTROS ================== */
   function renderRecords(data = recordsCache) {
     const tbody = document.getElementById('recordsTableBody');
@@ -156,28 +155,21 @@ if ('serviceWorker' in navigator) {
     renderRecords(data);
   }
 
-  function updateVistaFecha() {
-    if (!fechaVista) return;
+function updateVistaFecha() {
+  if (!fechaVista) return;
 
-    renderRecordsByFecha();
-    if (currentDateLabel) currentDateLabel.textContent = formatFecha(fechaVista);
+  renderRecordsByFecha();
+  if (currentDateLabel) currentDateLabel.textContent = formatFecha(fechaVista);
 
-    const hoy = hoyLocal();
+  const hoy = hoyLocal();
 
-    if (prevDayBtn) {
-      const prev = new Date(fechaVista);
-      prev.setDate(prev.getDate() - 1);
-      prevDayBtn.disabled = !existeFecha(prev.toISOString().substring(0, 10));
-    }
+  // ✅ Siempre permitir retroceder
+  if (prevDayBtn) prevDayBtn.disabled = false;
 
-    if (nextDayBtn) {
-      const next = new Date(fechaVista);
-      next.setDate(next.getDate() + 1);
-      nextDayBtn.disabled =
-        fechaVista >= hoy ||
-        !existeFecha(next.toISOString().substring(0, 10));
-    }
-  }
+  // ✅ Solo impedir avanzar más allá de HOY
+  if (nextDayBtn) nextDayBtn.disabled = (fechaVista >= hoy);
+}
+
 
   prevDayBtn?.addEventListener('click', () => {
     const d = new Date(fechaVista);
@@ -186,12 +178,19 @@ if ('serviceWorker' in navigator) {
     updateVistaFecha();
   });
 
-  nextDayBtn?.addEventListener('click', () => {
-    const d = new Date(fechaVista);
-    d.setDate(d.getDate() + 1);
-    fechaVista = d.toISOString().substring(0, 10);
-    updateVistaFecha();
-  });
+nextDayBtn?.addEventListener('click', () => {
+  const hoy = hoyLocal();
+  if (fechaVista >= hoy) return; // ✅ no permitir pasar de hoy
+
+  const d = new Date(fechaVista);
+  d.setDate(d.getDate() + 1);
+  const nueva = d.toISOString().substring(0, 10);
+
+  if (nueva > hoy) return; // ✅ extra seguro
+  fechaVista = nueva;
+
+  updateVistaFecha();
+});
 
   /* ================== FILTROS ================== */
   function applyRecordFilters() {
@@ -417,44 +416,50 @@ if ('serviceWorker' in navigator) {
 
     // Editar
     if (e.target.closest('.btn-edit')) {
-      const inputsExist = tr.querySelectorAll('input').length;
-      if (inputsExist) {
-        const updated = {};
-        tr.querySelectorAll('td.editable').forEach((td, i) => {
-          const val = td.querySelector('input')?.value ?? '';
-          updated[['entrada', 'salida_comida', 'entrada_comida', 'salida'][i]] =
-            val !== '' ? val : null;
-        });
+  const inputsExist = tr.querySelectorAll('input').length;
 
-        try {
-          const { error } = await supabase
-            .from('records')
-            .update(updated)
-            .eq('id', id);
+  // si NO hay inputs, vas a entrar a modo edición
+  if (!inputsExist) isEditingRow = true;
 
-          if (error) throw error;
+  if (inputsExist) {
+    const updated = {};
+    tr.querySelectorAll('td.editable').forEach((td, i) => {
+      const val = td.querySelector('input')?.value ?? '';
+      updated[['entrada', 'salida_comida', 'entrada_comida', 'salida'][i]] =
+        val !== '' ? val : null;
+    });
 
-          const rec = recordsCache.find(r => r.id == id);
-          if (rec) Object.assign(rec, updated);
+    try {
+      const { error } = await supabase
+        .from('records')
+        .update(updated)
+        .eq('id', id);
 
-          renderRecordsByFecha();
-          mostrarToast('✏️ Registro actualizado');
-        } catch (err) {
-          console.error(err);
-          showAlert({
-            message: 'Error al actualizar registro',
-            type: 'warning',
-            autoClose: 3000
-          });
-        }
-      } else {
-        tr.querySelectorAll('td.editable').forEach(td => {
-          const val = td.textContent.trim();
-          td.innerHTML = `<input type="time" value="${val}">`;
-        });
-      }
-      return;
+      if (error) throw error;
+
+      const rec = recordsCache.find(r => r.id == id);
+      if (rec) Object.assign(rec, updated);
+
+      renderRecordsByFecha();
+      mostrarToast('✏️ Registro actualizado');
+      isEditingRow = false; // ✅ salir de edición al guardar
+    } catch (err) {
+      console.error(err);
+      showAlert({
+        message: 'Error al actualizar registro',
+        type: 'warning',
+        autoClose: 3000
+      });
     }
+  } else {
+    tr.querySelectorAll('td.editable').forEach(td => {
+      const val = td.textContent.trim();
+      td.innerHTML = `<input type="time" value="${val}">`;
+    });
+  }
+  return;
+}
+
 
     // Eliminar
     if (e.target.closest('.btn-delete')) {
@@ -485,6 +490,29 @@ if ('serviceWorker' in navigator) {
       });
     }
   });
+
+async function refreshAllData({ keepDate = true, silent = false } = {}) {
+  const prevDate = fechaVista;
+  await loadWorkers();
+  await loadRecords();
+  if (keepDate && prevDate) {
+    fechaVista = prevDate;
+  }
+  updateVistaFecha();
+  if (!silent) mostrarToast('🔄 Actualizado');
+}
+
+refreshRecordsBtn?.addEventListener('click', async () => {
+  await refreshAllData({ keepDate: true, silent: false });
+});
+
+setInterval(async () => {
+  if (!validarSesionAdmin()) return;
+  if (document.hidden) return;
+  if (isEditingRow) return;
+
+  await refreshAllData({ keepDate: true, silent: true });
+}, 60 * 1000);
 
   /* ================== LOGIN CLICK ================== */
   loginBtn?.addEventListener('click', async () => {
@@ -1255,4 +1283,142 @@ if ('serviceWorker' in navigator) {
   editActivoInput?.addEventListener('change', () => {
     updateActivoLabel(editActivoInput.checked);
   });
+
+/* ================== CALENDARIO HISTÓRICO ================== */
+const calendarModal = document.getElementById('calendarModal');
+const closeCalendarModal = document.getElementById('closeCalendarModal');
+const calPrevMonth = document.getElementById('calPrevMonth');
+const calNextMonth = document.getElementById('calNextMonth');
+const calMonthLabel = document.getElementById('calMonthLabel');
+const calendarGrid = document.getElementById('calendarGrid');
+
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-11
+
+function openCalendar() {
+  calendarModal?.classList.remove('oculto');
+  renderCalendar();
+}
+
+function closeCalendar() {
+  calendarModal?.classList.add('oculto');
+}
+
+openCalendarBtn?.addEventListener('click', () => {
+  // Abrimos en el mes de la fecha vista si existe
+  if (fechaVista) {
+    const d = new Date(fechaVista + 'T00:00:00');
+    calYear = d.getFullYear();
+    calMonth = d.getMonth();
+  }
+  openCalendar();
+});
+
+closeCalendarModal?.addEventListener('click', closeCalendar);
+calendarModal?.addEventListener('click', (e) => {
+  if (e.target === calendarModal) closeCalendar();
+});
+
+calPrevMonth?.addEventListener('click', () => {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+});
+
+calNextMonth?.addEventListener('click', () => {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+});
+
+// Cuenta asistencias por fecha (solo "entrada" no vacía)
+function buildAttendanceMap() {
+  const map = new Map();
+  recordsCache.forEach(r => {
+    const hasEntrada = (r.entrada || '').trim() !== '';
+    if (!hasEntrada) return;
+    map.set(r.fecha, (map.get(r.fecha) || 0) + 1);
+  });
+  return map;
+}
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function renderCalendar() {
+  if (!calendarGrid || !calMonthLabel) return;
+
+  const monthName = new Date(calYear, calMonth, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+  calMonthLabel.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  calendarGrid.innerHTML = '';
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  const startWeekday = firstDay.getDay(); // 0 domingo
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  const attendanceMap = buildAttendanceMap();
+
+  // Relleno previo (celdas vacías)
+  for (let i = 0; i < startWeekday; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'cal-day disabled';
+    empty.innerHTML = `<div class="day-num"></div>`;
+    calendarGrid.appendChild(empty);
+  }
+
+  const todayStr = hoyLocal();
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${calYear}-${pad2(calMonth + 1)}-${pad2(day)}`;
+    const count = attendanceMap.get(dateStr) || 0;
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+
+    const badgeClass = count > 0 ? 'blue' : 'orange';
+    cell.innerHTML = `
+      <div class="day-num">${day}</div>
+      <div class="cal-badge ${badgeClass}">${count}</div>
+    `;
+
+    // ✅ No permitir seleccionar futuros (más allá de hoy)
+    if (dateStr > todayStr) {
+      cell.classList.add('disabled');
+    } else {
+      cell.addEventListener('click', () => {
+        fechaVista = dateStr;
+        updateVistaFecha();
+        closeCalendar();
+      });
+    }
+
+    calendarGrid.appendChild(cell);
+  }
+}
+
+/* ================== AUTO LOGOUT POR INACTIVIDAD ================== */
+const IDLE_LIMIT_MS = 2 * 60 * 1000;
+let idleTimer = null;
+
+function resetIdleTimer() {
+  if (!validarSesionAdmin()) return;
+
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    // Cierra sesión sin guardar rastros (no guardas password, solo borramos sesión)
+    localStorage.removeItem('adminSession');
+    mostrarToast('🔒 Sesión cerrada por inactividad');
+    location.reload();
+  }, IDLE_LIMIT_MS);
+}
+
+['mousemove','keydown','click','touchstart','scroll'].forEach(evt => {
+  window.addEventListener(evt, resetIdleTimer, { passive: true });
+});
+
+// arrancar timer si ya está logueado
+if (validarSesionAdmin()) resetIdleTimer();
+
+
+
 });
