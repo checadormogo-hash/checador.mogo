@@ -568,6 +568,7 @@ body {
   background: #fdba74; /* naranja suave */
   font-weight: 600;
 }
+.offline-pending i { color: #111; }
 .btn-retry-geo{
   width: 100%;
   padding: 12px 14px;
@@ -706,7 +707,13 @@ body {
   position: relative;
   z-index: 100000 !important;
 }
-#offlineBadge {
+.action-btn.offline-pending{
+  position: relative;
+}
+#offlineBadge{
+  position: absolute;
+  top: 10px;          /* ajusta si quieres */
+  right: 12px;        /* ajusta si quieres */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -715,11 +722,11 @@ body {
   padding: 0 6px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
   background: #ef4444;
   color: #fff;
   box-shadow: 0 4px 14px rgba(0,0,0,.18);
-  transform: translate(8px, -8px); /* ajusta a tu botón */
+  transform: none;    /* IMPORTANTÍSIMO: ya no lo movemos así */
 }
 #offlineBadge.oculto { display: none; }
