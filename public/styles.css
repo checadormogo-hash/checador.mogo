@@ -709,11 +709,43 @@ body {
 }
 .action-btn.offline-pending{
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.action-btn.offline-pending i{
+  display:block;
+  margin-bottom: 10px; /* igual que los otros */
 }
 .action-btn.offline-pending .btn-line{
-  display: block;
-  line-height: 1.1;
+  display:block;
+  width: 100%;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.15;
 }
+.action-btn.offline-pending #offlineBadge{
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  transform: none !important; /* mata el translate anterior */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+.action-btn.offline-pending #offlineBadge.oculto{ display:none; }
 #offlineBadge{
   position: absolute;
   top: 10px;
@@ -731,6 +763,5 @@ body {
   background: #ef4444;
   color: #fff;
   box-shadow: 0 4px 14px rgba(0,0,0,.18);
-  transform: none !important; /* por si quedó algún transform viejo */
 }
 #offlineBadge.oculto { display: none; }
