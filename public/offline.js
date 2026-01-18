@@ -196,8 +196,13 @@ if (syncBtn) {
       String(row?.estado || "").toLowerCase() === "error" ||
       (row?._syncErrors && Object.keys(row._syncErrors).length > 0);
 
-
-    if (hasError) return { key: "error", label: "Error" };
+    if (hasError) {
+      // Si el error viene por PIN, muéstralo más claro
+      if (row?._syncErrors?.salida && (row?.salida_pin_required || row?.salida_pin_reason)) {
+        return { key: "error", label: "Error (PIN)" };
+      }
+      return { key: "error", label: "Error" };
+    }
     if (hasPending) return { key: "pending", label: "Pendiente" };
     if (hasSynced) return { key: "synced", label: "Sincronizado" };
     return { key: "pending", label: "Pendiente" };
@@ -255,6 +260,16 @@ if (syncBtn) {
         </div>
       </div>
       ${
+        // 🔥 Motivo SIEMPRE que exista (aunque esté bloqueado y no haya botón)
+        row?.salida_pin_reason
+          ? `<div class="pin-reason" style="margin-top:10px; opacity:.85;">
+              Motivo: ${row.salida_pin_reason}
+            </div>`
+          : ''
+      }
+
+      ${
+        // Botón SOLO cuando se puede reintentar
         (row?.salida_pin_required && row?._offlineFields?.salida && !row?.salida_pin_lock)
           ? `<div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
               <button class="retry-pin-btn"
@@ -263,12 +278,9 @@ if (syncBtn) {
                       ${!navigator.onLine ? 'disabled style="opacity:.5;pointer-events:none;"' : ''}>
                 Reintentar PIN (${Math.max(0, (row.salida_pin_max ?? 3) - (row.salida_pin_intentos ?? 0))} intentos)
               </button>
-              <div class="pin-reason" style="opacity:.85;">
-                ${row.salida_pin_reason ? `Motivo: ${row.salida_pin_reason}` : ''}
-              </div>
             </div>`
           : ''
-      }
+        }
     `;
 
     cardsWrap.appendChild(card);
@@ -535,113 +547,133 @@ async function syncPendingToSupabase() {
         remote = baseRow;
       }
 
+let blockSalidaSync = false;
 // ✅ Validación extra: salida temprana requiere PIN (solo si salida está pendiente)
 const salidaPendiente = row?._offlineFields?.salida === true;
 const requierePin = row?.salida_pin_required === true;
 
 if (salidaPendiente && requierePin) {
-  // si está bloqueado, no insistir
+
+  // 1) Si ya está bloqueado localmente, NO intentamos validar,
+  //    pero dejamos que se sincronicen otros campos (entrada, etc.)
   if (row?.salida_pin_lock) {
-    // no sincronizar salida
     await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
       rec._syncErrors = rec._syncErrors || {};
       rec._syncErrors.salida = rec.salida_pin_reason || "Bloqueado";
       rec.estado = "Error";
+      rec._offlineFields = rec._offlineFields || {};
+      rec._offlineFields.salida = true; // mantener pendiente salida
     });
-    continue;
-  }
-
-  // si no hay pin capturado, marcar NO HAY PIN y bloquear
-  const pin = String(row?.salida_pin || "").trim();
-  if (!pin) {
-    await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
-      rec.salida_pin_reason = "No se capturó PIN";
-      rec.salida_pin_lock = true; // 🔒 deshabilitar reintento
-      rec._syncErrors = rec._syncErrors || {};
-      rec._syncErrors.salida = "No hay PIN";
-      rec.estado = "Error";
-    });
-    continue;
-  }
-
-  // validar contra auth_pins
-  try {
-    const { data: pinRow, error: pinErr } = await sb
-      .from("auth_pins")
-      .select("id, pin, usado, intentos, max_intentos")
-      .eq("worker_id", row.worker_id)
-      .eq("tipo", "salida_temprana")
-      .is("usado", false)
-      .order("creado_en", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (pinErr) throw pinErr;
-
-    // si NO existe pin activo: bloquear y NO permitir reintento (como pediste)
-    if (!pinRow) {
+    blockSalidaSync = true;
+  } else {
+    // 2) Si no hay PIN capturado, bloquear salida pero permitir sincronizar lo demás
+    const pin = String(row?.salida_pin || "").trim();
+    if (!pin) {
       await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
-        rec.salida_pin_reason = "No existe PIN activo para este trabajador";
-        rec.salida_pin_lock = true; // 🔒 ya no se reintenta
+        rec.salida_pin_reason = "No se capturó PIN";
+        rec.salida_pin_lock = true;
         rec._syncErrors = rec._syncErrors || {};
-        rec._syncErrors.salida = "No existe PIN";
+        rec._syncErrors.salida = "No hay PIN";
         rec.estado = "Error";
+        rec._offlineFields = rec._offlineFields || {};
+        rec._offlineFields.salida = true; // mantener pendiente salida
       });
-      continue;
+      blockSalidaSync = true;
+    } else {
+      // 3) Validar contra auth_pins (solo si NO está lock y sí hay pin)
+      try {
+        const { data: pinRow, error: pinErr } = await sb
+          .from("auth_pins")
+          .select("id, pin, usado, intentos, max_intentos")
+          .eq("worker_id", row.worker_id)
+          .eq("tipo", "salida_temprana")
+          .is("usado", false)
+          .order("creado_en", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pinErr) throw pinErr;
+
+        // No existe PIN activo -> bloquear salida (y no reintentar)
+        if (!pinRow) {
+          await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+            rec.salida_pin_reason = "No existe PIN activo para este trabajador";
+            rec.salida_pin_lock = true;
+            rec._syncErrors = rec._syncErrors || {};
+            rec._syncErrors.salida = "No existe PIN";
+            rec.estado = "Error";
+            rec._offlineFields = rec._offlineFields || {};
+            rec._offlineFields.salida = true; // mantener pendiente salida
+          });
+          blockSalidaSync = true;
+        } else {
+          const max = Number(pinRow.max_intentos ?? 3);
+          const usados = Number(row?.salida_pin_intentos ?? 0);
+
+          const ok = String(pinRow.pin) === pin;
+
+          if (!ok) {
+            const newLocalAttempts = usados + 1;
+            const lock = newLocalAttempts >= max;
+
+            await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+              rec.salida_pin_intentos = newLocalAttempts;
+              rec.salida_pin_max = max;
+              rec.salida_pin_reason = `PIN incorrecto (${newLocalAttempts}/${max})`;
+              rec.salida_pin_lock = lock;
+              rec._syncErrors = rec._syncErrors || {};
+              rec._syncErrors.salida = "PIN incorrecto";
+              rec.estado = "Error";
+              rec._offlineFields = rec._offlineFields || {};
+              rec._offlineFields.salida = true; // mantener pendiente salida para botón
+            });
+
+            blockSalidaSync = true;
+          } else {
+            // PIN correcto: marcar usado en Supabase
+            const { error: useErr } = await sb
+              .from("auth_pins")
+              .update({ usado: true, usado_en: new Date().toISOString() })
+              .eq("id", pinRow.id);
+
+            if (useErr) throw useErr;
+
+            // limpiar error / lock local
+            await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+              rec.salida_pin_reason = null;
+              rec.salida_pin_lock = false;
+              // (opcional) rec.salida_pin = null;
+            });
+
+            blockSalidaSync = false; // ✅ ya se puede mandar salida si está en payload
+          }
+        }
+
+      } catch (e) {
+        console.error("❌ Error validando PIN:", e);
+        await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+          rec._syncErrors = rec._syncErrors || {};
+          rec._syncErrors.salida = "Error validando PIN";
+          rec.salida_pin_reason = "Error validando PIN";
+          rec.estado = "Error";
+          rec._offlineFields = rec._offlineFields || {};
+          rec._offlineFields.salida = true;
+        });
+        blockSalidaSync = true;
+      }
     }
-
-    const max = Number(pinRow.max_intentos ?? 3);
-    const usados = Number(row?.salida_pin_intentos ?? 0);
-
-    const ok = String(pinRow.pin) === pin;
-
-    if (!ok) {
-      const newLocalAttempts = usados + 1;
-      const lock = newLocalAttempts >= max;
-
-      await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
-        rec.salida_pin_intentos = newLocalAttempts;
-        rec.salida_pin_max = max;
-        rec.salida_pin_reason = `PIN incorrecto (${newLocalAttempts}/${max})`;
-        rec.salida_pin_lock = lock;
-        rec._syncErrors = rec._syncErrors || {};
-        rec._syncErrors.salida = "PIN incorrecto";
-        rec.estado = "Error";
-      });
-
-      continue; // ❌ no enviar salida
-    }
-
-    // ✅ PIN correcto: marcar usado en Supabase
-    const { error: useErr } = await sb
-      .from("auth_pins")
-      .update({ usado: true, usado_en: new Date().toISOString() })
-      .eq("id", pinRow.id);
-
-    if (useErr) throw useErr;
-
-    // limpiar errores de salida pin localmente
-    await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
-      rec.salida_pin_reason = null;
-      rec.salida_pin_lock = false;
-      // NO borramos el pin por si quieres auditoría local; si quieres lo borramos luego
-    });
-
-  } catch (e) {
-    console.error("❌ Error validando PIN:", e);
-    await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
-      rec._syncErrors = rec._syncErrors || {};
-      rec._syncErrors.salida = "Error validando PIN";
-      rec.salida_pin_reason = "Error validando PIN";
-      rec.estado = "Error";
-    });
-    continue;
   }
 }
-
-
       // 3) construir payload seguro
       const payload = buildSafeUpdatePayload(row, remote);
+      if (blockSalidaSync) {
+        delete payload.salida; // no enviar salida si PIN no pasó / no existe
+        // Recalcular step por si lo estaba empujando a 4
+        if (payload.entrada_comida) payload.step = 3;
+        else if (payload.salida_comida) payload.step = 2;
+        else if (payload.entrada) payload.step = 1;
+        else delete payload.step;
+      }
       if (!Object.keys(payload).length) {
           await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
             rec._offlineFields = rec._offlineFields || {};

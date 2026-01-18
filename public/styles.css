@@ -692,3 +692,34 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
+/* PIN modal siempre encima de Checadas pendientes */
+#pinModal {
+  position: fixed;
+  inset: 0;
+  z-index: 99999 !important;
+}
+
+/* Si tu modal usa una caja interna, opcional */
+#pinModal .modal-contenido,
+#pinModal .modal-box,
+#pinModal .pin-box {
+  position: relative;
+  z-index: 100000 !important;
+}
+#offlineBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+  transform: translate(8px, -8px); /* ajusta a tu botón */
+}
+#offlineBadge.oculto { display: none; }

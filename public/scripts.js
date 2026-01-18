@@ -283,7 +283,7 @@ async function reintentarUbicacion() {
   
   FORCE_BLOCK_MODAL = false; // permitir que el modal azul cierre solo
   setConfirmStyle('#2563eb');
-  showConfirmModal('Revisando ubicación…', 'Espera un momento.', 1200);
+  showConfirmModal('Revisando ubicación', 'Espera un momento...', 1200);
 
   // vuelve a validar (si falla, validarUbicacionObligatoria pondrá FORCE_BLOCK_MODAL=true y mostrará el modal rojo)
   await validarUbicacionObligatoria({ silentIfOk: false });
