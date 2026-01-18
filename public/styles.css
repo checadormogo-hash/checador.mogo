@@ -710,10 +710,14 @@ body {
 .action-btn.offline-pending{
   position: relative;
 }
+.action-btn.offline-pending .btn-line{
+  display: block;
+  line-height: 1.1;
+}
 #offlineBadge{
   position: absolute;
-  top: 10px;          /* ajusta si quieres */
-  right: 12px;        /* ajusta si quieres */
+  top: 10px;
+  right: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -727,6 +731,6 @@ body {
   background: #ef4444;
   color: #fff;
   box-shadow: 0 4px 14px rgba(0,0,0,.18);
-  transform: none;    /* IMPORTANTÍSIMO: ya no lo movemos así */
+  transform: none !important; /* por si quedó algún transform viejo */
 }
 #offlineBadge.oculto { display: none; }
