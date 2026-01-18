@@ -841,7 +841,6 @@ function scheduleCleanup2210() {
 
       await deleteFullySynced();
       try { await updateOfflineBadge(); } catch {}
-      console.log("🧹 Cleanup 10:10pm terminado");
     } catch (e) {
       console.error("❌ Cleanup error:", e);
     }

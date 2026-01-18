@@ -231,8 +231,6 @@ nextDayBtn?.addEventListener('click', () => {
         .select('*')
         .order('fecha', { ascending: false });
 
-      console.log('loadRecords raw:', { data, error }); // ✅ LOG
-
       if (error) throw error;
 
       recordsCache = (data || []).map(r => ({
@@ -319,8 +317,6 @@ nextDayBtn?.addEventListener('click', () => {
       .from('workers')
       .select('id, nombre, pin, activo, fecha_ingreso, qr_token')
       .order('fecha_ingreso', { ascending: false });
-
-    console.log('apiGetWorkers raw:', { data, error }); // ✅ LOG
 
     if (error) throw error;
 

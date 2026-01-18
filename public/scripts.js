@@ -35,12 +35,12 @@ async function loadEmployees() {
 }
 
 const IS_DESKTOP_TEST = false; // ✅ PRUEBA REAL
-const ALLOWED_RADIUS_METERS = 200; // ✅ pruebas (luego lo ajustamos)
+const ALLOWED_RADIUS_METERS = 80; // ✅ pruebas (luego lo ajustamos)
 
 // ===== GEOLOCALIZACIÓN CONFIG =====
 const STORE_LOCATION = {
-  lat: 25.82105601479065,
-  lng: -100.08711844709858
+  lat: 25.81968954703641,
+  lng: -100.08913041106908
 };
 
 function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
@@ -236,8 +236,6 @@ async function validarUbicacionObligatoria({ silentIfOk = true } = {}) {
       STORE_LOCATION.lat,
       STORE_LOCATION.lng
     );
-
-    console.log('📍 GPS OK:', { latitude, longitude, accuracy, distancia: Math.round(distancia) });
 
     // 3) Validar distancia (si está fuera => bloquea)
     if (distancia > ALLOWED_RADIUS_METERS) {
@@ -986,15 +984,11 @@ async function registerStep(employee) {
   const nowTime = getNowTimeMX();
   const workerId = String(employee.id).trim();
 
-  console.log('📅 HOY APP:', today, '⏰', nowTime, 'workerId:', workerId);
-
   // 🧪 TEST SELECT (para saber si RLS sigue bloqueando lecturas)
   const { data: testRow, error: testErr } = await supabaseClient
     .from('records')
     .select('id, worker_id, fecha')
     .limit(1);
-
-  console.log('🧪 TEST SELECT records:', testRow, testErr);
 
   // 1) Intento de lectura normal del registro del día
   const { data: rows, error: readError } = await supabaseClient
@@ -1010,9 +1004,6 @@ async function registerStep(employee) {
 
   let todayRecord = rows?.[0] ?? null;
 
-  console.log('🧾 rows:', rows);
-  console.log('🧾 todayRecord usado (pre-fallback):', todayRecord);
-
   // 2) Fallback: UPSERT BASE
   if (!todayRecord) {
     const basePayload = { worker_id: workerId, fecha: today };
@@ -1023,12 +1014,8 @@ async function registerStep(employee) {
       .select('id, fecha, entrada, salida_comida, entrada_comida, salida, step, created_at')
       .maybeSingle();
 
-    console.log('🧱 baseRow (fallback):', baseRow, baseErr);
-
     if (baseRow) todayRecord = baseRow;
   }
-
-  console.log('🧾 todayRecord final:', todayRecord);
 
   const hasEntrada = hasTime(todayRecord?.entrada);
   const hasSalidaComida = hasTime(todayRecord?.salida_comida);
@@ -1054,8 +1041,6 @@ async function registerStep(employee) {
     showWarningModal('Jornada finalizada', 'Ya completaste todas las checadas del día');
     return false;
   }
-
-  console.log('➡️ ACCIÓN REAL:', actionReal, { todayRecord, recordData });
 
   let saveError = null;
 
@@ -1146,9 +1131,6 @@ try {
     .eq('worker_id', workerId)
     .eq('fecha', today)
     .order('created_at', { ascending: true });
-
-  console.log('✅ VERIFY rows:', verifyRows, verifyErr);
-
   switch (actionReal) {
     case 'entrada':
       showSuccessModal('Entrada registrada', `Bienvenido <span class="employee-name">${employee.name}</span>`);
