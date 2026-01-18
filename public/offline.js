@@ -29,6 +29,32 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("online", updateStatus);
   window.addEventListener("offline", updateStatus);
 });
+async function updateOfflineBadge() {
+  const el = document.getElementById("offlineBadge");
+  if (!el) return;
+
+  let all = [];
+  try { all = await getOfflineCheckins(); } catch {}
+
+  // contar pendientes reales (incluye pin pendiente o cualquier _offlineFields)
+  const groups = new Map();
+  all.forEach(r => {
+    const key = `${String(r.worker_id)}__${String(r.fecha)}`;
+    if (!groups.has(key)) groups.set(key, r);
+  });
+
+  let count = 0;
+  for (const r of groups.values()) {
+    const pending = r?._offlineFields && Object.keys(r._offlineFields).length > 0;
+    const pinPending = r?.salida_pin_required && r?._offlineFields?.salida && !r?.salida_pin_lock;
+    if (pending || pinPending) count++;
+  }
+
+  el.textContent = String(count);
+  if (count > 0) el.classList.remove("oculto");
+  else el.classList.add("oculto");
+}
+window.updateOfflineBadge = updateOfflineBadge;
 
 // ===== CONFIG PARA DISTANCIA (solo visual) =====
 // Reusar STORE_LOCATION de scripts.js si existe (evita redeclare)
@@ -149,6 +175,12 @@ wrap.insertAdjacentHTML("beforeend", `
 
 const cardsWrap = wrap.querySelector(".offline-cards");
 
+const syncBtn = wrap.querySelector("#btnSyncNow");
+if (syncBtn) {
+  syncBtn.disabled = !navigator.onLine;
+  syncBtn.style.opacity = navigator.onLine ? "1" : "0.5";
+  syncBtn.style.pointerEvents = navigator.onLine ? "auto" : "none";
+}
 
   // Helpers
   const safe = (v) => (v === null || v === undefined || String(v).trim() === "" ? "—" : v);
@@ -156,6 +188,8 @@ const cardsWrap = wrap.querySelector(".offline-cards");
   function getOverallStatus(row) {
     const hasPending = row?._offlineFields && Object.keys(row._offlineFields).length > 0;
     const hasSynced = row?._syncedFields && Object.keys(row._syncedFields).length > 0;
+    const pinPending = row?.salida_pin_required && row?._offlineFields?.salida && !row?.salida_pin_lock;
+    if (pinPending) return { key: "pending", label: "Pendiente (PIN)" };
 
     // preparado para futuro (sync con errores)
     const hasError =
@@ -220,7 +254,23 @@ const cardsWrap = wrap.querySelector(".offline-cards");
           <div class="offline-col-sub">Lng: ${safe(row.salida_lng)}</div>
         </div>
       </div>
+      ${
+        (row?.salida_pin_required && row?._offlineFields?.salida && !row?.salida_pin_lock)
+          ? `<div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+              <button class="retry-pin-btn"
+                      data-worker="${row.worker_id}"
+                      data-fecha="${row.fecha}"
+                      ${!navigator.onLine ? 'disabled style="opacity:.5;pointer-events:none;"' : ''}>
+                Reintentar PIN (${Math.max(0, (row.salida_pin_max ?? 3) - (row.salida_pin_intentos ?? 0))} intentos)
+              </button>
+              <div class="pin-reason" style="opacity:.85;">
+                ${row.salida_pin_reason ? `Motivo: ${row.salida_pin_reason}` : ''}
+              </div>
+            </div>`
+          : ''
+      }
     `;
+
     cardsWrap.appendChild(card);
   });
 }
@@ -267,6 +317,13 @@ async function savePendingRecord(data) {
           salidaComida: null,
           entradaComida: null,
           salida: null,
+          // PIN salida temprana (solo offline)
+          salida_pin: null,            // pin capturado (string)
+          salida_pin_intentos: 0,      // intentos usados localmente
+          salida_pin_max: 3,           // max intentos
+          salida_pin_required: false,  // true si la salida offline fue temprana y requiere validación
+          salida_pin_lock: false,      // true si ya NO se debe reintentar (no hay pin o intentos agotados)
+          salida_pin_reason: null,     // texto para UI (ej. "PIN incorrecto", "No existe PIN", etc.)
 
           // Estado general del "día"
           estado: "Pendiente",
@@ -299,6 +356,14 @@ async function savePendingRecord(data) {
       };
 
       const field = map[data.tipo];
+        // Si viene pin (solo lo usamos para salida)
+        if (field === "salida") {
+          if (data?.pinRequired === true) record.salida_pin_required = true;
+          if (typeof data?.pin === "string") record.salida_pin = data.pin.trim();
+          if (typeof data?.pinIntentos === "number") record.salida_pin_intentos = data.pinIntentos;
+          if (typeof data?.pinReason === "string") record.salida_pin_reason = data.pinReason;
+          if (data?.pinLock === true) record.salida_pin_lock = true;
+        }
 
       // 1) Cache local SIEMPRE (online u offline): guardamos la hora para tener "estado del día"
       if (field && data.hora) {
@@ -333,7 +398,11 @@ async function savePendingRecord(data) {
       else store.put(record);
     };
 
-    tx.oncomplete = () => resolve(true);
+    tx.oncomplete = async () => { 
+  resolve(true); 
+  try { await updateOfflineBadge(); } catch {}
+};
+
     tx.onerror = () => reject(tx.error);
     request.onerror = () => reject(request.error);
   });
@@ -341,6 +410,7 @@ async function savePendingRecord(data) {
 window.savePendingRecord = savePendingRecord;
 // ✅ AUTO-RENDER: cuando scripts.js abre el modal (remove 'oculto'), pintamos la tabla
 document.addEventListener("DOMContentLoaded", () => {
+  updateOfflineBadge();
   const modal = document.getElementById("offlineModal");
   if (!modal) return;
 
@@ -465,6 +535,111 @@ async function syncPendingToSupabase() {
         remote = baseRow;
       }
 
+// ✅ Validación extra: salida temprana requiere PIN (solo si salida está pendiente)
+const salidaPendiente = row?._offlineFields?.salida === true;
+const requierePin = row?.salida_pin_required === true;
+
+if (salidaPendiente && requierePin) {
+  // si está bloqueado, no insistir
+  if (row?.salida_pin_lock) {
+    // no sincronizar salida
+    await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+      rec._syncErrors = rec._syncErrors || {};
+      rec._syncErrors.salida = rec.salida_pin_reason || "Bloqueado";
+      rec.estado = "Error";
+    });
+    continue;
+  }
+
+  // si no hay pin capturado, marcar NO HAY PIN y bloquear
+  const pin = String(row?.salida_pin || "").trim();
+  if (!pin) {
+    await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+      rec.salida_pin_reason = "No se capturó PIN";
+      rec.salida_pin_lock = true; // 🔒 deshabilitar reintento
+      rec._syncErrors = rec._syncErrors || {};
+      rec._syncErrors.salida = "No hay PIN";
+      rec.estado = "Error";
+    });
+    continue;
+  }
+
+  // validar contra auth_pins
+  try {
+    const { data: pinRow, error: pinErr } = await sb
+      .from("auth_pins")
+      .select("id, pin, usado, intentos, max_intentos")
+      .eq("worker_id", row.worker_id)
+      .eq("tipo", "salida_temprana")
+      .is("usado", false)
+      .order("creado_en", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (pinErr) throw pinErr;
+
+    // si NO existe pin activo: bloquear y NO permitir reintento (como pediste)
+    if (!pinRow) {
+      await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+        rec.salida_pin_reason = "No existe PIN activo para este trabajador";
+        rec.salida_pin_lock = true; // 🔒 ya no se reintenta
+        rec._syncErrors = rec._syncErrors || {};
+        rec._syncErrors.salida = "No existe PIN";
+        rec.estado = "Error";
+      });
+      continue;
+    }
+
+    const max = Number(pinRow.max_intentos ?? 3);
+    const usados = Number(row?.salida_pin_intentos ?? 0);
+
+    const ok = String(pinRow.pin) === pin;
+
+    if (!ok) {
+      const newLocalAttempts = usados + 1;
+      const lock = newLocalAttempts >= max;
+
+      await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+        rec.salida_pin_intentos = newLocalAttempts;
+        rec.salida_pin_max = max;
+        rec.salida_pin_reason = `PIN incorrecto (${newLocalAttempts}/${max})`;
+        rec.salida_pin_lock = lock;
+        rec._syncErrors = rec._syncErrors || {};
+        rec._syncErrors.salida = "PIN incorrecto";
+        rec.estado = "Error";
+      });
+
+      continue; // ❌ no enviar salida
+    }
+
+    // ✅ PIN correcto: marcar usado en Supabase
+    const { error: useErr } = await sb
+      .from("auth_pins")
+      .update({ usado: true, usado_en: new Date().toISOString() })
+      .eq("id", pinRow.id);
+
+    if (useErr) throw useErr;
+
+    // limpiar errores de salida pin localmente
+    await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+      rec.salida_pin_reason = null;
+      rec.salida_pin_lock = false;
+      // NO borramos el pin por si quieres auditoría local; si quieres lo borramos luego
+    });
+
+  } catch (e) {
+    console.error("❌ Error validando PIN:", e);
+    await updateLocalFlags(row.worker_id, row.fecha, (rec) => {
+      rec._syncErrors = rec._syncErrors || {};
+      rec._syncErrors.salida = "Error validando PIN";
+      rec.salida_pin_reason = "Error validando PIN";
+      rec.estado = "Error";
+    });
+    continue;
+  }
+}
+
+
       // 3) construir payload seguro
       const payload = buildSafeUpdatePayload(row, remote);
       if (!Object.keys(payload).length) {
@@ -547,12 +722,30 @@ async function syncPendingToSupabase() {
 
   // refrescar UI si modal abierto
   try { await renderOfflineTable(); } catch {}
+  try { await updateOfflineBadge(); } catch {}
 }
 
 // click del botón sincronizar
 document.addEventListener("click", (e) => {
   if (e.target && e.target.id === "btnSyncNow") {
     syncPendingToSupabase();
+  }
+});
+
+document.addEventListener("click", async (e) => {
+  const btn = e.target?.closest?.(".retry-pin-btn");
+  if (!btn) return;
+
+  if (!navigator.onLine) return; // offline: no hacer nada
+
+  const worker_id = btn.dataset.worker;
+  const fecha = btn.dataset.fecha;
+
+  // Pedir PIN con modal (lo haremos desde scripts.js)
+  if (typeof window.requestPinForOfflineRetry === "function") {
+    await window.requestPinForOfflineRetry(worker_id, fecha);
+  } else {
+    console.error("❌ Falta window.requestPinForOfflineRetry en scripts.js");
   }
 });
 
@@ -599,7 +792,10 @@ async function deleteFullySynced() {
       });
     };
 
-    tx.oncomplete = () => resolve(true);
+    tx.oncomplete = async () => {
+      resolve(true);
+      try { await updateOfflineBadge(); } catch {}
+    };
     tx.onerror = () => reject(tx.error);
     req.onerror = () => reject(req.error);
   });
@@ -612,6 +808,7 @@ function scheduleCleanup2210() {
       if (navigator.onLine) await syncPendingToSupabase();
 
       await deleteFullySynced();
+      try { await updateOfflineBadge(); } catch {}
       console.log("🧹 Cleanup 10:10pm terminado");
     } catch (e) {
       console.error("❌ Cleanup error:", e);

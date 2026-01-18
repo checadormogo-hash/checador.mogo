@@ -565,10 +565,10 @@ if (todayRecord && !navigator.onLine) {
 
   const saved = await registerStepManual(employee, action, todayRecord);
   if (saved) {
-      recentScans.set(workerId, Date.now()); // ✅ SOLO si guardó
+      recentScans.set(workerId, Date.now());
       hideAutoModal();
     } else {
-      recentScans.delete(workerId); // opcional, pero deja todo limpio
+      recentScans.delete(workerId);
     }
   }
 
@@ -583,6 +583,8 @@ async function registerStepManual(employee, action, todayRecord) {
   });
 
   const recordData = {};
+  let pin = null;
+  let pinRequired = false;
 
   switch (action) {
     case 'entrada':
@@ -598,25 +600,34 @@ async function registerStepManual(employee, action, todayRecord) {
       recordData.step = 3;
       break;
     case 'salida': {
-      const yaPasoPorComida =
-        hasTime(todayRecord?.entrada) &&
-        hasTime(todayRecord?.salida_comida) &&
-        hasTime(todayRecord?.entrada_comida);
-
       const salidaTemprana =
-        hasTime(todayRecord?.entrada) &&
-        !hasTime(todayRecord?.salida_comida) &&
-        !hasTime(todayRecord?.entrada_comida);
+      hasTime(todayRecord?.entrada) &&
+      !hasTime(todayRecord?.salida_comida) &&
+      !hasTime(todayRecord?.entrada_comida);
 
+      // ✅ Si es salida temprana:
+      // - ONLINE: validar en Supabase (solicitarPin)
+      // - OFFLINE: solo capturar PIN (capturarPinOffline)
       if (salidaTemprana) {
-        const pinValidado = await solicitarPin(employee.id, todayRecord?.id, employee.name);
-        if (!pinValidado) return false;
+        pinRequired = true;
+
+        if (navigator.onLine) {
+          const pinValidado = await solicitarPin(employee.id, todayRecord?.id, employee.name);
+          if (!pinValidado) return false;
+        } else {
+          pin = await capturarPinOffline(employee.name, 3);
+          if (!pin) {
+            showWarningModal('PIN requerido', 'Debes ingresar el PIN para salida temprana.');
+            return false;
+          }
+        }
       }
 
       recordData.salida = nowTime;
       recordData.step = 4;
       break;
     }
+
   }
 
   // ===============================
@@ -627,20 +638,26 @@ if (!navigator.onLine) {
     const coords = await getCoordsForEvidence(3, 700);
     if (typeof window.savePendingRecord === 'function') {
       await window.savePendingRecord({
-  worker_id: workerId,
-  worker_name: employee.name,
-  fecha: getTodayISO(),
-  tipo: action,
-  hora: nowTime,
-  lat: coords.lat,
-  lng: coords.lng,
-  forceCoords: true
-});
+        worker_id: workerId,
+        worker_name: employee.name,
+        fecha: getTodayISO(),
+        tipo: action,
+        hora: nowTime,
+        lat: coords.lat,
+        lng: coords.lng,
+        forceCoords: true,
+        pinRequired,
+        pin,
+        pinIntentos: 0,
+        pinReason: pinRequired ? "Pendiente de validar" : null,
+        pinLock: false
 
-// ✅ si no logró coords, avisa (para que sepas que fue por GPS, no por tu guardado)
-if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
-  console.warn('⚠️ No se pudo obtener lat/lng (offline) para:', action);
-}
+      });
+
+      // ✅ si no logró coords, avisa (para que sepas que fue por GPS, no por tu guardado)
+      if (!Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+        console.warn('⚠️ No se pudo obtener lat/lng (offline) para:', action);
+      }
     }
   } catch (e) {
     console.error('Error guardando offline:', e);
@@ -1428,6 +1445,29 @@ async function solicitarPin(workerId, recordId, employeeName = '') {
     };
   });
 }
+async function capturarPinOffline(employeeName = '', intentosRestantes = 3) {
+  // reutiliza tu pinModal existente, pero NO valida con supabase aquí
+  workerPinInput.value = '';
+  pinError.style.display = 'none';
+  pinError.textContent = '';
+
+  pinModal.classList.remove('oculto');
+
+  return new Promise(resolve => {
+    submitPinBtn.onclick = () => {
+      const pinIngresado = workerPinInput.value.trim();
+      if (!pinIngresado) return;
+
+      pinModal.classList.add('oculto');
+      resolve(pinIngresado);
+    };
+
+    cancelPinBtn.onclick = () => {
+      pinModal.classList.add('oculto');
+      resolve(null);
+    };
+  });
+}
 
 const openPolicies = document.getElementById('openPolicies');
 const policiesModal = document.getElementById('policiesModal');
@@ -1446,3 +1486,49 @@ if (closePolicies) {
     startInactivityTimer();
   });
 }
+
+window.requestPinForOfflineRetry = async function(workerId, fecha) {
+  if (!navigator.onLine) return;
+
+  // leer el record local para saber intentos restantes
+  let rec = null;
+  if (typeof window.getLocalDayRecord === "function") {
+    rec = await window.getLocalDayRecord(workerId, fecha);
+  }
+  if (!rec) return;
+
+  const usados = Number(rec.salida_pin_intentos ?? 0);
+  const max = Number(rec.salida_pin_max ?? 3);
+  const restantes = Math.max(0, max - usados);
+
+  if (restantes <= 0) {
+    showCriticalModal("Intentos agotados", "Ya no puedes reintentar. Revisa con el administrador.");
+    return;
+  }
+
+  const pin = await capturarPinOffline(rec.nombre || '', restantes);
+  if (!pin) return;
+
+  // guardar nuevo pin localmente (NO incrementamos intentos aquí; se incrementa cuando sync valida y falla)
+  if (typeof window.savePendingRecord === "function") {
+    await window.savePendingRecord({
+      worker_id: workerId,
+      worker_name: rec.nombre,
+      fecha,
+      tipo: "salida",
+      hora: rec.salida,     // conservar hora ya guardada
+      lat: rec.salida_lat ?? rec.lat ?? null,
+      lng: rec.salida_lng ?? rec.lng ?? null,
+      forceCoords: true,
+      pinRequired: true,
+      pin,
+      pinReason: null,
+      pinLock: false
+    });
+  }
+
+  // ahora intenta sincronizar
+  if (typeof window.syncPendingToSupabase === "function") {
+    await window.syncPendingToSupabase();
+  }
+};
